@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #fdfcfb; /* Cream color paper */
+  color: #44403c;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+input:focus { outline: none; }

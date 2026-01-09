@@ -1,0 +1,553 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
+import { 
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, 
+  onSnapshot, query, orderBy, limit, getDocs, updateDoc 
+} from 'firebase/firestore';
+import { 
+  BookOpen, Settings, Edit3, Save, LogOut, ChevronRight, Activity, Droplet, 
+  User, CheckCircle2, Clock, Utensils, Moon, Syringe, FileText, Download,
+  ShieldAlert, ScrollText
+} from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// --- CONFIGURATION ---
+// ⚠️ PASTE YOUR KEYS HERE ⚠️
+const firebaseConfig = {
+  apiKey: "AIzaSyC4SynoUudjpiHdakfQDOR27hsOWf1Es7I",
+  authDomain: "sugardiary-59fdf.firebaseapp.com",
+  projectId: "sugardiary-59fdf",
+  storageBucket: "sugardiary-59fdf.firebasestorage.app",
+  messagingSenderId: "664076272292",
+  appId: "1:664076272292:web:09190f4f5a389db45ddc31",
+};
+
+// Initialize
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// --- COMPONENTS ---
+
+const StatBadge = ({ emoji, label, value, unit, color }) => (
+  <div className={`flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-${color}-100 min-w-[90px]`}>
+    <div className="text-2xl mb-1">{emoji}</div>
+    <div className="font-bold text-stone-800 text-lg leading-none">{value || '-'}</div>
+    <div className="text-[10px] text-stone-400 font-bold uppercase mt-1">{label}</div>
+    {unit && <div className="text-[9px] text-stone-300 font-bold">{unit}</div>}
+  </div>
+);
+
+const MealOption = ({ label, icon: Icon, selected, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border-2 ${
+      selected 
+      ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-md scale-95' 
+      : 'bg-white border-transparent text-stone-400 hover:bg-stone-100'
+    }`}
+  >
+    <Icon size={20} />
+    <span className="text-[10px] font-bold uppercase">{label}</span>
+  </button>
+);
+
+// --- LEGAL CONSENT SCREEN ---
+const ConsentScreen = ({ onConsent }) => {
+  const [agreed, setAgreed] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-stone-100 p-6 flex items-center justify-center font-sans">
+      <div className="bg-white max-w-lg w-full rounded-[32px] shadow-2xl overflow-hidden border border-stone-200">
+        <div className="bg-stone-900 p-6 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <ShieldAlert className="text-amber-400" size={32} />
+            <h1 className="text-2xl font-serif font-bold">Important Notice</h1>
+          </div>
+          <p className="text-stone-400 text-sm">Please read carefully before proceeding.</p>
+        </div>
+        
+        <div className="p-8 h-96 overflow-y-auto space-y-6 text-stone-600 text-sm leading-relaxed border-b border-stone-100">
+          <section>
+            <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
+              <Activity size={18} className="text-blue-500"/> Not a Medical Device
+            </h3>
+            <p>
+              SugarDiary is a <strong>data recording and visualization tool</strong> only. It does NOT provide medical advice, diagnoses, or treatment recommendations. The calculations and graphs provided are for informational purposes.
+            </p>
+            <p className="mt-2 font-bold text-red-500">
+              Never disregard professional medical advice or delay seeking it because of something you have read on this app.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
+              <ScrollText size={18} className="text-emerald-500"/> Research & Data Usage
+            </h3>
+            <p>
+              By using this application, you explicitly consent to the collection and analysis of your health data (including but not limited to blood glucose levels, insulin dosages, and demographics).
+            </p>
+            <p className="mt-2 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+              <strong>Consent for AI Development:</strong> You agree that your <strong>de-identified and anonymized</strong> data may be used for research purposes, statistical analysis, and the training of Artificial Intelligence (AI) models to improve diabetes management technology.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-stone-800 text-lg mb-2">Emergency Protocol</h3>
+            <p>
+              If you experience symptoms of severe hypoglycemia (low sugar) or hyperglycemia (high sugar), <strong>contact emergency services or your doctor immediately</strong>. Do not rely on this app for emergency situations.
+            </p>
+          </section>
+        </div>
+
+        <div className="p-6 bg-stone-50">
+          <label className="flex items-start gap-4 cursor-pointer mb-6 p-4 bg-white rounded-xl border border-stone-200 hover:border-blue-300 transition-colors">
+            <input 
+              type="checkbox" 
+              className="mt-1 w-6 h-6 accent-blue-600"
+              checked={agreed} 
+              onChange={e => setAgreed(e.target.checked)} 
+            />
+            <span className="text-stone-700 font-medium">
+              I have read, understood, and agree to the Terms of Service, Privacy Policy, and Data Research Consent.
+            </span>
+          </label>
+
+          <button 
+            onClick={onConsent}
+            disabled={!agreed}
+            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-lg ${
+              agreed 
+              ? 'bg-stone-900 text-white hover:bg-stone-800 active:scale-95' 
+              : 'bg-stone-300 text-stone-500 cursor-not-allowed'
+            }`}
+          >
+            I Agree & Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [view, setView] = useState('diary');
+  const [loading, setLoading] = useState(true);
+  const [consented, setConsented] = useState(false);
+  
+  // Data States
+  const [hgt, setHgt] = useState('');
+  const [mealStatus, setMealStatus] = useState('Pre-Meal');
+  const [insulinDoses, setInsulinDoses] = useState({});
+  const [saveStatus, setSaveStatus] = useState(''); 
+  
+  // History State
+  const [history, setHistory] = useState([]);
+  const [fullHistory, setFullHistory] = useState([]);
+
+  // 1. Auth & Profile Persistence
+  useEffect(() => {
+    return onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        try {
+          const d = await getDoc(doc(db, "users", u.uid));
+          if (d.exists()) {
+            const data = d.data();
+            setProfile(data);
+            // Check if they have already consented in the DB
+            if (data.hasConsented) {
+              setConsented(true);
+            }
+          } else {
+            setView('profile');
+          }
+        } catch (e) { console.error(e); }
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  // 2. Real-time Recent History
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "users", user.uid, "logs"), orderBy('timestamp', 'desc'), limit(5));
+    return onSnapshot(q, (snapshot) => {
+      setHistory(snapshot.docs.map(d => ({id: d.id, ...d.data()})));
+    });
+  }, [user]);
+
+  // 3. Full History for Data Tab
+  useEffect(() => {
+    if (!user || view !== 'history') return;
+    const q = query(collection(db, "users", user.uid, "logs"), orderBy('timestamp', 'desc'), limit(50));
+    const unsub = onSnapshot(q, (s) => setFullHistory(s.docs.map(d => ({id: d.id, ...d.data()}))));
+    return () => unsub();
+  }, [user, view]);
+
+  // 4. Save Entry
+  const handleSaveEntry = async () => {
+    if (!hgt) return alert("Please enter a sugar value.");
+
+    const dosesTaken = Object.entries(insulinDoses).reduce((acc, [type, units]) => {
+      const val = parseFloat(units);
+      if (val > 0) acc[type] = val;
+      return acc;
+    }, {});
+
+    const entryData = {
+      hgt: parseFloat(hgt),
+      doses: dosesTaken,
+      mealStatus,
+      timestamp: serverTimestamp(),
+      schemaVersion: 2,
+      snapshot: { 
+        weight: profile?.weight, 
+        hba1c: profile?.hba1c, 
+        age: profile?.age, 
+        creatinine: profile?.creatinine 
+      }
+    };
+
+    setHgt('');
+    setInsulinDoses({});
+    setMealStatus('Pre-Meal');
+    setSaveStatus('success');
+
+    try {
+      await addDoc(collection(db, "users", user.uid, "logs"), entryData);
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch (e) {
+      alert("Saved locally. Will sync when online.");
+      setSaveStatus('');
+    }
+  };
+
+  // 5. Handle Consent Agreement
+  const handleConsent = async () => {
+    if (!user) return;
+    try {
+      // Save consent to DB so they don't see it again
+      await setDoc(doc(db, "users", user.uid), { 
+        hasConsented: true,
+        consentDate: serverTimestamp()
+      }, { merge: true });
+      setConsented(true);
+    } catch (e) {
+      alert("Error saving consent. Please try again.");
+    }
+  };
+
+  // 6. PDF Generator
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFillColor(5, 150, 105); 
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text("SugarDiary Patient Report", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text("Patient Vital Profile:", 14, 50);
+
+    const prescription = profile?.prescribedInsulins?.join(', ') || 'None';
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Metric', 'Value', 'Metric', 'Value']],
+      body: [
+        ['Name', user.displayName || 'Patient', 'Email', user.email],
+        ['Age', `${profile?.age} yrs`, 'Weight', `${profile?.weight} kg`],
+        ['HbA1c', `${profile?.hba1c}%`, 'Creatinine', `${profile?.creatinine} mg/dL`],
+        ['Prescription', prescription, '', '']
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [245, 245, 244], textColor: 50, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 3 }
+    });
+
+    const rows = fullHistory.map(log => {
+      const date = log.timestamp ? new Date(log.timestamp.seconds * 1000) : new Date();
+      const doseStr = log.doses 
+        ? Object.entries(log.doses).map(([k,v]) => `${k}: ${v}u`).join(', ') 
+        : `${log.dose || 0}u`;
+
+      return [
+        date.toLocaleDateString(),
+        date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        `${log.hgt} mg/dL`,
+        log.mealStatus,
+        doseStr
+      ];
+    });
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 15,
+      head: [['Date', 'Time', 'Blood Sugar', 'Context', 'Insulin Administered']],
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [5, 150, 105], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 3 }
+    });
+
+    doc.save(`SugarDiary_Report_${user.displayName}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    const formData = new FormData(e.target);
+    const selectedInsulins = ['Rapid', 'Regular', 'NPH', 'Basal', 'Mix 70/30'].filter(t => formData.get(`ins_${t}`));
+
+    const data = {
+      age: formData.get('age'),
+      weight: formData.get('weight'),
+      hba1c: formData.get('hba1c'),
+      creatinine: formData.get('creatinine'),
+      prescribedInsulins: selectedInsulins,
+      lastUpdated: new Date().toISOString()
+    };
+
+    try {
+      await setDoc(doc(db, "users", user.uid), data, { merge: true });
+      setProfile(prev => ({ ...prev, ...data }));
+      setView('diary');
+    } catch (e) {
+      alert("Error saving profile.");
+    }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center font-serif text-stone-400 italic">Opening...</div>;
+
+  if (!user) return (
+    <div className="min-h-screen bg-[#fcfaf7] flex items-center justify-center p-6 font-serif">
+      <div className="bg-white p-10 rounded-[40px] shadow-xl text-center border border-stone-100 max-w-sm w-full">
+        <BookOpen className="text-emerald-600 w-16 h-16 mx-auto mb-4" />
+        <h1 className="text-4xl mb-2 text-stone-800">SugarDiary</h1>
+        <p className="text-stone-400 mb-8">A personal journal for your health.</p>
+        <button onClick={() => signInWithPopup(auth, provider)} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-50 active:scale-95 transition-transform">Sign in with Google</button>
+      </div>
+    </div>
+  );
+
+  // RED GATE: Block access until consent is given
+  if (!consented) return <ConsentScreen onConsent={handleConsent} />;
+
+  return (
+    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] shadow-2xl relative font-sans text-stone-800 pb-32">
+      
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center">
+            <CheckCircle2 className="text-emerald-500 w-16 h-16 mb-2" />
+            <h3 className="text-xl font-bold text-stone-800">Saved!</h3>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="bg-white p-6 rounded-b-[40px] shadow-sm border-b border-stone-100 mb-6">
+        <div className="flex items-center gap-4 mb-6">
+          {user.photoURL ? (
+            <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full border-4 border-stone-50 shadow-md" />
+          ) : (
+            <div className="w-16 h-16 bg-stone-200 rounded-full flex items-center justify-center"><User size={24}/></div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-stone-800 leading-tight">{user.displayName}</h1>
+            <p className="text-stone-400 text-xs font-bold uppercase tracking-wider mt-1">
+               Rx: {profile?.prescribedInsulins?.join(', ') || "No Insulin Set"}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <StatBadge emoji="🧘‍♂️" label="Age" value={profile?.age} unit="Yrs" color="blue" />
+          <StatBadge emoji="🩸" label="HbA1c" value={profile?.hba1c} unit="%" color="emerald" />
+          <StatBadge emoji="🧪" label="Creat" value={profile?.creatinine} unit="mg/dL" color="purple" />
+          <StatBadge emoji="⚖️" label="Weight" value={profile?.weight} unit="kg" color="orange" />
+        </div>
+      </div>
+
+      {view === 'diary' ? (
+        <div className="px-6 animate-in fade-in duration-500">
+          
+          <div className="mb-6">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-2 mb-2 block">What's happening?</label>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              <MealOption label="Fasting" icon={Clock} selected={mealStatus === 'Fasting'} onClick={() => setMealStatus('Fasting')} />
+              <MealOption label="Pre-Meal" icon={Utensils} selected={mealStatus === 'Pre-Meal'} onClick={() => setMealStatus('Pre-Meal')} />
+              <MealOption label="Post-Meal" icon={Activity} selected={mealStatus === 'Post-Meal'} onClick={() => setMealStatus('Post-Meal')} />
+              <MealOption label="Bedtime" icon={Moon} selected={mealStatus === 'Bedtime'} onClick={() => setMealStatus('Bedtime')} />
+            </div>
+          </div>
+
+          <div className="bg-emerald-50 p-6 rounded-[32px] border border-emerald-100 shadow-sm relative overflow-hidden mb-6">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><Activity size={100} /></div>
+            <label className="text-xs font-bold text-emerald-800 uppercase block mb-1">Blood Sugar</label>
+            <div className="flex items-baseline gap-2">
+              <input 
+                type="number" 
+                value={hgt} 
+                onChange={e => setHgt(e.target.value)}
+                className="text-7xl font-bold w-full bg-transparent text-emerald-900 placeholder-emerald-200/50 outline-none z-10 relative" 
+                placeholder="---" 
+                autoFocus
+              />
+              <span className="text-emerald-600 font-bold text-lg">mg/dL</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-2 block">Insulin Taken</label>
+            {(profile?.prescribedInsulins && profile.prescribedInsulins.length > 0) ? (
+              profile.prescribedInsulins.map(type => (
+                <div key={type} className="bg-white p-4 rounded-2xl border border-blue-50 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 rounded-xl text-blue-500"><Syringe size={20}/></div>
+                    <span className="font-bold text-stone-700">{type}</span>
+                  </div>
+                  <div className="flex items-baseline gap-1 bg-stone-50 px-3 py-1 rounded-xl">
+                    <input 
+                      type="number" 
+                      className="w-16 bg-transparent text-3xl font-bold text-right text-blue-900 outline-none placeholder-stone-300"
+                      placeholder="0"
+                      value={insulinDoses[type] || ''}
+                      onChange={(e) => setInsulinDoses({...insulinDoses, [type]: e.target.value})}
+                    />
+                    <span className="text-xs font-bold text-stone-400">u</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div onClick={() => setView('profile')} className="p-6 border-2 border-dashed border-stone-200 rounded-2xl text-center text-stone-400 text-sm cursor-pointer hover:bg-stone-50">
+                Tap to set up your insulin types in Profile Settings
+              </div>
+            )}
+          </div>
+
+          <button onClick={saveEntry} className="w-full bg-stone-900 text-white py-5 rounded-[24px] font-bold text-xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-transform mt-6">
+            <Save size={20} /> Save Entry
+          </button>
+        </div>
+
+      ) : view === 'history' ? (
+        <div className="px-6 animate-in slide-in-from-right duration-500">
+           <header className="flex justify-between items-center mb-6 pt-4">
+             <h2 className="text-3xl font-serif text-stone-800">My Data</h2>
+             <button onClick={generatePDF} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors">
+               <Download size={18} /> Download PDF
+             </button>
+           </header>
+           
+           <div className="space-y-4 pb-24">
+             {fullHistory.map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-[20px] shadow-sm border border-stone-100 flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-emerald-700">{item.hgt}</span>
+                      <span className="text-[10px] font-bold bg-stone-100 text-stone-500 px-2 py-1 rounded-lg uppercase">{item.mealStatus}</span>
+                    </div>
+                    <div className="text-[10px] text-stone-400 font-bold mt-1">
+                      {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '...'}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                     {item.doses && Object.entries(item.doses).map(([type, amount]) => (
+                        <div key={type} className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                          {type}: {amount}u
+                        </div>
+                     ))}
+                     {!item.doses && item.dose > 0 && <div className="text-xl font-bold text-blue-600">{item.dose}u</div>}
+                  </div>
+                </div>
+              ))}
+           </div>
+        </div>
+
+      ) : (
+        <div className="p-6">
+          <header className="mb-10 pt-6">
+            <h2 className="text-3xl font-serif text-stone-800 mb-1">My Health Profile</h2>
+            <p className="text-stone-400 font-medium">Update this when you visit the doctor.</p>
+          </header>
+
+          <form onSubmit={handleProfileSave} className="bg-white p-8 rounded-[40px] shadow-sm space-y-6 border border-stone-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-stone-50 p-4 rounded-2xl">
+                <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">🧘‍♂️ Age</label>
+                <input name="age" type="number" defaultValue={profile?.age} className="w-full bg-transparent font-bold text-xl outline-none text-stone-800" placeholder="00" required />
+              </div>
+              <div className="bg-stone-50 p-4 rounded-2xl">
+                <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">⚖️ Weight (kg)</label>
+                <input name="weight" type="number" defaultValue={profile?.weight} className="w-full bg-transparent font-bold text-xl outline-none text-stone-800" placeholder="00" required />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div className="bg-stone-50 p-4 rounded-2xl">
+                 <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">🩸 HbA1c (%)</label>
+                 <input name="hba1c" type="number" step="0.1" defaultValue={profile?.hba1c} className="w-full bg-transparent font-bold text-xl outline-none text-stone-800" placeholder="0.0" required />
+               </div>
+               <div className="bg-stone-50 p-4 rounded-2xl">
+                 <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">🧪 Creatinine</label>
+                 <input name="creatinine" type="number" step="0.1" defaultValue={profile?.creatinine} className="w-full bg-transparent font-bold text-xl outline-none text-stone-800" placeholder="0.0" required />
+               </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Prescribed Insulin (Select all that apply)</label>
+              <div className="space-y-2">
+                {['Rapid', 'Regular', 'NPH', 'Basal', 'Mix 70/30'].map(type => (
+                  <label key={type} className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl cursor-pointer hover:bg-stone-100 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      name={`ins_${type.toLowerCase().split(' ')[0]}`} 
+                      defaultChecked={profile?.prescribedInsulins?.includes(type)}
+                      className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
+                    />
+                    <span className="font-bold text-stone-700">{type}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="w-full bg-stone-800 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
+              <Save size={18} /> Save Changes
+            </button>
+            
+            <button type="button" onClick={() => signOut(auth)} className="w-full text-red-300 font-bold py-2 mt-6 flex items-center justify-center gap-2 border-t border-stone-100 pt-6 hover:text-red-500">
+              <LogOut size={16}/> Sign Out
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* FOOTER NAV */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-stone-200 p-4 flex justify-around items-center z-50">
+         <button onClick={() => setView('diary')} className={`flex flex-col items-center gap-1 ${view === 'diary' ? 'text-stone-900' : 'text-stone-400'}`}>
+            <div className={`p-2 rounded-xl ${view === 'diary' ? 'bg-stone-100' : ''}`}><Edit3 size={24} /></div>
+            <span className="text-[10px] font-bold uppercase">Diary</span>
+         </button>
+         <button onClick={() => setView('history')} className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-stone-900' : 'text-stone-400'}`}>
+            <div className={`p-2 rounded-xl ${view === 'history' ? 'bg-stone-100' : ''}`}><FileText size={24} /></div>
+            <span className="text-[10px] font-bold uppercase">My Data</span>
+         </button>
+         <button onClick={() => setView('profile')} className={`flex flex-col items-center gap-1 ${view === 'profile' ? 'text-stone-900' : 'text-stone-400'}`}>
+            <div className={`p-2 rounded-xl ${view === 'profile' ? 'bg-stone-100' : ''}`}><Settings size={24} /></div>
+            <span className="text-[10px] font-bold uppercase">Profile</span>
+         </button>
+      </nav>
+    </div>
+  );
+}
