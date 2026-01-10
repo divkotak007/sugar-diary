@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import { 
   getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, 
-  onSnapshot, query, orderBy, limit, getDocs 
+  onSnapshot, query, orderBy, limit 
 } from 'firebase/firestore';
 import { 
   BookOpen, Settings, Edit3, Save, LogOut, Activity, Droplet, 
   User, CheckCircle2, Clock, Utensils, Syringe, FileText, Download,
   ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell, 
-  AlertTriangle, Zap, Wine, Sandwich, Pill, PlusCircle, Trash2, XCircle
+  AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare, 
+  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -31,8 +32,62 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'sugar-diary-v1';
 
-// --- COMPONENTS ---
+// --- FALLBACK MEDICAL DATABASE ---
+const DEFAULT_MED_DATABASE = {
+  insulins: {
+    rapid: ["Insulin Aspart (NovoRapid)", "Insulin Lispro (Humalog)", "Insulin Glulisine (Apidra)", "Fiasp"],
+    short: ["Regular Human Insulin (Actrapid)", "Humulin R"],
+    intermediate: ["NPH (Insulatard)", "Humulin N"],
+    basal: ["Glargine U-100 (Lantus)", "Glargine U-300 (Toujeo)", "Detemir (Levemir)", "Degludec (Tresiba)", "Basalog"],
+    premix: ["Mixtard 30/70", "NovoMix 30", "Humalog Mix 25", "Humalog Mix 50", "Ryzodeg"]
+  },
+  oralMeds: {
+    biguanides: ["Metformin 500mg", "Metformin 850mg", "Metformin 1000mg ER"],
+    sulfonylureas: ["Glimepiride 1mg", "Glimepiride 2mg", "Gliclazide 80mg", "Gliclazide MR 60mg"],
+    dpp4: ["Sitagliptin 100mg", "Vildagliptin 50mg", "Teneligliptin 20mg", "Linagliptin 5mg"],
+    sglt2: ["Dapagliflozin 10mg", "Empagliflozin 25mg", "Canagliflozin 100mg", "Remogliflozin 100mg"],
+    tzd: ["Pioglitazone 15mg", "Pioglitazone 30mg"],
+    combinations: ["Glimepiride + Metformin", "Vildagliptin + Metformin", "Sitagliptin + Metformin", "Dapagliflozin + Metformin"],
+    others: ["Voglibose 0.2mg", "Acarbose 25mg", "Rybelsus 3mg"]
+  }
+};
 
+const FREQUENCY_RULES = {
+  "Once Daily": ["Morning"],
+  "Twice Daily": ["Morning", "Evening"],
+  "Thrice Daily": ["Morning", "Afternoon", "Evening"],
+  "Bedtime": ["Bedtime"],
+  "Before Meals": ["Breakfast", "Lunch", "Dinner"],
+  "SOS": ["As Needed"]
+};
+
+const INSULIN_FREQUENCIES = ["Bedtime", "Before Meals", "Twice Daily", "Once Daily", "SOS"];
+const ALL_TIMINGS = ["Morning", "Breakfast", "Lunch", "Afternoon", "Evening", "Dinner", "Bedtime", "As Needed"];
+const CONTRAINDICATIONS = {
+  pregnancy: ["Pioglitazone", "Dapagliflozin", "Empagliflozin", "Canagliflozin", "Glimepiride", "Gliclazide", "Rybelsus"] 
+};
+
+const TAG_EMOJIS = {
+  "Sick": "🤒", "Sweets": "🍬", "Heavy Meal": "🍔", "Exercise": "🏃", "Missed Dose": "❌", "Travel": "✈️",
+  "Fasting": "⏳"
+};
+
+// --- HELPERS ---
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+const calculateAge = (dob) => {
+  if (!dob) return '';
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// --- COMPONENTS ---
 const StatBadge = ({ emoji, label, value, unit, color }) => (
   <div className={`flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-${color}-100 min-w-[90px]`}>
     <div className="text-2xl mb-1">{emoji}</div>
@@ -43,36 +98,103 @@ const StatBadge = ({ emoji, label, value, unit, color }) => (
 );
 
 const MealOption = ({ label, icon: Icon, selected, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border-2 ${
-      selected 
-      ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-md scale-95' 
-      : 'bg-white border-transparent text-stone-400 hover:bg-stone-100'
-    }`}
-  >
+  <button onClick={onClick} className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border-2 ${selected ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-md scale-95' : 'bg-white border-transparent text-stone-400 hover:bg-stone-100'}`}>
     <Icon size={20} />
     <span className="text-[10px] font-bold uppercase">{label}</span>
   </button>
 );
 
 const ContextTag = ({ label, icon: Icon, selected, onClick, color }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 text-xs font-bold uppercase ${
-      selected
-        ? `bg-${color}-100 border-${color}-400 text-${color}-900 shadow-sm scale-95`
-        : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300'
-    }`}
-  >
-    <Icon size={14} />
-    {label}
+  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 text-xs font-bold uppercase ${selected ? `bg-${color}-100 border-${color}-400 text-${color}-900 shadow-sm scale-95` : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300'}`}>
+    <Icon size={14} /> {label}
   </button>
 );
 
-// --- LEGAL CONSENT SCREEN ---
+// Graph Component
+const SimpleTrendGraph = ({ data, color, label, unit, normalRange }) => {
+  if (!data || data.length < 2) return <div className="h-32 flex items-center justify-center text-xs text-stone-400 italic bg-stone-50 rounded-xl border border-dashed">Insufficient Data for {label}</div>;
+
+  const height = 120;
+  const width = 300;
+  const padding = 20;
+  
+  const values = data.map(d => d.value);
+  const min = Math.min(...values) * 0.9;
+  const max = Math.max(...values) * 1.1;
+  const range = max - min || 1;
+
+  const points = data.map((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
+    return { x, y, val: d.value, date: d.date };
+  });
+
+  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+  const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
+
+  return (
+    <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12}/> {label} Trend</span>
+        <span className={`text-sm font-bold text-${color}-600`}>{data[data.length-1].value} {unit}</span>
+      </div>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        {refY && refY > 0 && refY < height && (
+            <g>
+                <line x1={padding} y1={refY} x2={width-padding} y2={refY} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4"/>
+                <text x={width-padding} y={refY-2} textAnchor="end" fontSize="8" fill="#9ca3af" fontStyle="italic">Normal: {normalRange}</text>
+            </g>
+        )}
+        <polyline fill="none" stroke={color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" points={polylinePoints} />
+        {points.map((p, i) => (
+           <g key={i}>
+             <circle cx={p.x} cy={p.y} r="3" fill="white" stroke={color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
+             {(i === points.length - 1 || i % Math.ceil(points.length/4) === 0) && (
+               <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="8" fontWeight="bold" fill="#374151">{p.val}</text>
+             )}
+             {(i === points.length - 1 || i % Math.ceil(points.length/4) === 0) && (
+               <text x={p.x} y={height} textAnchor="middle" fontSize="6" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</text>
+             )}
+           </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+// --- CONSENT SCREEN (UPDATED: SC1, SC2, SC3) ---
 const ConsentScreen = ({ onConsent }) => {
   const [agreed, setAgreed] = useState(false);
+  const [termsData, setTermsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // SC2: Fetch Terms dynamically
+  useEffect(() => {
+    fetch('/terms_and_conditions.json')
+      .then(res => res.json())
+      .then(data => {
+        setTermsData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load terms:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const iconMap = {
+    Activity: Activity,
+    ScrollText: ScrollText,
+    ShieldAlert: ShieldAlert
+  };
+
+  const renderContent = (content) => {
+    return content.map((part, idx) => (
+      <span key={idx} className={part.bold ? "font-bold" : ""}>
+        {part.text}
+      </span>
+    ));
+  };
 
   return (
     <div className="min-h-screen bg-stone-100 p-6 flex items-center justify-center font-sans">
@@ -86,32 +208,39 @@ const ConsentScreen = ({ onConsent }) => {
         </div>
         
         <div className="p-8 h-96 overflow-y-auto space-y-6 text-stone-600 text-sm leading-relaxed border-b border-stone-100">
-          <section>
-            <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
-              <Activity size={18} className="text-blue-500"/> 1. Disclaimer of Liability
-            </h3>
-            <p><strong>SugarDiary is NOT a medical device.</strong> It is a passive data recording tool designed for informational purposes only. It does not provide medical advice, diagnosis, or treatment.</p>
-            <p className="mt-2 text-red-600 font-bold">Always consult your physician for insulin dosing and medical management.</p>
-          </section>
-
-          <section>
-            <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
-              <ScrollText size={18} className="text-emerald-500"/> 2. Data & Privacy
-            </h3>
-            <p>By proceeding, you explicitly consent to:</p>
-            <ul className="list-disc pl-5 space-y-1 mt-2">
-                <li>Collection and storage of health data (Glucose, Insulin, Vitals).</li>
-                <li>Data is restricted to your account; however, anonymized aggregates may be used for research.</li>
-                <li><strong>Right to Withdraw:</strong> You may cease use at any time. Data deletion requests can be processed via settings.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
-               <ShieldAlert size={18} className="text-amber-500"/> 3. Emergency Protocol
-            </h3>
-            <p>This app <strong>does not monitor</strong> your health in real-time. If you experience symptoms of severe hypoglycemia (confusion, loss of consciousness) or hyperglycemia (DKA symptoms), <strong>contact emergency services immediately</strong>.</p>
-          </section>
+          {loading ? (
+            <div className="text-center text-stone-400 italic">Loading terms...</div>
+          ) : termsData ? (
+            termsData.sections.map((section) => {
+              const Icon = iconMap[section.header.icon];
+              return (
+                <section key={section.id}>
+                  <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
+                    {Icon && <Icon size={18} className={section.header.colorClass}/>} 
+                    {section.header.text}
+                  </h3>
+                  {section.blocks.map((block, bIdx) => {
+                    if (block.type === 'paragraph') {
+                      return <p key={bIdx}>{renderContent(block.content)}</p>;
+                    } else if (block.type === 'alert_paragraph') {
+                      return <p key={bIdx} className="mt-2 text-red-600 font-bold">{renderContent(block.content)}</p>;
+                    } else if (block.type === 'list') {
+                      return (
+                        <ul key={bIdx} className="list-disc pl-5 space-y-1 mt-2">
+                          {block.items.map((item, iIdx) => (
+                            <li key={iIdx}>{renderContent(item.content)}</li>
+                          ))}
+                        </ul>
+                      );
+                    }
+                    return null;
+                  })}
+                </section>
+              );
+            })
+          ) : (
+            <div className="text-red-500">Failed to load terms. Please refresh.</div>
+          )}
         </div>
 
         <div className="p-6 bg-stone-50">
@@ -128,33 +257,35 @@ const ConsentScreen = ({ onConsent }) => {
   );
 };
 
-// --- MAIN APPLICATION ---
+// --- MAIN APP ---
 export default function App() {
   const [user, setUser] = useState(null);
-  
-  // Controlled Profile State
-  const [profile, setProfile] = useState({
-    age: '', weight: '', hba1c: '', creatinine: '',
-    prescribedInsulins: [],
-    oralMeds: [], 
-    slidingScale: [], 
-    instructions: '', 
-    hasConsented: false
-  });
-
   const [view, setView] = useState('diary');
   const [loading, setLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [unlockPersonal, setUnlockPersonal] = useState(false);
   
-  // Diary Entry States
+  // Data Models
+  const [profile, setProfile] = useState({
+    age: '', dob: '', gender: '', weight: '', hba1c: '', creatinine: '', pregnancyStatus: false, hasConsented: false,
+    instructions: ''
+  });
+  const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
+  
+  // -- DYNAMIC MED DATABASE --
+  const [medDatabase, setMedDatabase] = useState(DEFAULT_MED_DATABASE);
+  
+  // UI State
+  const [vitalsForm, setVitalsForm] = useState({}); 
   const [hgt, setHgt] = useState('');
   const [mealStatus, setMealStatus] = useState('Pre-Meal');
-  const [insulinDoses, setInsulinDoses] = useState({});
-  const [contextTags, setContextTags] = useState([]); 
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [insulinDoses, setInsulinDoses] = useState({}); 
+  const [medsTaken, setMedsTaken] = useState({}); 
+  const [contextTags, setContextTags] = useState([]);
   const [fullHistory, setFullHistory] = useState([]);
+  const [trendMetric, setTrendMetric] = useState('weight');
 
-  // 1. Auth & Persistence
+  // 1. AUTH & INIT
   useEffect(() => {
     const initAuth = async () => {
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -167,526 +298,567 @@ export default function App() {
       setUser(u);
       if (u) {
         try {
-          const d = await getDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'));
-          if (d.exists()) {
-            const data = d.data();
-            
-            // --- DATA SANITIZATION START ---
-            // Ensure slidingScale is an array (handle legacy string data)
-            const safeSlidingScale = Array.isArray(data.slidingScale) ? data.slidingScale : [];
-            const safeOralMeds = Array.isArray(data.oralMeds) ? data.oralMeds : [];
-            // --- DATA SANITIZATION END ---
+          // A. Fetch Med List from DB (if exists)
+          const medListRef = doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list');
+          getDoc(medListRef).then(snap => {
+              if (snap.exists()) setMedDatabase(snap.data());
+          }).catch(err => console.log("Using default meds"));
 
-            setProfile(prev => ({ 
-                ...prev, 
-                ...data, 
-                slidingScale: safeSlidingScale, 
-                oralMeds: safeOralMeds
-            }));
+          // Fetch from External JSON
+          fetch('https://raw.githubusercontent.com/sugar-diary/main/diabtes_medication_library.json')
+            .then(res => { if(res.ok) return res.json(); throw new Error('Status ' + res.status); })
+            .then(json => {
+                if (json && (json.insulins || json.oralMeds)) {
+                    setMedDatabase(prev => ({...prev, ...json}));
+                    console.log("Loaded external med library");
+                }
+            })
+            .catch(err => console.log("External Med Library Fetch Failed (Using default):", err));
+
+          // B. Fetch Profile
+          const pDoc = await getDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'));
+          if (pDoc.exists()) {
+            const data = pDoc.data();
+            const loadedProfile = { ...data.profile };
+            if (loadedProfile.dob) loadedProfile.age = calculateAge(loadedProfile.dob);
             
-            // Check Profile Completeness
-            const isProfileComplete = data.age && data.weight && (data.prescribedInsulins?.length > 0 || safeOralMeds?.length > 0);
-            if (!isProfileComplete) setView('profile'); 
+            // MIGRATION: Ensure Insulins have Frequency
+            const loadedPrescription = data.prescription || { insulins: [], oralMeds: [] };
+            if (loadedPrescription.insulins) {
+                loadedPrescription.insulins = loadedPrescription.insulins.map(ins => ({
+                    ...ins,
+                    frequency: ins.frequency || 'Before Meals',
+                    slidingScale: (ins.slidingScale || []).map(scale => ({
+                        ...scale,
+                        dose: scale.dose || scale.units // Fix for legacy naming
+                    }))
+                }));
+            }
+
+            setProfile(loadedProfile);
+            setPrescription(loadedPrescription);
           } else {
             setView('profile');
           }
-        } catch (e) { console.error("Profile Fetch Error", e); }
+        } catch (e) { console.error("Fetch Error", e); }
       }
       setLoading(false);
     });
   }, []);
 
-  // 2. History Listeners
+  // 2. HISTORY SYNC
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(5));
-    return onSnapshot(q, (s) => setHistory(s.docs.map(d => ({id: d.id, ...d.data()}))));
+    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(100));
+    return onSnapshot(q, (s) => setFullHistory(s.docs.map(d => ({id: d.id, ...d.data()}))));
   }, [user]);
 
-  useEffect(() => {
-    if (!user || view !== 'history') return;
-    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(200)); 
-    const unsub = onSnapshot(q, (s) => setFullHistory(s.docs.map(d => ({id: d.id, ...d.data()}))));
-    return () => unsub();
-  }, [user, view]);
+  // Logic
+  const checkContraindication = (medName) => profile.pregnancyStatus && CONTRAINDICATIONS.pregnancy.some(c => medName.toLowerCase().includes(c.toLowerCase()));
+  
+  const getSuggestion = (insulinId) => {
+      const insulin = prescription.insulins.find(i => i.id === insulinId);
+      if (!insulin || !insulin.slidingScale || !hgt) return null;
+      const current = parseFloat(hgt);
+      if (isNaN(current)) return null;
+      const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
+      return rule ? rule.dose : null;
+  };
 
-  // 3. Actions
-  const handleConsent = async () => {
-    if (!user) return;
-    setProfile(prev => ({ ...prev, hasConsented: true }));
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { 
-        hasConsented: true, 
-        consentDate: serverTimestamp() 
-      }, { merge: true });
-    } catch (e) { 
-        console.error("Consent save error", e); 
-        alert("Connection error. Please retry.");
-    }
+  const getTrendData = (metric) => {
+      const data = fullHistory
+        .filter(log => log.snapshot?.profile?.[metric])
+        .map(log => ({ date: log.timestamp?.seconds * 1000, value: parseFloat(log.snapshot.profile[metric]) }))
+        .reverse();
+      
+      if (profile[metric] && (data.length === 0 || data[data.length-1].value !== parseFloat(profile[metric]))) {
+          data.push({ date: Date.now(), value: parseFloat(profile[metric]) });
+      }
+      return data;
+  };
+
+  // --- ACTIONS ---
+  
+  // Admin function to seed database from profile view
+  const handleSeedDatabase = async () => {
+      if(!confirm("Initialize Medication Database?")) return;
+      try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list'), DEFAULT_MED_DATABASE);
+          alert("Database Initialized!");
+      } catch(e) { alert("Error: " + e.message); }
+  };
+
+  const handleSaveProfile = async (e) => {
+      e.preventDefault();
+      
+      if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 300)) return alert("Invalid Weight");
+      if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
+      
+      const updatedProfile = { ...profile };
+      if (vitalsForm.dob) updatedProfile.dob = vitalsForm.dob;
+      if (vitalsForm.gender) updatedProfile.gender = vitalsForm.gender;
+      if (vitalsForm.weight) updatedProfile.weight = vitalsForm.weight;
+      if (vitalsForm.hba1c) updatedProfile.hba1c = vitalsForm.hba1c;
+      if (vitalsForm.creatinine) updatedProfile.creatinine = vitalsForm.creatinine;
+      if (vitalsForm.instructions !== undefined) updatedProfile.instructions = vitalsForm.instructions;
+      
+      if (updatedProfile.gender === 'Female') {
+          updatedProfile.pregnancyStatus = vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus;
+      } else {
+          updatedProfile.pregnancyStatus = false;
+      }
+
+      if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
+
+      // Enforce Schema Versioning
+      const CURRENT_SCHEMA_VERSION = 2;
+
+      try {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+              profile: updatedProfile,
+              prescription,
+              schemaVersion: CURRENT_SCHEMA_VERSION, 
+              lastUpdated: new Date().toISOString()
+          }, { merge: true });
+
+          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+              type: 'vital_update',
+              snapshot: { profile: updatedProfile, prescription },
+              timestamp: serverTimestamp(),
+              tags: ['Vital Update']
+          });
+          
+          setProfile(updatedProfile); 
+          setVitalsForm(prev => ({ ...prev, weight: '', hba1c: '', creatinine: '' }));
+          setUnlockPersonal(false); 
+          alert("Profile & Vitals Updated.");
+          if (!prescription.insulins.length) setView('prescription');
+      } catch (err) { alert("Save failed."); }
+  };
+
+  const handleSavePrescription = async () => {
+      try {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+              profile, prescription, lastUpdated: new Date().toISOString()
+          }, { merge: true });
+
+          // Create Audit Log for Prescription Changes
+          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+              type: 'prescription_update',
+              snapshot: { prescription }, // Capture exact state of Rx
+              timestamp: serverTimestamp(),
+              tags: ['Rx Change', 'Audit']
+          });
+
+          alert("Prescription Saved.");
+          setView('diary');
+      } catch (err) { alert("Save failed."); }
   };
 
   const handleSaveEntry = async () => {
-    if (!hgt) return alert("Please enter a sugar value.");
-    
-    const sugarVal = parseFloat(hgt);
-    if (isNaN(sugarVal)) return alert("Invalid sugar value.");
-
-    const dosesTaken = Object.entries(insulinDoses).reduce((acc, [k, v]) => (parseFloat(v) > 0 ? { ...acc, [k]: parseFloat(v) } : acc), {});
-    
-    const entryData = {
-      hgt: sugarVal,
-      doses: dosesTaken,
-      mealStatus,
-      tags: contextTags,
-      timestamp: serverTimestamp(),
-      schemaVersion: 4, 
-      snapshot: { 
-          weight: profile.weight, 
-          hba1c: profile.hba1c, 
-          creatinine: profile.creatinine 
-      }
+    if (!hgt) return alert("Enter Glucose Value");
+    const entry = {
+        hgt: parseFloat(hgt), mealStatus, insulinDoses, 
+        medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]), 
+        tags: contextTags, timestamp: serverTimestamp(), snapshot: { profile, prescription }
     };
-
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000);
-    
-    setHgt(''); 
-    setInsulinDoses({}); 
-    setMealStatus('Pre-Meal'); 
-    setContextTags([]);
-
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
-    } catch (e) { 
-        alert("Error saving data: " + e.message); 
-    }
+    setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000);
+    setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); 
+    await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
   };
 
-  const handleProfileSave = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-
-    // Strict safety: Construct data explicitly
-    const dataToSave = {
-      age: profile.age,
-      weight: profile.weight,
-      hba1c: profile.hba1c,
-      creatinine: profile.creatinine,
-      prescribedInsulins: profile.prescribedInsulins,
-      oralMeds: profile.oralMeds || [],
-      slidingScale: profile.slidingScale || [],
-      instructions: profile.instructions || '',
-      lastUpdated: new Date().toISOString()
-    };
-
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), dataToSave, { merge: true });
-      alert("Profile Saved Successfully.");
-      setView('diary');
-    } catch (e) { 
-      alert("Failed to save profile. Please check connection.");
-      console.error(e);
-    }
-  };
-
-  const toggleTag = (tag) => {
-    if (contextTags.includes(tag)) setContextTags(contextTags.filter(t => t !== tag));
-    else setContextTags([...contextTags, tag]);
-  };
-
-  // --- LOGIC ENGINE: SLIDING SCALE ---
-  const getSuggestion = () => {
-    if (!hgt || !Array.isArray(profile.slidingScale) || profile.slidingScale.length === 0) return null;
-    const current = parseFloat(hgt);
-    if (isNaN(current)) return null;
-
-    const match = profile.slidingScale.find(rule => {
-        const min = parseFloat(rule.min);
-        const max = parseFloat(rule.max);
-        return current >= min && current < max;
-    });
-
-    if (match) return match.units;
-    return null;
-  };
-
-  // --- PDF GENERATION ---
+  // --- PDF ---
   const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
-    doc.text("SugarDiary Patient Report", 14, 25);
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text(`Generated: ${new Date().toLocaleDateString()} | Patient: ${user.displayName || 'User'}`, 14, 35);
-
-    // 1. Vitals
-    doc.setTextColor(0);
-    doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("Current Vitals & Prescription", 14, 50);
-    
-    const oralMedsString = profile.oralMeds?.map(m => `${m.name} ${m.dose} (${m.frequency})`).join(', ') || 'None';
-
-    autoTable(doc, {
-      startY: 55,
-      head: [['Metric', 'Value', 'Metric', 'Value']],
-      body: [
-        ['Age', `${profile.age || '-'} yrs`, 'Weight', `${profile.weight || '-'} kg`],
-        ['HbA1c', `${profile.hba1c || '-'}%`, 'Creatinine', `${profile.creatinine || '-'} mg/dL`],
-        ['Insulins', profile.prescribedInsulins?.join(', ') || 'None', 'Oral Meds', oralMedsString]
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [240, 240, 240], textColor: 50, fontStyle: 'bold' }
-    });
-
-    let finalY = doc.lastAutoTable.finalY + 10;
-
-    // 2. Sliding Scale (Structured)
-    if (Array.isArray(profile.slidingScale) && profile.slidingScale.length > 0) {
-        doc.setFontSize(14); doc.setFont("helvetica", "bold");
-        doc.text("Sliding Scale Protocol", 14, finalY);
-        
-        const scaleRows = profile.slidingScale.map(r => [`${r.min} - ${r.max} mg/dL`, `${r.units} Units`]);
-        autoTable(doc, {
-            startY: finalY + 5,
-            head: [['Glucose Range', 'Suggested Dosage']],
-            body: scaleRows,
-            theme: 'striped',
-            headStyles: { fillColor: [50, 50, 50] }
-        });
-        finalY = doc.lastAutoTable.finalY + 10;
-    }
-
-    // 3. Trends (Logic: Track Only Changes)
-    doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("Vitals Trend Analysis (Changes Only)", 14, finalY);
-    
-    const vitalsTrend = [];
-    let lastSnap = null;
-    const chronoHistory = [...fullHistory].sort((a,b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-    
-    chronoHistory.forEach(log => {
-      if (!log.snapshot) return;
-      const snap = log.snapshot;
-      const changed = !lastSnap || snap.weight !== lastSnap.weight || snap.hba1c !== lastSnap.hba1c || snap.creatinine !== lastSnap.creatinine;
-      if (changed) {
-        vitalsTrend.push([new Date(log.timestamp.seconds * 1000).toLocaleDateString(), snap.weight || '-', snap.hba1c || '-', snap.creatinine || '-']);
-        lastSnap = snap;
+      const doc = new jsPDF();
+      
+      // Styling
+      doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 25);
+      doc.setFontSize(10);
+      doc.text(`Patient: ${user.displayName || 'User'} | Generated: ${new Date().toLocaleDateString()}`, 14, 35);
+      doc.setTextColor(0);
+      
+      const vitalsHead = ['Age', 'Gender', 'Weight', 'HbA1c', 'Creatinine'];
+      const vitalsBody = [profile.age, profile.gender || '-', profile.weight, profile.hba1c, profile.creatinine];
+      if (profile.gender === 'Female' && profile.pregnancyStatus) {
+          vitalsHead.push('Pregnancy'); vitalsBody.push('YES (High Risk)');
       }
-    });
-    
-    if (vitalsTrend.length > 0) {
-        autoTable(doc, {
-            startY: finalY + 5,
-            head: [['Date Changed', 'Weight (kg)', 'HbA1c (%)', 'Creatinine']],
-            body: vitalsTrend.reverse(), 
-            theme: 'striped',
-            headStyles: { fillColor: [100, 100, 100] }
-        });
-        finalY = doc.lastAutoTable.finalY + 15;
-    }
+      autoTable(doc, { startY: 45, head: [vitalsHead], body: [vitalsBody] });
 
-    // 4. Logs
-    doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("Detailed Logs", 14, finalY);
-    
-    const logRows = fullHistory.map(log => {
-        const date = log.timestamp ? new Date(log.timestamp.seconds * 1000) : new Date();
-        const doseStr = log.doses ? Object.entries(log.doses).map(([k,v]) => `${k}: ${v}u`).join(', ') : '';
-        return [
-            date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            `${log.hgt} mg/dL`,
-            `${log.mealStatus} ${log.tags ? '[' + log.tags.join(', ') + ']' : ''}`,
-            doseStr
-        ];
-    });
+      let finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Vital Trends", 14, finalY);
 
-    autoTable(doc, {
-      startY: finalY + 5,
-      head: [['Date/Time', 'Sugar', 'Context', 'Insulin']],
-      body: logRows,
-      theme: 'grid',
-      headStyles: { fillColor: [5, 150, 105], textColor: 255 }
-    });
+      const drawGraph = (data, title, startY, norm) => {
+          if (!data || data.length < 2) return startY;
+          doc.setFontSize(10); doc.text(title, 14, startY + 6);
+          const gH = 30; const gW = 180; const gX = 14;
+          const gY = startY + 10;
+          const vals = data.map(d => d.value);
+          const min = Math.min(...vals) * 0.95;
+          const max = Math.max(...vals) * 1.05; const range = max - min || 1;
+          
+          doc.setDrawColor(200); doc.line(gX, gY+gH, gX+gW, gY+gH); // X-axis
+          
+          if (norm) {
+              const refY = gY + gH - ((norm - min)/range) * gH;
+              if (refY > gY && refY < gY+gH) {
+                  doc.setDrawColor(200);
+                  doc.setLineWidth(0.1); doc.line(gX, refY, gX+gW, refY);
+                  doc.setFontSize(6); doc.setTextColor(150); doc.text(`Limit: ${norm}`, gX+gW-10, refY-1);
+              }
+          }
 
-    doc.save(`SugarDiary_${user.displayName}_${new Date().toISOString().slice(0,10)}.pdf`);
+          data.forEach((d, i) => {
+              if (i === 0) return;
+              const x1 = gX + ((i-1)/(data.length-1)) * gW;
+              const y1 = gY + gH - ((data[i-1].value - min)/range) * gH;
+              const x2 = gX + (i/(data.length-1)) * gW;
+              const y2 = gY + gH - ((d.value - min)/range) * gH;
+              
+              doc.setDrawColor(0, 128, 0); doc.setLineWidth(0.5); doc.line(x1, y1, x2, y2);
+              
+              if (i === data.length-1 || i % Math.ceil(data.length/5) === 0) {
+                  doc.setFillColor(0); doc.circle(x2, y2, 1, 'F');
+                  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text(d.value.toString(), x2-2, y2-3);
+                  doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(150); 
+                  doc.text(new Date(d.date).toLocaleDateString(undefined, {day:'numeric', month:'short'}), x2-4, y2+4);
+                  doc.setTextColor(0);
+              }
+          });
+          return gY + gH + 10;
+      };
+
+      finalY = drawGraph(getTrendData('weight'), "Weight Trend", finalY);
+      finalY = drawGraph(getTrendData('hba1c'), "HbA1c Trend", finalY, 5.7);
+
+      doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
+      const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', i.slidingScale.map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
+      autoTable(doc, { startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
+      
+      finalY = doc.lastAutoTable.finalY + 5;
+      const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
+      autoTable(doc, { startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
+
+      const totalMeds = fullHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
+      finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(10); doc.setTextColor(100);
+      doc.text(`Adherence Summary: ${totalMeds} Oral Medication Doses Recorded in Logged Period`, 14, finalY);
+
+      if (profile.instructions) {
+          finalY += 10;
+          doc.setFontSize(12); doc.setTextColor(0);
+          doc.text("Medical Instructions", 14, finalY);
+          doc.setFontSize(10); doc.setFont("helvetica", "normal");
+          const splitText = doc.splitTextToSize(profile.instructions, 180);
+          doc.text(splitText, 14, finalY + 7);
+          finalY += splitText.length * 5 + 10;
+      }
+
+      finalY = Math.max(finalY, doc.lastAutoTable.finalY + 20);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
+      const logRows = fullHistory.map(l => [
+          new Date(l.timestamp?.seconds * 1000).toLocaleString(),
+          l.hgt || '-', l.mealStatus,
+          // L1: Insulin Name and Dose
+          Object.entries(l.insulinDoses||{}).map(([id, d]) => `${prescription.insulins.find(i=>i.id===id)?.name||'Ins'}: ${d}u`).join(', '),
+          // L2: Status Flags/Tags
+          (l.tags||[]).map(t => `${t} ${TAG_EMOJIS[t]||''}`).join(' ')
+      ]);
+      autoTable(doc, { startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
+      doc.save("SugarDiary_Report.pdf");
   };
 
-  const printReport = () => window.print();
-
-  if (loading) return <div className="h-screen flex items-center justify-center font-serif text-stone-400 italic">Opening Secure Environment...</div>;
-  if (!user) return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#fcfaf7]">
-      <div className="text-center">
-        <BookOpen className="text-emerald-600 w-16 h-16 mx-auto mb-4" />
-        <h1 className="text-4xl font-serif mb-8 text-stone-800">SugarDiary</h1>
-        <button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg">Sign in with Google</button>
-        <button onClick={() => signInAnonymously(auth)} className="block w-full text-stone-400 mt-4 text-sm font-bold">Guest Mode</button>
-      </div>
-    </div>
-  );
-
-  if (!profile.hasConsented) return <ConsentScreen onConsent={handleConsent} />;
+  if (loading) return <div className="p-10 text-center font-bold text-stone-400">Loading Secure Environment...</div>;
+  if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4"/><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
+  if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({...p, hasConsented: true}))} />;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] shadow-2xl relative font-sans text-stone-800 pb-32">
+    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800">
+      {/* HEADER */}
       {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto"/><h3 className="font-bold mt-2">Saved!</h3></div></div>}
       
-      {/* Header */}
-      <div className="bg-white p-6 rounded-b-[40px] shadow-sm mb-6 print:hidden">
-        <div className="flex items-center gap-4 mb-4">
-           {user.photoURL ? <img src={user.photoURL} className="w-12 h-12 rounded-full border-2 border-stone-100" alt="Profile"/> : <User size={32}/>}
-           <div><h1 className="text-2xl font-bold text-stone-800">{user.displayName || 'Guest'}</h1>
-           <p className="text-xs text-stone-400 font-bold uppercase">
-             {profile.prescribedInsulins?.length > 0 ? profile.prescribedInsulins.join(', ') : 'No Insulin Rx'}
-           </p></div>
+      <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
+        <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-12 h-12 rounded-full border-2 border-stone-100" /> : <div className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"><User size={24} /></div>}
+              <div>
+                <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
+                <div className="text-xs text-stone-400 flex items-center gap-2">
+                    {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
+                    {profile.pregnancyStatus && <span className="text-red-500 font-bold flex items-center gap-1"><Baby size={10}/> Preg</span>}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500"/></button>
         </div>
+        
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" />
-          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" />
-          <StatBadge emoji="💊" label="Oral Meds" value={profile.oralMeds?.length || 0} unit="Active" color="purple" />
           <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" />
+          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" />
+          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" />
         </div>
       </div>
 
+      {/* --- DIARY VIEW --- */}
       {view === 'diary' && (
-        <div className="px-6 animate-in fade-in print:hidden">
+        <div className="px-6 animate-in fade-in">
+          {hgt && parseInt(hgt) < 60 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle/> LOW SUGAR! TAKE GLUCOSE</div>}
           
-          {/* Instructions Display */}
-          {profile.instructions && (
-             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-sm">
-                <div className="flex items-center gap-2 font-bold mb-1 text-amber-700">
-                  <Info size={16} /> Medical Instructions
-                </div>
-                <div className="whitespace-pre-wrap">{profile.instructions}</div>
-             </div>
-          )}
+          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
+              <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
+              <div className="flex items-baseline gap-2 mb-4">
+                 <input type="number" value={hgt} onChange={e => setHgt(e.target.value)} className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
+                 <span className="text-xl font-bold text-stone-400">mg/dL</span>
+              </div>
+              <div className="flex gap-2 mb-4">
+                {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => setMealStatus(m)} />)}
+              </div>
+          </div>
 
-          <div className="flex gap-2 mb-6 overflow-x-auto">
-            {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => setMealStatus(m)} />)}
+          {prescription.insulins.map(insulin => (
+             <div key={insulin.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center mb-2">
+                 <div>
+                    <span className="font-bold text-stone-700 block">{insulin.name}</span>
+                    <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                     {getSuggestion(insulin.id) && <div className="bg-amber-100 px-2 py-1 rounded text-xs font-bold text-amber-700"><Zap size={10} className="inline"/> {getSuggestion(insulin.id)}u</div>}
+                     <input type="number" placeholder="0" className="w-16 bg-stone-50 p-2 rounded text-xl font-bold text-right" value={insulinDoses[insulin.id]||''} onChange={e=>setInsulinDoses(p=>({...p, [insulin.id]:e.target.value}))}/>
+                 </div>
+             </div>
+          ))}
+
+          {prescription.oralMeds.map(med => (
+             <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
+                 <div className="font-bold text-sm mb-2">{med.name}</div>
+                 <div className="flex gap-2 flex-wrap">
+                     {med.timings.map(t => (
+                         <button key={t} onClick={()=>setMedsTaken(p=>({...p, [`${med.id}_${t}`]:!p[`${med.id}_${t}`]}))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : 'bg-stone-50'}`}>{t}</button>
+                     ))}
+                 </div>
+             </div>
+          ))}
+
+          <div className="flex flex-wrap gap-2 mt-4 mb-6">
+             {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={()=>{setContextTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t])}}/>)}
           </div>
           
-          {/* Sugar Input Block */}
-          <div className="bg-emerald-50 p-6 rounded-[32px] border border-emerald-100 shadow-sm mb-6 relative">
-            {/* SAFETY ALERTS - FIXED SYNTAX */}
-            {hgt && parseInt(hgt) < 60 && (
-              <div className="absolute top-0 left-0 right-0 bg-red-500 text-white p-2 text-center text-xs font-bold rounded-t-[32px] animate-pulse flex items-center justify-center gap-2">
-                <AlertTriangle size={14}/> LOW SUGAR (&lt;60)! TAKE SUGAR
-              </div>
-            )}
-            {hgt && parseInt(hgt) > 250 && (
-              <div className="absolute top-0 left-0 right-0 bg-orange-500 text-white p-2 text-center text-xs font-bold rounded-t-[32px] flex items-center justify-center gap-2">
-                <AlertTriangle size={14}/> HIGH (&gt;250)! CHECK KETONES / CONSULT
-              </div>
-            )}
-
-            <label className="text-xs font-bold text-emerald-800 uppercase block mb-1 mt-2">Blood Sugar</label>
-            <div className="flex items-baseline gap-2">
-              <input type="number" value={hgt} onChange={e => setHgt(e.target.value)} className="text-7xl font-bold w-full bg-transparent outline-none text-emerald-900" placeholder="---" />
-              <span className="text-emerald-600 font-bold text-lg">mg/dL</span>
-            </div>
-            
-            {/* Sliding Scale Automated Suggestion */}
-            {getSuggestion() && (
-               <div className="mt-2 bg-stone-200 p-2 rounded-xl text-stone-700 text-xs font-bold flex items-center gap-2 border border-stone-300">
-                 <Zap size={14} className="fill-current text-amber-500" /> 
-                 Scale Suggestion: {getSuggestion()} units
-               </div>
-            )}
-          </div>
-
-          {/* Context Tags - Expanded for Safety */}
-          <div className="mb-6">
-             <label className="text-xs font-bold text-stone-400 uppercase ml-2 mb-2 block">Deviation Factors</label>
-             <div className="flex flex-wrap gap-2">
-                <ContextTag label="Sick" icon={Thermometer} color="red" selected={contextTags.includes('Sick')} onClick={() => toggleTag('Sick')} />
-                <ContextTag label="Sweets" icon={Candy} color="pink" selected={contextTags.includes('Sweets')} onClick={() => toggleTag('Sweets')} />
-                <ContextTag label="Heavy Meal" icon={Utensils} color="orange" selected={contextTags.includes('Heavy Meal')} onClick={() => toggleTag('Heavy Meal')} />
-                <ContextTag label="Exercise" icon={Dumbbell} color="blue" selected={contextTags.includes('Exercise')} onClick={() => toggleTag('Exercise')} />
-                <ContextTag label="Missed Dose" icon={XCircle} color="red" selected={contextTags.includes('Missed Dose')} onClick={() => toggleTag('Missed Dose')} />
-                <ContextTag label="Travel/Sleep" icon={PlaneIcon} color="gray" selected={contextTags.includes('Travel')} onClick={() => toggleTag('Travel')} />
-             </div>
-          </div>
-
-          <div className="space-y-3">
-             <label className="text-xs font-bold text-stone-400 uppercase ml-2 block">Insulin Administered</label>
-             {profile.prescribedInsulins?.map(type => (
-               <div key={type} className="bg-white p-4 rounded-2xl border border-blue-50 flex justify-between items-center">
-                 <span className="font-bold text-stone-700">{type}</span>
-                 <input type="number" className="w-16 bg-stone-50 rounded-lg p-2 text-xl font-bold text-right" placeholder="0" 
-                   value={insulinDoses[type] || ''} onChange={e => setInsulinDoses({...insulinDoses, [type]: e.target.value})} />
-               </div>
-             ))}
-             {!profile.prescribedInsulins?.length && <div className="p-4 border-2 border-dashed text-center rounded-xl text-stone-400 text-sm">No insulin types configured in Profile</div>}
-          </div>
-          <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-5 rounded-[24px] font-bold text-xl shadow-xl mt-6 flex justify-center gap-2"><Save /> Save Entry</button>
+          <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save/> Save Entry</button>
         </div>
       )}
 
-      {view === 'history' && (
-        <div className="px-6 animate-in slide-in-from-right">
-           <header className="flex justify-between items-center mb-6 print:hidden">
-             <h2 className="text-3xl font-serif text-stone-800">My Data</h2>
-             <div className="flex gap-2">
-               <button onClick={generatePDF} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors"><Download size={18} /> PDF</button>
-               <button onClick={printReport} className="bg-stone-200 text-stone-600 px-3 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm"><Printer size={18} /> Print</button>
-             </div>
-           </header>
-           
-           <div className="space-y-3 pb-24">
-             {/* Print View Header */}
-             <div className="hidden print:block mb-8">
-                <h1 className="text-3xl font-bold">Diabetes Report</h1>
-                <p>Patient: {user.displayName} | Age: {profile.age}</p>
-             </div>
-
-             {fullHistory.map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between print:border-b print:border-stone-300 print:rounded-none">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-emerald-700">{item.hgt} <span className="text-sm">mg/dL</span></span>
-                      <span className="text-[10px] font-bold bg-stone-100 text-stone-500 px-2 py-1 rounded-lg uppercase">{item.mealStatus}</span>
-                      {item.tags && item.tags.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {item.tags.map(tag => <span key={tag} className="text-[8px] bg-stone-200 px-1 rounded">{tag}</span>)}
-                        </div>
-                       )}
-                    </div>
-                    <div className="text-xs text-stone-400">{new Date(item.timestamp?.seconds * 1000).toLocaleString()}</div>
-                  </div>
-                  <div className="text-right font-bold text-blue-600">{item.doses ? JSON.stringify(item.doses).replace(/[{"}]/g, '').replace(/:/g, ': ') : '-'}</div>
-                </div>
-              ))}
-           </div>
-        </div>
-      )}
-
+      {/* --- PROFILE VIEW --- */}
       {view === 'profile' && (
-        <div className="p-6 print:hidden pb-32">
-          <form onSubmit={handleProfileSave} className="bg-white p-6 rounded-[32px] space-y-6">
-             <h2 className="text-2xl font-serif font-bold text-stone-800">Medical Profile</h2>
-
-             {/* 1. Basic Vitals (Controlled Inputs) */}
-             <div className="space-y-4">
-                 <div className="grid grid-cols-2 gap-4">
-                    <input type="number" placeholder="Age" value={profile.age} onChange={e => setProfile({...profile, age: e.target.value})} className="bg-stone-50 p-4 rounded-xl font-bold w-full" required/>
-                    <input type="number" placeholder="Weight (kg)" value={profile.weight} onChange={e => setProfile({...profile, weight: e.target.value})} className="bg-stone-50 p-4 rounded-xl font-bold w-full" required/>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <input type="number" step="0.1" placeholder="HbA1c %" value={profile.hba1c} onChange={e => setProfile({...profile, hba1c: e.target.value})} className="bg-stone-50 p-4 rounded-xl font-bold w-full" required/>
-                    <input type="number" step="0.1" placeholder="Creatinine" value={profile.creatinine} onChange={e => setProfile({...profile, creatinine: e.target.value})} className="bg-stone-50 p-4 rounded-xl font-bold w-full" required/>
-                 </div>
-             </div>
-
-             <hr className="border-stone-100"/>
-
-             {/* 2. Oral Medications (Dynamic List) */}
-             <div>
-                <label className="text-xs font-bold text-stone-400 uppercase mb-2 flex items-center gap-2"><Pill size={14}/> Oral Medications</label>
-                {Array.isArray(profile.oralMeds) && profile.oralMeds.map((med, idx) => (
-                    <div key={idx} className="flex gap-2 mb-2">
-                        <input placeholder="Name" value={med.name} onChange={e => {
-                            const newMeds = [...profile.oralMeds]; newMeds[idx].name = e.target.value; setProfile({...profile, oralMeds: newMeds});
-                        }} className="bg-stone-50 p-2 rounded-lg text-sm w-full font-bold" />
-                        <input placeholder="Dose" value={med.dose} onChange={e => {
-                            const newMeds = [...profile.oralMeds]; newMeds[idx].dose = e.target.value; setProfile({...profile, oralMeds: newMeds});
-                        }} className="bg-stone-50 p-2 rounded-lg text-sm w-20" />
-                        <button type="button" onClick={() => {
-                            setProfile({...profile, oralMeds: profile.oralMeds.filter((_, i) => i !== idx)});
-                        }} className="text-red-400"><Trash2 size={18}/></button>
-                    </div>
-                ))}
-                <button type="button" onClick={() => {
-                    const currentMeds = Array.isArray(profile.oralMeds) ? profile.oralMeds : [];
-                    setProfile({...profile, oralMeds: [...currentMeds, {name: '', dose: '', frequency: ''}]})
-                }} className="text-xs font-bold text-blue-600 flex items-center gap-1">+ Add Medication</button>
-             </div>
-
-             <hr className="border-stone-100"/>
-
-             {/* 3. Insulin Config */}
-             <div className="space-y-2">
-                <label className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><Syringe size={14}/> Insulin Types</label>
-                <div className="grid grid-cols-2 gap-2">
-                    {['Rapid', 'Regular', 'NPH', 'Basal', 'Mix 70/30'].map(t => (
-                    <label key={t} className={`flex items-center gap-2 p-3 rounded-xl border ${profile.prescribedInsulins.includes(t) ? 'bg-blue-50 border-blue-200' : 'bg-stone-50 border-transparent'}`}>
-                        <input type="checkbox" checked={profile.prescribedInsulins.includes(t)} 
-                        onChange={e => {
-                            const newRx = e.target.checked 
-                                ? [...profile.prescribedInsulins, t]
-                                : profile.prescribedInsulins.filter(i => i !== t);
-                            setProfile({...profile, prescribedInsulins: newRx});
-                        }} className="w-5 h-5 accent-emerald-600"/>
-                        <span className="font-bold text-sm">{t}</span>
-                    </label>
-                    ))}
-                </div>
-             </div>
-
-             <hr className="border-stone-100"/>
-
-             {/* 4. Structured Sliding Scale */}
-             <div>
-                <label className="text-xs font-bold text-stone-400 uppercase mb-2 flex items-center gap-2"><Zap size={14}/> Sliding Scale Logic</label>
-                <div className="bg-stone-50 p-4 rounded-xl">
-                    <div className="flex text-[10px] text-stone-400 font-bold uppercase mb-2">
-                        <span className="flex-1">Min Sugar</span>
-                        <span className="flex-1">Max Sugar</span>
-                        <span className="w-16">Units</span>
-                        <span className="w-8"></span>
-                    </div>
-                    {Array.isArray(profile.slidingScale) && profile.slidingScale.map((row, idx) => (
-                        <div key={idx} className="flex gap-2 mb-2">
-                             <input type="number" value={row.min} placeholder="150" onChange={e => {
-                                 const newScale = [...profile.slidingScale]; newScale[idx].min = e.target.value; setProfile({...profile, slidingScale: newScale});
-                             }} className="flex-1 p-2 rounded border border-stone-200 text-sm font-bold"/>
-                             <input type="number" value={row.max} placeholder="200" onChange={e => {
-                                 const newScale = [...profile.slidingScale]; newScale[idx].max = e.target.value; setProfile({...profile, slidingScale: newScale});
-                             }} className="flex-1 p-2 rounded border border-stone-200 text-sm font-bold"/>
-                             <input type="number" value={row.units} placeholder="2" onChange={e => {
-                                 const newScale = [...profile.slidingScale]; newScale[idx].units = e.target.value; setProfile({...profile, slidingScale: newScale});
-                             }} className="w-16 p-2 rounded border border-stone-200 text-sm font-bold"/>
-                             <button type="button" onClick={() => {
-                                 setProfile({...profile, slidingScale: profile.slidingScale.filter((_, i) => i !== idx)});
-                             }} className="text-stone-400 hover:text-red-500"><XCircle size={16}/></button>
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+             <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
+                 {/* LOCKED PERSONAL DETAILS */}
+                 {(!unlockPersonal && (profile.dob || profile.gender)) ? (
+                     <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
+                         <div>
+                             <div className="text-[10px] font-bold text-stone-400 uppercase">Personal Details</div>
+                             <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
+                             <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
+                         </div>
+                         <button onClick={() => setUnlockPersonal(true)}><Lock size={16} className="text-stone-400"/></button>
+                     </div>
+                 ) : (
+                     <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
+                        <div>
+                            <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
+                            <input type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
+                                const dob = e.target.value;
+                                setVitalsForm(p => ({...p, dob, age: calculateAge(dob)}));
+                            }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm"/>
                         </div>
-                    ))}
-                    <button type="button" onClick={() => {
-                         const currentScale = Array.isArray(profile.slidingScale) ? profile.slidingScale : [];
-                         setProfile({...profile, slidingScale: [...currentScale, {min: '', max: '', units: ''}]})
-                    }} className="mt-2 text-xs bg-stone-200 px-3 py-2 rounded-lg font-bold text-stone-600">+ Add Rule</button>
-                </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
+                            <select value={vitalsForm.gender || profile.gender || ''} onChange={e => setVitalsForm(p => ({...p, gender: e.target.value}))} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm h-[46px]">
+                                <option value="">Select...</option><option value="Male">Male</option><option value="Female">Female</option>
+                            </select>
+                        </div>
+                     </div>
+                 )}
+
+                 {/* VITALS UPDATE */}
+                 <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12}/> Update Vitals</h3>
+                 <div className="grid grid-cols-2 gap-4 mb-4">
+                    <input type="number" placeholder={`Wt: ${profile.weight||'-'} kg`} min="1" max="300" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({...vitalsForm, weight: e.target.value})} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50"/>
+                    <input type="number" step="0.1" placeholder={`A1c: ${profile.hba1c||'-'}%`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({...vitalsForm, hba1c: e.target.value})} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50"/>
+                    <input type="number" step="0.1" placeholder={`Cr: ${profile.creatinine||'-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({...vitalsForm, creatinine: e.target.value})} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50"/>
+                 </div>
+                 
+                 {/* PREGNANCY (FEMALE ONLY) */}
+                 {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
+                     <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer mb-6 ${vitalsForm.pregnancyStatus||profile.pregnancyStatus ? 'border-red-200 bg-red-50' : 'border-stone-100'}`}>
+                         <Baby className={vitalsForm.pregnancyStatus||profile.pregnancyStatus ? "text-red-500" : "text-stone-300"} />
+                         <span className="font-bold text-sm text-stone-700">Patient is Pregnant</span>
+                         <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({...vitalsForm, pregnancyStatus: e.target.checked})} className="ml-auto w-5 h-5 accent-red-500"/>
+                     </label>
+                 )}
+
+                 {/* RESTORED: INSTRUCTIONS */}
+                 <div className="mt-4">
+                     <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
+                     <textarea 
+                        value={vitalsForm.instructions !== undefined ? vitalsForm.instructions : profile.instructions}
+                        onChange={e => setVitalsForm({...vitalsForm, instructions: e.target.value})}
+                        className="w-full bg-stone-50 p-3 rounded-xl text-sm min-h-[80px] outline-none"
+                        placeholder="Enter medical instructions here..."
+                     ></textarea>
+                 </div>
+
+                 <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg mt-4">Save & Update</button>
              </div>
 
-             {/* 5. Doctor's Instructions (Text Blob) */}
-             <div>
-                 <label className="text-xs font-bold text-stone-400 uppercase mb-2">Notes / Other Instructions</label>
-                 <textarea 
-                    value={profile.instructions} 
-                    onChange={e => setProfile({...profile, instructions: e.target.value})}
-                    placeholder="Doctor's specific notes..."
-                    className="w-full bg-stone-50 p-3 rounded-xl text-sm min-h-[80px] outline-none"
-                 ></textarea>
+             {/* ADMIN TOOLS */}
+             <div className="mt-8 text-center">
+                 <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10}/> Sync Med Database</button>
              </div>
 
-             <button className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Profile</button>
-             <button type="button" onClick={() => signOut(auth)} className="w-full text-red-400 py-2 font-bold text-sm">Sign Out</button>
-          </form>
-        </div>
+             {/* TRENDS */}
+             <div className="flex justify-between items-center mb-4 mt-8">
+                 <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12}/> Vital Trends</h3>
+                 <select className="bg-white border border-stone-200 text-xs font-bold p-2 rounded-lg outline-none" value={trendMetric} onChange={e => setTrendMetric(e.target.value)}>
+                     <option value="weight">Weight</option><option value="hba1c">HbA1c</option><option value="creatinine">Creatinine</option>
+                 </select>
+             </div>
+             <SimpleTrendGraph 
+                data={getTrendData(trendMetric)} 
+                label={trendMetric} 
+                unit={trendMetric === 'weight' ? 'kg' : trendMetric === 'hba1c' ? '%' : 'mg/dL'}
+                color={trendMetric === 'weight' ? 'orange' : trendMetric === 'hba1c' ? 'emerald' : 'purple'}
+                normalRange={trendMetric === 'hba1c' ? 5.7 : trendMetric === 'creatinine' ? 1.2 : null}
+             />
+          </div>
       )}
 
-      {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md p-4 flex justify-around border-t z-50 print:hidden">
-        <button onClick={() => setView('diary')}><Edit3 size={24} className={view === 'diary' ? "text-stone-900" : "text-stone-400"}/></button>
-        <button onClick={() => setView('history')}><FileText size={24} className={view === 'history' ? "text-stone-900" : "text-stone-400"}/></button>
-        <button onClick={() => setView('profile')}><Settings size={24} className={view === 'profile' ? "text-stone-900" : "text-stone-400"}/></button>
+      {/* --- PRESCRIPTION VIEW --- */}
+      {view === 'prescription' && (
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+              <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800"><Stethoscope className="text-emerald-600"/> Prescription</h2>
+              
+              {/* INSULIN MANAGER */}
+              <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
+                  <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Syringe size={18}/> Insulins</h3>
+                  {prescription.insulins.map((ins, idx) => (
+                      <div key={ins.id} className="mb-4 pb-4 border-b border-stone-100 flex justify-between">
+                          <div>
+                              <span className="font-bold block">{ins.name}</span>
+                              <span className="text-xs text-stone-400">{ins.frequency || 'Set Frequency'}</span>
+                          </div>
+                          <button onClick={() => setPrescription(p => ({...p, insulins: p.insulins.filter(i => i.id !== ins.id)}))} className="text-red-400"><Trash2 size={16}/></button>
+                      </div>
+                  ))}
+                  <div className="mt-4 pt-4 border-t border-stone-100">
+                      <select id="newInsulin" className="w-full p-3 rounded-xl bg-stone-50 text-sm font-bold mb-2">
+                          <option value="">Add Insulin...</option>
+                          <optgroup label="Rapid">{medDatabase.insulins.rapid.map(i => <option key={i} value={i}>{i}</option>)}</optgroup>
+                          <optgroup label="Basal">{medDatabase.insulins.basal.map(i => <option key={i} value={i}>{i}</option>)}</optgroup>
+                      </select>
+                      <select id="newInsulinFreq" className="w-full p-3 rounded-xl bg-stone-50 text-sm font-bold mb-2">
+                          {INSULIN_FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                      <button onClick={() => {
+                          const name = document.getElementById('newInsulin').value; 
+                          const freq = document.getElementById('newInsulinFreq').value;
+                          if(!name) return;
+                          setPrescription(p => ({...p, insulins: [...p.insulins, { id: generateId(), name, frequency: freq, type: 'Manual', slidingScale: [] }]}));
+                      }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
+                  </div>
+              </div>
+
+              {/* ORAL MEDS MANAGER */}
+              <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
+                  <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18}/> Oral Meds</h3>
+                  {prescription.oralMeds.map((med, idx) => (
+                      <div key={med.id} className="mb-4 pb-4 border-b border-stone-100">
+                          <div className="flex justify-between">
+                              <div><div className="font-bold text-sm">{med.name}</div><div className="text-xs text-stone-400">{med.dose} • {med.frequency}</div></div>
+                              <button onClick={() => setPrescription(p => ({...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id)}))} className="text-red-400"><Trash2 size={16}/></button>
+                          </div>
+                          {/* RESTORED: Custom Timing Toggles */}
+                          <div className="mt-2 flex flex-wrap gap-1">
+                              {ALL_TIMINGS.map(t => (
+                                  <button key={t} onClick={() => {
+                                      const newMeds = [...prescription.oralMeds];
+                                      if (newMeds[idx].timings.includes(t)) newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
+                                      else newMeds[idx].timings.push(t);
+                                      setPrescription(p => ({...p, oralMeds: newMeds}));
+                                  }} className={`text-[10px] px-2 py-1 rounded border ${med.timings.includes(t) ? 'bg-blue-50 border-blue-200 text-blue-600 font-bold' : 'bg-white text-stone-400'}`}>{t}</button>
+                              ))}
+                          </div>
+                      </div>
+                  ))}
+                  <div className="grid gap-2">
+                      {/* [L4] Dynamic Dropdown: Updated to iterate all categories, enabling the fetched library to be fully visible */}
+                      <select id="newOralName" className="p-3 rounded-xl bg-stone-50 text-sm font-bold">
+                          <option value="">Select Med...</option>
+                          {Object.entries(medDatabase.oralMeds).map(([category, meds]) => (
+                            <optgroup key={category} label={category.toUpperCase()}>
+                              {Array.isArray(meds) ? meds.map(m => <option key={m} value={m}>{m}</option>) : null}
+                            </optgroup>
+                          ))}
+                      </select>
+                      <div className="grid grid-cols-2 gap-2"><select id="newOralFreq" className="p-3 rounded-xl bg-stone-50 text-sm font-bold">{Object.keys(FREQUENCY_RULES).map(f=><option key={f} value={f}>{f}</option>)}</select><input id="newOralDose" placeholder="Dose" className="p-3 rounded-xl bg-stone-50 text-sm font-bold"/></div>
+                      <button onClick={() => {
+                          const name = document.getElementById('newOralName').value; const freq = document.getElementById('newOralFreq').value; const dose = document.getElementById('newOralDose').value; if(!name) return;
+                          setPrescription(p => ({...p, oralMeds: [...p.oralMeds, { id: generateId(), name, frequency: freq, dose, timings: FREQUENCY_RULES[freq] }]}));
+                      }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
+                  </div>
+              </div>
+              <button onClick={handleSavePrescription} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
+          </div>
+      )}
+
+      {/* --- HISTORY VIEW --- */}
+      {view === 'history' && (
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+             <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16}/> PDF</button></div>
+             <div className="space-y-3">
+                 {fullHistory.filter(item => item.type !== 'vital_update').map(item => (
+                     <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100">
+                         <div className="flex justify-between items-start mb-2">
+                             <div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div>
+                             <span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span>
+                         </div>
+                         <div className="text-xs text-stone-500 mb-2">
+                             {/* Legacy & New Meds Display (L3) */}
+                             {item.medsTaken && item.medsTaken.map(k => {
+                                 const [id, time] = k.split('_');
+                                 const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med";
+                                 return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500"/> {name} ({time})</div>
+                             })}
+                             {item.oralMedsTaken && item.oralMedsTaken.map(m => (
+                                 <div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400"/> {m}</div>
+                             ))}
+                             {/* L1: Insulin Details */}
+                             {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => {
+                                const insName = item.snapshot?.prescription?.insulins?.find(i=>i.id===id)?.name || 'Ins';
+                                return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10}/> {insName}: {d}u</div>
+                             })}
+                         </div>
+                         {/* L2: Status Flags */}
+                         {item.tags && item.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1 mb-2">
+                                {item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t]||''}</span>)}
+                            </div>
+                         )}
+                         <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between"><span>{new Date(item.timestamp?.seconds * 1000).toLocaleString()}</span></div>
+                     </div>
+                 ))}
+             </div>
+          </div>
+      )}
+
+      {/* NAV */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md p-2 flex justify-around border-t z-50">
+        <button onClick={() => setView('diary')} className={`p-3 rounded-2xl transition-all ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Edit3/></button>
+        <button onClick={() => setView('prescription')} className={`p-3 rounded-2xl transition-all ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Stethoscope/></button>
+        <button onClick={() => setView('history')} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText/></button>
+        <button onClick={() => setView('profile')} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User/></button>
       </nav>
     </div>
   );
 }
-
-// Simple Icon fallback for Travel
-const PlaneIcon = ({size, className}) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12h20"/><path d="M13 5l7 7-7 7"/></svg>
-);
