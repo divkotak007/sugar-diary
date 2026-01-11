@@ -10,10 +10,8 @@ import {
   User, CheckCircle2, Clock, Utensils, Syringe, FileText, Download,
   ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell, 
   AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare, 
-  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database
+  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 // --- CONFIGURATION ---
 const firebaseConfig = typeof __firebase_config !== 'undefined' ?
@@ -110,8 +108,8 @@ const ContextTag = ({ label, icon: Icon, selected, onClick, color }) => (
   </button>
 );
 
-// Graph Component
-const SimpleTrendGraph = ({ data, color, label, unit, normalRange }) => {
+// Graph Component (Clickable, No Overflow)
+const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) => {
   if (!data || data.length < 2) return <div className="h-32 flex items-center justify-center text-xs text-stone-400 italic bg-stone-50 rounded-xl border border-dashed">Insufficient Data for {label}</div>;
 
   const height = 120;
@@ -133,7 +131,8 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange }) => {
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
-    <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
+    // MODIFIED: Added hover zoom, z-index, and overflow-visible classes + onClick
+    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 relative overflow-hidden hover:overflow-visible hover:z-50 bg-opacity-100">
       <div className="flex justify-between items-center mb-4">
         <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12}/> {label} Trend</span>
         <span className={`text-sm font-bold text-${color}-600`}>{data[data.length-1].value} {unit}</span>
@@ -145,32 +144,79 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange }) => {
                 <text x={width-padding} y={refY-2} textAnchor="end" fontSize="8" fill="#9ca3af" fontStyle="italic">Normal: {normalRange}</text>
             </g>
         )}
-        <polyline fill="none" stroke={color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" points={polylinePoints} />
+        <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" points={polylinePoints} />
         {points.map((p, i) => (
            <g key={i}>
-             <circle cx={p.x} cy={p.y} r="3" fill="white" stroke={color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
-             {(i === points.length - 1 || i % Math.ceil(points.length/4) === 0) && (
-               <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="8" fontWeight="bold" fill="#374151">{p.val}</text>
-             )}
-             {(i === points.length - 1 || i % Math.ceil(points.length/4) === 0) && (
-               <text x={p.x} y={height} textAnchor="middle" fontSize="6" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</text>
-             )}
+             <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
            </g>
         ))}
       </svg>
+      <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Click to Expand</div>
     </div>
   );
 };
 
-// --- CONSENT SCREEN (UPDATED: SC1, SC2, SC3) ---
+// Expanded Graph Modal (3x Size, Bottom of Screen)
+const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) => {
+  const height = 300; // 3x the original approx content height
+  const width = window.innerWidth > 600 ? 600 : window.innerWidth - 40;
+  const padding = 40;
+  
+  const values = data.map(d => d.value);
+  const min = Math.min(...values) * 0.9;
+  const max = Math.max(...values) * 1.1;
+  const range = max - min || 1;
+
+  const points = data.map((d, i) => {
+    const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+    const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
+    return { x, y, val: d.value, date: d.date };
+  });
+
+  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+  const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className={`text-2xl font-bold text-${color}-600`}>{label} Analysis</h3>
+          <p className="text-sm text-stone-400 font-medium">Detailed trend view over time</p>
+        </div>
+        <button onClick={onClose} className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={20} className="text-stone-500"/></button>
+      </div>
+      
+      <div className="w-full overflow-x-auto">
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="mx-auto overflow-visible">
+          {refY && refY > 0 && refY < height && (
+              <g>
+                  <line x1={padding} y1={refY} x2={width-padding} y2={refY} stroke="#e5e7eb" strokeWidth="2" strokeDasharray="6"/>
+                  <text x={width-padding} y={refY-5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal Limit: {normalRange}</text>
+              </g>
+          )}
+          <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
+          {points.map((p, i) => (
+             <g key={i}>
+               <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
+               <text x={p.x} y={p.y - 15} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
+               <text x={p.x} y={height} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</text>
+             </g>
+          ))}
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+// --- CONSENT SCREEN ---
 const ConsentScreen = ({ onConsent }) => {
   const [agreed, setAgreed] = useState(false);
   const [termsData, setTermsData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // SC2: Fetch Terms dynamically
+  // Fetch Terms dynamically from separate file
   useEffect(() => {
-    fetch('/terms_and_conditions.json')
+    fetch('/data/legal/terms_and_conditions.json')
       .then(res => res.json())
       .then(data => {
         setTermsData(data);
@@ -264,6 +310,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
   const [unlockPersonal, setUnlockPersonal] = useState(false);
+  const [pdfLibsLoaded, setPdfLibsLoaded] = useState(false);
   
   // Data Models
   const [profile, setProfile] = useState({
@@ -283,11 +330,44 @@ export default function App() {
   const [medsTaken, setMedsTaken] = useState({}); 
   const [contextTags, setContextTags] = useState([]);
   const [fullHistory, setFullHistory] = useState([]);
-  const [trendMetric, setTrendMetric] = useState('weight');
+  
+  // PDF Filtering State
+  const [pdfStartDate, setPdfStartDate] = useState('');
+  const [pdfEndDate, setPdfEndDate] = useState('');
+  
+  // NEW: State for Expanded Graph Modal
+  const [expandedGraphData, setExpandedGraphData] = useState(null);
+
+  // DYNAMIC SCRIPT LOADER
+  useEffect(() => {
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    // Load jsPDF and AutoTable from CDN
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      .then(() => loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'))
+      .then(() => {
+        console.log("PDF Libraries Loaded");
+        setPdfLibsLoaded(true);
+      })
+      .catch(err => console.error("Failed to load PDF libs", err));
+  }, []);
 
   // 1. AUTH & INIT
   useEffect(() => {
     const initAuth = async () => {
+      await auth.authStateReady();
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
         try { await signInWithCustomToken(auth, __initial_auth_token); } catch (err) { console.error(err); }
       }
@@ -322,7 +402,7 @@ export default function App() {
             const loadedProfile = { ...data.profile };
             if (loadedProfile.dob) loadedProfile.age = calculateAge(loadedProfile.dob);
             
-            // MIGRATION: Ensure Insulins have Frequency
+            // MIGRATION: Ensure Insulins have Frequency & slidingScale structure
             const loadedPrescription = data.prescription || { insulins: [], oralMeds: [] };
             if (loadedPrescription.insulins) {
                 loadedPrescription.insulins = loadedPrescription.insulins.map(ins => ({
@@ -356,13 +436,29 @@ export default function App() {
   // Logic
   const checkContraindication = (medName) => profile.pregnancyStatus && CONTRAINDICATIONS.pregnancy.some(c => medName.toLowerCase().includes(c.toLowerCase()));
   
+  // Prediction Logic
   const getSuggestion = (insulinId) => {
       const insulin = prescription.insulins.find(i => i.id === insulinId);
       if (!insulin || !insulin.slidingScale || !hgt) return null;
+      
       const current = parseFloat(hgt);
       if (isNaN(current)) return null;
+
+      if (current < 70) return "HYPO ALERT";
+
+      if (profile.pregnancyStatus && CONTRAINDICATIONS.pregnancy.some(c => insulin.name.toLowerCase().includes(c.toLowerCase()))) {
+          return "Unsafe (Pregnancy)";
+      }
+
       const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
-      return rule ? rule.dose : null;
+      if (!rule) return null;
+
+      let dose = parseFloat(rule.dose);
+      if (insulin.maxDose && dose > parseFloat(insulin.maxDose)) {
+          dose = parseFloat(insulin.maxDose); 
+      }
+      
+      return dose;
   };
 
   const getTrendData = (metric) => {
@@ -379,7 +475,6 @@ export default function App() {
 
   // --- ACTIONS ---
   
-  // Admin function to seed database from profile view
   const handleSeedDatabase = async () => {
       if(!confirm("Initialize Medication Database?")) return;
       try {
@@ -410,7 +505,6 @@ export default function App() {
 
       if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
 
-      // Enforce Schema Versioning
       const CURRENT_SCHEMA_VERSION = 2;
 
       try {
@@ -442,10 +536,9 @@ export default function App() {
               profile, prescription, lastUpdated: new Date().toISOString()
           }, { merge: true });
 
-          // Create Audit Log for Prescription Changes
           await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
               type: 'prescription_update',
-              snapshot: { prescription }, // Capture exact state of Rx
+              snapshot: { prescription }, 
               timestamp: serverTimestamp(),
               tags: ['Rx Change', 'Audit']
           });
@@ -467,15 +560,28 @@ export default function App() {
     await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
   };
 
-  // --- PDF ---
+  // --- PDF (FIXED FOR BROWSER DOWNLOAD) ---
   const generatePDF = () => {
+      // 1. Safe Access to window.jspdf
+      const pdfLib = window.jspdf;
+      if (!pdfLib) {
+          alert("PDF Generator is initializing... please wait 5 seconds and try again.");
+          return;
+      }
+      
+      const { jsPDF } = pdfLib;
       const doc = new jsPDF();
       
-      // Styling
+      // 2. Safe Access to AutoTable (CDN attaches to doc usually, or global)
+      const runAutoTable = (options) => {
+          if (doc.autoTable) doc.autoTable(options);
+          else if (window.jspdf.autoTable) window.jspdf.autoTable(doc, options);
+          else console.error("AutoTable plugin not found");
+      };
+
       doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 25);
-      doc.setFontSize(10);
-      doc.text(`Patient: ${user.displayName || 'User'} | Generated: ${new Date().toLocaleDateString()}`, 14, 35);
+      doc.setFontSize(10); doc.text(`Patient: ${user.displayName || 'User'} | Generated: ${new Date().toLocaleDateString()}`, 14, 35);
       doc.setTextColor(0);
       
       const vitalsHead = ['Age', 'Gender', 'Weight', 'HbA1c', 'Creatinine'];
@@ -483,9 +589,9 @@ export default function App() {
       if (profile.gender === 'Female' && profile.pregnancyStatus) {
           vitalsHead.push('Pregnancy'); vitalsBody.push('YES (High Risk)');
       }
-      autoTable(doc, { startY: 45, head: [vitalsHead], body: [vitalsBody] });
+      runAutoTable({ startY: 45, head: [vitalsHead], body: [vitalsBody] });
 
-      let finalY = doc.lastAutoTable.finalY + 10;
+      let finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 10;
       doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Vital Trends", 14, finalY);
 
       const drawGraph = (data, title, startY, norm) => {
@@ -532,15 +638,28 @@ export default function App() {
       finalY = drawGraph(getTrendData('hba1c'), "HbA1c Trend", finalY, 5.7);
 
       doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
-      const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', i.slidingScale.map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
-      autoTable(doc, { startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
+      const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
+      runAutoTable({ startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
       
-      finalY = doc.lastAutoTable.finalY + 5;
+      finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 5;
       const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
-      autoTable(doc, { startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
+      runAutoTable({ startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
 
-      const totalMeds = fullHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
-      finalY = doc.lastAutoTable.finalY + 10;
+      // PDF Date Filtering & Removal of Vital Logs
+      const pdfFilteredHistory = fullHistory.filter(l => {
+          if (l.type === 'vital_update') return false;
+          const d = new Date(l.timestamp?.seconds * 1000);
+          if (pdfStartDate && d < new Date(pdfStartDate)) return false;
+          if (pdfEndDate) {
+             const end = new Date(pdfEndDate);
+             end.setHours(23, 59, 59, 999);
+             if (d > end) return false;
+          }
+          return true;
+      });
+
+      const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
+      finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 10;
       doc.setFontSize(10); doc.setTextColor(100);
       doc.text(`Adherence Summary: ${totalMeds} Oral Medication Doses Recorded in Logged Period`, 14, finalY);
 
@@ -554,19 +673,24 @@ export default function App() {
           finalY += splitText.length * 5 + 10;
       }
 
-      finalY = Math.max(finalY, doc.lastAutoTable.finalY + 20);
+      finalY = Math.max(finalY, (doc.lastAutoTable || doc.autoTable.previous).finalY + 20);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
-      const logRows = fullHistory.map(l => [
+      const logRows = pdfFilteredHistory.map(l => [
           new Date(l.timestamp?.seconds * 1000).toLocaleString(),
           l.hgt || '-', l.mealStatus,
-          // L1: Insulin Name and Dose
           Object.entries(l.insulinDoses||{}).map(([id, d]) => `${prescription.insulins.find(i=>i.id===id)?.name||'Ins'}: ${d}u`).join(', '),
-          // L2: Status Flags/Tags
-          (l.tags||[]).map(t => `${t} ${TAG_EMOJIS[t]||''}`).join(' ')
+          (l.tags||[]).map(t => TAG_EMOJIS[t] || '').join(' ')
       ]);
-      autoTable(doc, { startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
-      doc.save("SugarDiary_Report.pdf");
+      runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
+      
+      // 3. Save
+      try {
+        doc.save("SugarDiary_Report.pdf");
+      } catch (e) {
+        console.error("PDF Save failed", e);
+        alert("Failed to save PDF. Please try again.");
+      }
   };
 
   if (loading) return <div className="p-10 text-center font-bold text-stone-400">Loading Secure Environment...</div>;
@@ -574,7 +698,18 @@ export default function App() {
   if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({...p, hasConsented: true}))} />;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800">
+    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative">
+      {/* EXPANDED GRAPH OVERLAY (Rendered if state exists) */}
+      {expandedGraphData && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setExpandedGraphData(null)} />
+          <ExpandedGraphModal 
+            {...expandedGraphData} 
+            onClose={() => setExpandedGraphData(null)} 
+          />
+        </>
+      )}
+
       {/* HEADER */}
       {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto"/><h3 className="font-bold mt-2">Saved!</h3></div></div>}
       
@@ -583,6 +718,7 @@ export default function App() {
             <div className="flex items-center gap-4">
               {user.photoURL ? <img src={user.photoURL} alt="Profile" className="w-12 h-12 rounded-full border-2 border-stone-100" /> : <div className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"><User size={24} /></div>}
               <div>
+                <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Sugar Diary</div>
                 <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
                 <div className="text-xs text-stone-400 flex items-center gap-2">
                     {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
@@ -624,7 +760,13 @@ export default function App() {
                     <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
                  </div>
                  <div className="flex items-center gap-2">
-                     {getSuggestion(insulin.id) && <div className="bg-amber-100 px-2 py-1 rounded text-xs font-bold text-amber-700"><Zap size={10} className="inline"/> {getSuggestion(insulin.id)}u</div>}
+                     {/* RESTORED: Prediction UI (Advisory Only + Grey Styling) */}
+                     {getSuggestion(insulin.id) && (
+                         <div className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
+                             <div className="flex items-center gap-1"><Zap size={10}/> {getSuggestion(insulin.id)}u</div>
+                             <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
+                         </div>
+                     )}
                      <input type="number" placeholder="0" className="w-16 bg-stone-50 p-2 rounded text-xl font-bold text-right" value={insulinDoses[insulin.id]||''} onChange={e=>setInsulinDoses(p=>({...p, [insulin.id]:e.target.value}))}/>
                  </div>
              </div>
@@ -661,7 +803,11 @@ export default function App() {
                              <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
                              <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
                          </div>
-                         <button onClick={() => setUnlockPersonal(true)}><Lock size={16} className="text-stone-400"/></button>
+                         <button onClick={() => {
+                             if (confirm("Changing Date of Birth or Gender may affect medical records and trends. Proceed with caution.")) {
+                                 setUnlockPersonal(true);
+                             }
+                         }}><Lock size={16} className="text-stone-400"/></button>
                      </div>
                  ) : (
                      <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
@@ -698,7 +844,7 @@ export default function App() {
                      </label>
                  )}
 
-                 {/* RESTORED: INSTRUCTIONS */}
+                 {/* INSTRUCTIONS */}
                  <div className="mt-4">
                      <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
                      <textarea 
@@ -717,20 +863,36 @@ export default function App() {
                  <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10}/> Sync Med Database</button>
              </div>
 
-             {/* TRENDS */}
+             {/* 3-Column Trend Chart Layout with Click-to-Expand */}
              <div className="flex justify-between items-center mb-4 mt-8">
                  <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12}/> Vital Trends</h3>
-                 <select className="bg-white border border-stone-200 text-xs font-bold p-2 rounded-lg outline-none" value={trendMetric} onChange={e => setTrendMetric(e.target.value)}>
-                     <option value="weight">Weight</option><option value="hba1c">HbA1c</option><option value="creatinine">Creatinine</option>
-                 </select>
              </div>
-             <SimpleTrendGraph 
-                data={getTrendData(trendMetric)} 
-                label={trendMetric} 
-                unit={trendMetric === 'weight' ? 'kg' : trendMetric === 'hba1c' ? '%' : 'mg/dL'}
-                color={trendMetric === 'weight' ? 'orange' : trendMetric === 'hba1c' ? 'emerald' : 'purple'}
-                normalRange={trendMetric === 'hba1c' ? 5.7 : trendMetric === 'creatinine' ? 1.2 : null}
-             />
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                 <SimpleTrendGraph 
+                    data={getTrendData('weight')} 
+                    label="Weight" 
+                    unit="kg"
+                    color="orange"
+                    normalRange={null}
+                    onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
+                 />
+                 <SimpleTrendGraph 
+                    data={getTrendData('hba1c')} 
+                    label="HbA1c" 
+                    unit="%"
+                    color="emerald"
+                    normalRange={5.7}
+                    onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
+                 />
+                 <SimpleTrendGraph 
+                    data={getTrendData('creatinine')} 
+                    label="Creatinine" 
+                    unit="mg/dL"
+                    color="purple"
+                    normalRange={1.2}
+                    onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
+                 />
+             </div>
           </div>
       )}
 
@@ -738,17 +900,34 @@ export default function App() {
       {view === 'prescription' && (
           <div className="px-6 pb-32 animate-in slide-in-from-right">
               <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800"><Stethoscope className="text-emerald-600"/> Prescription</h2>
-              
               {/* INSULIN MANAGER */}
               <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
                   <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Syringe size={18}/> Insulins</h3>
                   {prescription.insulins.map((ins, idx) => (
-                      <div key={ins.id} className="mb-4 pb-4 border-b border-stone-100 flex justify-between">
-                          <div>
-                              <span className="font-bold block">{ins.name}</span>
-                              <span className="text-xs text-stone-400">{ins.frequency || 'Set Frequency'}</span>
+                      <div key={ins.id} className="mb-4 pb-4 border-b border-stone-100">
+                          <div className="flex justify-between mb-4">
+                              <div><span className="font-bold block">{ins.name}</span><span className="text-xs text-stone-400">{ins.frequency || 'Set Frequency'}</span></div>
+                              <button onClick={() => setPrescription(p => ({...p, insulins: p.insulins.filter(i => i.id !== ins.id)}))} className="text-red-400"><Trash2 size={16}/></button>
                           </div>
-                          <button onClick={() => setPrescription(p => ({...p, insulins: p.insulins.filter(i => i.id !== ins.id)}))} className="text-red-400"><Trash2 size={16}/></button>
+                          {/* Sliding Scale */}
+                          <div className="bg-stone-50 p-4 rounded-xl">
+                             <div className="flex justify-between items-center mb-2"><span className="text-xs font-bold uppercase text-stone-500">Sliding Scale & Safety</span></div>
+                             <div className="flex items-center gap-2 mb-2">
+                                <label className="text-xs font-bold text-stone-400">Max Dose Safety:</label>
+                                <input type="number" value={ins.maxDose || ''} onChange={(e) => { const newInsulins = [...prescription.insulins]; newInsulins[idx].maxDose = e.target.value; setPrescription({...prescription, insulins: newInsulins}); }} className="w-16 p-1 rounded bg-white border text-center font-bold text-sm"/>
+                                <span className="text-xs text-stone-400">units</span>
+                             </div>
+                             <div className="grid grid-cols-4 gap-1 text-[10px] font-bold text-stone-400 uppercase mb-1"><div>Min BG</div><div>Max BG</div><div>Dose</div><div>Action</div></div>
+                             {(ins.slidingScale || []).map((rule, rIdx) => (
+                                <div key={rIdx} className="grid grid-cols-4 gap-1 mb-1">
+                                    <input type="number" value={rule.min} onChange={(e) => { const newInsulins = [...prescription.insulins]; newInsulins[idx].slidingScale[rIdx].min = e.target.value; setPrescription({...prescription, insulins: newInsulins}); }} className="p-1 rounded bg-white border text-center font-bold text-xs" />
+                                    <input type="number" value={rule.max} onChange={(e) => { const newInsulins = [...prescription.insulins]; newInsulins[idx].slidingScale[rIdx].max = e.target.value; setPrescription({...prescription, insulins: newInsulins}); }} className="p-1 rounded bg-white border text-center font-bold text-xs" />
+                                    <input type="number" value={rule.dose} onChange={(e) => { const newInsulins = [...prescription.insulins]; newInsulins[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({...prescription, insulins: newInsulins}); }} className="p-1 rounded bg-white border text-center font-bold text-xs" />
+                                    <button onClick={() => { const newInsulins = [...prescription.insulins]; newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx); setPrescription({...prescription, insulins: newInsulins}); }} className="bg-red-100 text-red-500 rounded flex items-center justify-center"><Trash2 size={12}/></button>
+                                </div>
+                             ))}
+                             <button onClick={() => { const newInsulins = [...prescription.insulins]; if (!newInsulins[idx].slidingScale) newInsulins[idx].slidingScale = []; newInsulins[idx].slidingScale.push({ min: 0, max: 0, dose: 0 }); setPrescription({...prescription, insulins: newInsulins}); }} className="mt-2 w-full py-2 bg-white border border-dashed border-stone-300 text-stone-400 text-xs font-bold rounded-lg hover:bg-stone-100">+ Add Scale Rule</button>
+                          </div>
                       </div>
                   ))}
                   <div className="mt-4 pt-4 border-t border-stone-100">
@@ -760,52 +939,22 @@ export default function App() {
                       <select id="newInsulinFreq" className="w-full p-3 rounded-xl bg-stone-50 text-sm font-bold mb-2">
                           {INSULIN_FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
-                      <button onClick={() => {
-                          const name = document.getElementById('newInsulin').value; 
-                          const freq = document.getElementById('newInsulinFreq').value;
-                          if(!name) return;
-                          setPrescription(p => ({...p, insulins: [...p.insulins, { id: generateId(), name, frequency: freq, type: 'Manual', slidingScale: [] }]}));
-                      }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
+                      <button onClick={() => { const name = document.getElementById('newInsulin').value; const freq = document.getElementById('newInsulinFreq').value; if(!name) return; setPrescription(p => ({...p, insulins: [...p.insulins, { id: generateId(), name, frequency: freq, type: 'Manual', slidingScale: [] }]})); }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
                   </div>
               </div>
-
               {/* ORAL MEDS MANAGER */}
               <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
                   <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18}/> Oral Meds</h3>
                   {prescription.oralMeds.map((med, idx) => (
                       <div key={med.id} className="mb-4 pb-4 border-b border-stone-100">
-                          <div className="flex justify-between">
-                              <div><div className="font-bold text-sm">{med.name}</div><div className="text-xs text-stone-400">{med.dose} • {med.frequency}</div></div>
-                              <button onClick={() => setPrescription(p => ({...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id)}))} className="text-red-400"><Trash2 size={16}/></button>
-                          </div>
-                          {/* RESTORED: Custom Timing Toggles */}
-                          <div className="mt-2 flex flex-wrap gap-1">
-                              {ALL_TIMINGS.map(t => (
-                                  <button key={t} onClick={() => {
-                                      const newMeds = [...prescription.oralMeds];
-                                      if (newMeds[idx].timings.includes(t)) newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
-                                      else newMeds[idx].timings.push(t);
-                                      setPrescription(p => ({...p, oralMeds: newMeds}));
-                                  }} className={`text-[10px] px-2 py-1 rounded border ${med.timings.includes(t) ? 'bg-blue-50 border-blue-200 text-blue-600 font-bold' : 'bg-white text-stone-400'}`}>{t}</button>
-                              ))}
-                          </div>
+                          <div className="flex justify-between"><div><div className="font-bold text-sm">{med.name}</div><div className="text-xs text-stone-400">{med.dose} • {med.frequency}</div></div><button onClick={() => setPrescription(p => ({...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id)}))} className="text-red-400"><Trash2 size={16}/></button></div>
+                          <div className="mt-2 flex flex-wrap gap-1">{ALL_TIMINGS.map(t => (<button key={t} onClick={() => { const newMeds = [...prescription.oralMeds]; if (newMeds[idx].timings.includes(t)) newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t); else newMeds[idx].timings.push(t); setPrescription(p => ({...p, oralMeds: newMeds})); }} className={`text-[10px] px-2 py-1 rounded border ${med.timings.includes(t) ? 'bg-blue-50 border-blue-200 text-blue-600 font-bold' : 'bg-white text-stone-400'}`}>{t}</button>))}</div>
                       </div>
                   ))}
                   <div className="grid gap-2">
-                      {/* [L4] Dynamic Dropdown: Updated to iterate all categories, enabling the fetched library to be fully visible */}
-                      <select id="newOralName" className="p-3 rounded-xl bg-stone-50 text-sm font-bold">
-                          <option value="">Select Med...</option>
-                          {Object.entries(medDatabase.oralMeds).map(([category, meds]) => (
-                            <optgroup key={category} label={category.toUpperCase()}>
-                              {Array.isArray(meds) ? meds.map(m => <option key={m} value={m}>{m}</option>) : null}
-                            </optgroup>
-                          ))}
-                      </select>
+                      <select id="newOralName" className="p-3 rounded-xl bg-stone-50 text-sm font-bold"><option value="">Select Med...</option>{Object.entries(medDatabase.oralMeds).map(([category, meds]) => (<optgroup key={category} label={category.toUpperCase()}>{Array.isArray(meds) ? meds.map(m => <option key={m} value={m}>{m}</option>) : null}</optgroup>))}</select>
                       <div className="grid grid-cols-2 gap-2"><select id="newOralFreq" className="p-3 rounded-xl bg-stone-50 text-sm font-bold">{Object.keys(FREQUENCY_RULES).map(f=><option key={f} value={f}>{f}</option>)}</select><input id="newOralDose" placeholder="Dose" className="p-3 rounded-xl bg-stone-50 text-sm font-bold"/></div>
-                      <button onClick={() => {
-                          const name = document.getElementById('newOralName').value; const freq = document.getElementById('newOralFreq').value; const dose = document.getElementById('newOralDose').value; if(!name) return;
-                          setPrescription(p => ({...p, oralMeds: [...p.oralMeds, { id: generateId(), name, frequency: freq, dose, timings: FREQUENCY_RULES[freq] }]}));
-                      }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
+                      <button onClick={() => { const name = document.getElementById('newOralName').value; const freq = document.getElementById('newOralFreq').value; const dose = document.getElementById('newOralDose').value; if(!name) return; setPrescription(p => ({...p, oralMeds: [...p.oralMeds, { id: generateId(), name, frequency: freq, dose, timings: FREQUENCY_RULES[freq] }]})); }} className="w-full bg-stone-800 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><PlusCircle size={16}/> Add</button>
                   </div>
               </div>
               <button onClick={handleSavePrescription} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
@@ -815,36 +964,20 @@ export default function App() {
       {/* --- HISTORY VIEW --- */}
       {view === 'history' && (
           <div className="px-6 pb-32 animate-in slide-in-from-right">
-             <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16}/> PDF</button></div>
+             <div className="flex flex-col gap-4 mb-6">
+                 <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16}/> PDF</button></div>
+                 <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
+             </div>
              <div className="space-y-3">
                  {fullHistory.filter(item => item.type !== 'vital_update').map(item => (
                      <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100">
-                         <div className="flex justify-between items-start mb-2">
-                             <div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div>
-                             <span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span>
-                         </div>
+                         <div className="flex justify-between items-start mb-2"><div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div><span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span></div>
                          <div className="text-xs text-stone-500 mb-2">
-                             {/* Legacy & New Meds Display (L3) */}
-                             {item.medsTaken && item.medsTaken.map(k => {
-                                 const [id, time] = k.split('_');
-                                 const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med";
-                                 return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500"/> {name} ({time})</div>
-                             })}
-                             {item.oralMedsTaken && item.oralMedsTaken.map(m => (
-                                 <div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400"/> {m}</div>
-                             ))}
-                             {/* L1: Insulin Details */}
-                             {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => {
-                                const insName = item.snapshot?.prescription?.insulins?.find(i=>i.id===id)?.name || 'Ins';
-                                return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10}/> {insName}: {d}u</div>
-                             })}
+                             {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500"/> {name} ({time})</div> })}
+                             {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400"/> {m}</div>))}
+                             {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i=>i.id===id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10}/> {insName}: {d}u</div> })}
                          </div>
-                         {/* L2: Status Flags */}
-                         {item.tags && item.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1 mb-2">
-                                {item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t]||''}</span>)}
-                            </div>
-                         )}
+                         {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t]||''}</span>)}</div>)}
                          <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between"><span>{new Date(item.timestamp?.seconds * 1000).toLocaleString()}</span></div>
                      </div>
                  ))}
