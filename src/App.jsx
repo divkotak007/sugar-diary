@@ -13,6 +13,8 @@ import {
   PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X
 } from 'lucide-react';
 
+// NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
+
 // --- CONFIGURATION ---
 const firebaseConfig = typeof __firebase_config !== 'undefined' ?
 JSON.parse(__firebase_config) : {
@@ -112,9 +114,10 @@ const ContextTag = ({ label, icon: Icon, selected, onClick, color }) => (
 const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) => {
   if (!data || data.length < 2) return <div className="h-32 flex items-center justify-center text-xs text-stone-400 italic bg-stone-50 rounded-xl border border-dashed">Insufficient Data for {label}</div>;
 
+  // Task 1: Restore full trend history (Removed slice(-5))
   const height = 120;
   const width = 300;
-  const padding = 20;
+  const padding = 35; 
   
   const values = data.map(d => d.value);
   const min = Math.min(...values) * 0.9;
@@ -131,25 +134,41 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
-    // MODIFIED: Added hover zoom, z-index, and overflow-visible classes + onClick
-    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 relative overflow-hidden hover:overflow-visible hover:z-50 bg-opacity-100">
+    // Task 5 (prev): Z-index fix
+    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 relative overflow-hidden hover:overflow-visible z-0 hover:z-50 bg-opacity-100">
       <div className="flex justify-between items-center mb-4">
         <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12}/> {label} Trend</span>
         <span className={`text-sm font-bold text-${color}-600`}>{data[data.length-1].value} {unit}</span>
       </div>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        {/* Task 2: Add HbA1c Normal Range Background */}
+        {label === 'HbA1c' && (
+          <g>
+            {/* Normal: < 5.7 */}
+            <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((5.7 - min) / range) * (height - 2 * padding))} fill="#ecfdf5" />
+            {/* Pre: 5.7 - 6.4 */}
+            <rect x={padding} y={height - padding - ((6.4 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((6.4 - 5.7) / range) * (height - 2 * padding))} fill="#fefce8" />
+            {/* Diabetes: > 6.4 */}
+            <rect x={padding} y={padding} width={width - 2 * padding} height={Math.max(0, (height - padding - ((6.4 - min) / range) * (height - 2 * padding)) - padding)} fill="#fff7ed" />
+          </g>
+        )}
+
         {refY && refY > 0 && refY < height && (
             <g>
                 <line x1={padding} y1={refY} x2={width-padding} y2={refY} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4"/>
-                <text x={width-padding} y={refY-2} textAnchor="end" fontSize="8" fill="#9ca3af" fontStyle="italic">Normal: {normalRange}</text>
+                <text x={width-padding} y={refY-2} textAnchor="end" fontSize="8" fill="#9ca3af" fontStyle="italic">Target: {normalRange}</text>
             </g>
         )}
         <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" points={polylinePoints} />
-        {points.map((p, i) => (
-           <g key={i}>
-             <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
-           </g>
-        ))}
+        {points.map((p, i) => {
+           // Task 3 (prev): Show dots only on value change
+           if (i > 0 && p.val === points[i-1].val) return null;
+           return (
+             <g key={i}>
+               <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
+             </g>
+           );
+        })}
       </svg>
       <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Click to Expand</div>
     </div>
@@ -158,7 +177,7 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
 
 // Expanded Graph Modal (3x Size, Bottom of Screen)
 const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) => {
-  const height = 300; // 3x the original approx content height
+  const height = 300; 
   const width = window.innerWidth > 600 ? 600 : window.innerWidth - 40;
   const padding = 40;
   
@@ -177,7 +196,8 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
+    // Task 1 (prev): Z-index fix for overlay
+    <div className="fixed inset-x-0 bottom-0 z-[100] bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className={`text-2xl font-bold text-${color}-600`}>{label} Analysis</h3>
@@ -188,6 +208,18 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
       
       <div className="w-full overflow-x-auto">
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="mx-auto overflow-visible">
+            {/* Added: HbA1c Normal Range Background (Persistent in Expanded View) */}
+            {label === 'HbA1c' && (
+              <g>
+                {/* Normal: < 5.7 */}
+                <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((5.7 - min) / range) * (height - 2 * padding))} fill="#ecfdf5" />
+                {/* Pre: 5.7 - 6.4 */}
+                <rect x={padding} y={height - padding - ((6.4 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((6.4 - 5.7) / range) * (height - 2 * padding))} fill="#fefce8" />
+                {/* Diabetes: > 6.4 */}
+                <rect x={padding} y={padding} width={width - 2 * padding} height={Math.max(0, (height - padding - ((6.4 - min) / range) * (height - 2 * padding)) - padding)} fill="#fff7ed" />
+              </g>
+            )}
+
           {refY && refY > 0 && refY < height && (
               <g>
                   <line x1={padding} y1={refY} x2={width-padding} y2={refY} stroke="#e5e7eb" strokeWidth="2" strokeDasharray="6"/>
@@ -195,13 +227,18 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
               </g>
           )}
           <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
-          {points.map((p, i) => (
-             <g key={i}>
-               <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
-               <text x={p.x} y={p.y - 15} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
-               <text x={p.x} y={height} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</text>
-             </g>
-          ))}
+          {points.map((p, i) => {
+             // Added: Conditional Dot Rendering (Only on change)
+             if (i > 0 && p.val === points[i-1].val) return null;
+             
+             return (
+               <g key={i}>
+                 <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
+                 <text x={p.x} y={p.y - 15} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
+                 <text x={p.x} y={height} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</text>
+               </g>
+             );
+          })}
         </svg>
       </div>
     </div>
@@ -214,7 +251,7 @@ const ConsentScreen = ({ onConsent }) => {
   const [termsData, setTermsData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Terms dynamically from separate file
+  // Fetch Terms dynamically
   useEffect(() => {
     fetch('/data/legal/terms_and_conditions.json')
       .then(res => res.json())
@@ -228,19 +265,8 @@ const ConsentScreen = ({ onConsent }) => {
       });
   }, []);
 
-  const iconMap = {
-    Activity: Activity,
-    ScrollText: ScrollText,
-    ShieldAlert: ShieldAlert
-  };
-
-  const renderContent = (content) => {
-    return content.map((part, idx) => (
-      <span key={idx} className={part.bold ? "font-bold" : ""}>
-        {part.text}
-      </span>
-    ));
-  };
+  const iconMap = { Activity, ScrollText, ShieldAlert };
+  const renderContent = (content) => content.map((part, idx) => <span key={idx} className={part.bold ? "font-bold" : ""}>{part.text}</span>);
 
   return (
     <div className="min-h-screen bg-stone-100 p-6 flex items-center justify-center font-sans">
@@ -266,19 +292,9 @@ const ConsentScreen = ({ onConsent }) => {
                     {section.header.text}
                   </h3>
                   {section.blocks.map((block, bIdx) => {
-                    if (block.type === 'paragraph') {
-                      return <p key={bIdx}>{renderContent(block.content)}</p>;
-                    } else if (block.type === 'alert_paragraph') {
-                      return <p key={bIdx} className="mt-2 text-red-600 font-bold">{renderContent(block.content)}</p>;
-                    } else if (block.type === 'list') {
-                      return (
-                        <ul key={bIdx} className="list-disc pl-5 space-y-1 mt-2">
-                          {block.items.map((item, iIdx) => (
-                            <li key={iIdx}>{renderContent(item.content)}</li>
-                          ))}
-                        </ul>
-                      );
-                    }
+                    if (block.type === 'paragraph') return <p key={bIdx}>{renderContent(block.content)}</p>;
+                    if (block.type === 'alert_paragraph') return <p key={bIdx} className="mt-2 text-red-600 font-bold">{renderContent(block.content)}</p>;
+                    if (block.type === 'list') return <ul key={bIdx} className="list-disc pl-5 space-y-1 mt-2">{block.items.map((item, iIdx) => <li key={iIdx}>{renderContent(item.content)}</li>)}</ul>;
                     return null;
                   })}
                 </section>
@@ -312,10 +328,10 @@ export default function App() {
   const [unlockPersonal, setUnlockPersonal] = useState(false);
   const [pdfLibsLoaded, setPdfLibsLoaded] = useState(false);
   
-  // Data Models
+  // Data Models - Added Comorbidities (Task 8)
   const [profile, setProfile] = useState({
     age: '', dob: '', gender: '', weight: '', hba1c: '', creatinine: '', pregnancyStatus: false, hasConsented: false,
-    instructions: ''
+    instructions: '', comorbidities: []
   });
   const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
   
@@ -335,7 +351,7 @@ export default function App() {
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
   
-  // NEW: State for Expanded Graph Modal
+  // State for Expanded Graph Modal
   const [expandedGraphData, setExpandedGraphData] = useState(null);
 
   // DYNAMIC SCRIPT LOADER
@@ -364,7 +380,7 @@ export default function App() {
       .catch(err => console.error("Failed to load PDF libs", err));
   }, []);
 
-  // 1. AUTH & INIT
+  // AUTH & INIT
   useEffect(() => {
     const initAuth = async () => {
       await auth.authStateReady();
@@ -378,13 +394,11 @@ export default function App() {
       setUser(u);
       if (u) {
         try {
-          // A. Fetch Med List from DB (if exists)
           const medListRef = doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list');
           getDoc(medListRef).then(snap => {
               if (snap.exists()) setMedDatabase(snap.data());
           }).catch(err => console.log("Using default meds"));
 
-          // Fetch from External JSON
           fetch('https://raw.githubusercontent.com/sugar-diary/main/diabtes_medication_library.json')
             .then(res => { if(res.ok) return res.json(); throw new Error('Status ' + res.status); })
             .then(json => {
@@ -395,14 +409,12 @@ export default function App() {
             })
             .catch(err => console.log("External Med Library Fetch Failed (Using default):", err));
 
-          // B. Fetch Profile
           const pDoc = await getDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'));
           if (pDoc.exists()) {
             const data = pDoc.data();
             const loadedProfile = { ...data.profile };
             if (loadedProfile.dob) loadedProfile.age = calculateAge(loadedProfile.dob);
             
-            // MIGRATION: Ensure Insulins have Frequency & slidingScale structure
             const loadedPrescription = data.prescription || { insulins: [], oralMeds: [] };
             if (loadedPrescription.insulins) {
                 loadedPrescription.insulins = loadedPrescription.insulins.map(ins => ({
@@ -426,7 +438,7 @@ export default function App() {
     });
   }, []);
 
-  // 2. HISTORY SYNC
+  // HISTORY SYNC
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(100));
@@ -560,9 +572,8 @@ export default function App() {
     await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
   };
 
-  // --- PDF (FIXED FOR BROWSER DOWNLOAD) ---
+  // --- PDF ---
   const generatePDF = () => {
-      // 1. Safe Access to window.jspdf
       const pdfLib = window.jspdf;
       if (!pdfLib) {
           alert("PDF Generator is initializing... please wait 5 seconds and try again.");
@@ -572,10 +583,11 @@ export default function App() {
       const { jsPDF } = pdfLib;
       const doc = new jsPDF();
       
-      // 2. Safe Access to AutoTable (CDN attaches to doc usually, or global)
+      // FIXED: Strictly utilize window/doc references, NO import references
       const runAutoTable = (options) => {
-          if (doc.autoTable) doc.autoTable(options);
-          else if (window.jspdf.autoTable) window.jspdf.autoTable(doc, options);
+          if (typeof doc.autoTable === 'function') doc.autoTable(options);
+          else if (window.jspdf && typeof window.jspdf.autoTable === 'function') window.jspdf.autoTable(doc, options);
+          // Removed the broken check for 'autoTable' variable which was causing crashes
           else console.error("AutoTable plugin not found");
       };
 
@@ -591,57 +603,72 @@ export default function App() {
       }
       runAutoTable({ startY: 45, head: [vitalsHead], body: [vitalsBody] });
 
-      let finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 10;
+      // Task 8: Print Comorbidities in PDF
+      if (profile.comorbidities?.length > 0) {
+          runAutoTable({ 
+              startY: (doc.lastAutoTable || (doc.autoTable && doc.autoTable.previous)).finalY + 5, 
+              head: [['Known Comorbidities']], 
+              body: [[profile.comorbidities.join(', ')]],
+              theme: 'plain',
+              styles: { fontSize: 9, fontStyle: 'italic', cellPadding: 2 }
+          });
+      }
+
+      let finalY = (doc.lastAutoTable || (doc.autoTable && doc.autoTable.previous)).finalY + 10;
       doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Vital Trends", 14, finalY);
 
-      const drawGraph = (data, title, startY, norm) => {
-          if (!data || data.length < 2) return startY;
-          doc.setFontSize(10); doc.text(title, 14, startY + 6);
-          const gH = 30; const gW = 180; const gX = 14;
-          const gY = startY + 10;
+      // Graph Drawing Logic (Side-by-Side)
+      const drawGraph = (data, title, startX, startY, width, height, norm, color) => {
+          if (!data || data.length < 2) return;
+          doc.setFontSize(9); doc.setTextColor(0); doc.text(title, startX, startY + 5);
+          const gX = startX; const gY = startY + 8;
           const vals = data.map(d => d.value);
-          const min = Math.min(...vals) * 0.95;
-          const max = Math.max(...vals) * 1.05; const range = max - min || 1;
+          const min = Math.min(...vals) * 0.98; const max = Math.max(...vals) * 1.02; const range = max - min || 1;
           
-          doc.setDrawColor(200); doc.line(gX, gY+gH, gX+gW, gY+gH); // X-axis
-          
+          doc.setDrawColor(200); doc.line(gX, gY+height, gX+width, gY+height);
           if (norm) {
-              const refY = gY + gH - ((norm - min)/range) * gH;
-              if (refY > gY && refY < gY+gH) {
-                  doc.setDrawColor(200);
-                  doc.setLineWidth(0.1); doc.line(gX, refY, gX+gW, refY);
-                  doc.setFontSize(6); doc.setTextColor(150); doc.text(`Limit: ${norm}`, gX+gW-10, refY-1);
+              const refY = gY + height - ((norm - min)/range) * height;
+              if (refY > gY && refY < gY+height) { 
+                  doc.setDrawColor(200); doc.setLineWidth(0.1); doc.line(gX, refY, gX+width, refY); 
               }
           }
 
-          data.forEach((d, i) => {
+          const [r, g, b] = color === 'orange' ? [249, 115, 22] : color === 'purple' ? [168, 85, 247] : [16, 185, 129];
+
+          // Task 5: 4 dots (Oldest + 3 recent)
+          let pdfPoints = data;
+          if (data.length > 4) pdfPoints = [data[0], ...data.slice(-3)];
+
+          pdfPoints.forEach((d, i) => {
               if (i === 0) return;
-              const x1 = gX + ((i-1)/(data.length-1)) * gW;
-              const y1 = gY + gH - ((data[i-1].value - min)/range) * gH;
-              const x2 = gX + (i/(data.length-1)) * gW;
-              const y2 = gY + gH - ((d.value - min)/range) * gH;
+              const prev = pdfPoints[i-1];
+              const x1 = gX + (i-1)/(pdfPoints.length-1) * width;
+              const y1 = gY + height - ((prev.value - min)/range) * height;
+              const x2 = gX + i/(pdfPoints.length-1) * width;
+              const y2 = gY + height - ((d.value - min)/range) * height;
               
-              doc.setDrawColor(0, 128, 0); doc.setLineWidth(0.5); doc.line(x1, y1, x2, y2);
+              doc.setDrawColor(r, g, b); doc.setLineWidth(0.5); doc.line(x1, y1, x2, y2);
               
-              if (i === data.length-1 || i % Math.ceil(data.length/5) === 0) {
-                  doc.setFillColor(0); doc.circle(x2, y2, 1, 'F');
-                  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text(d.value.toString(), x2-2, y2-3);
-                  doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(150); 
-                  doc.text(new Date(d.date).toLocaleDateString(undefined, {day:'numeric', month:'short'}), x2-4, y2+4);
-                  doc.setTextColor(0);
-              }
+              // Date and Value for each
+              doc.setFillColor(r, g, b); doc.circle(x2, y2, 1, 'F');
+              doc.setFontSize(6); doc.setTextColor(50); 
+              doc.text(d.value.toString(), x2, y2-2, {align:'center'});
+              doc.setTextColor(150);
+              doc.text(new Date(d.date).toLocaleDateString(undefined, {day:'numeric', month:'short'}), x2, y2+4, {align:'center'});
           });
-          return gY + gH + 10;
       };
 
-      finalY = drawGraph(getTrendData('weight'), "Weight Trend", finalY);
-      finalY = drawGraph(getTrendData('hba1c'), "HbA1c Trend", finalY, 5.7);
+      const gW = 60; const gH = 25;
+      drawGraph(getTrendData('weight'), "Weight", 14, finalY, gW, gH, null, 'orange');
+      drawGraph(getTrendData('hba1c'), "HbA1c", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
+      drawGraph(getTrendData('creatinine'), "Creatinine", 14 + (gW + 5) * 2, finalY, gW, gH, 1.2, 'purple');
+      finalY += gH + 15;
 
       doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
       const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
       runAutoTable({ startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
       
-      finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 5;
+      finalY = (doc.lastAutoTable || (doc.autoTable && doc.autoTable.previous)).finalY + 5;
       const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
       runAutoTable({ startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
 
@@ -659,7 +686,7 @@ export default function App() {
       });
 
       const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
-      finalY = (doc.lastAutoTable || doc.autoTable.previous).finalY + 10;
+      finalY = (doc.lastAutoTable || (doc.autoTable && doc.autoTable.previous)).finalY + 10;
       doc.setFontSize(10); doc.setTextColor(100);
       doc.text(`Adherence Summary: ${totalMeds} Oral Medication Doses Recorded in Logged Period`, 14, finalY);
 
@@ -673,18 +700,17 @@ export default function App() {
           finalY += splitText.length * 5 + 10;
       }
 
-      finalY = Math.max(finalY, (doc.lastAutoTable || doc.autoTable.previous).finalY + 20);
+      finalY = Math.max(finalY, (doc.lastAutoTable || (doc.autoTable && doc.autoTable.previous)).finalY + 20);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
       const logRows = pdfFilteredHistory.map(l => [
           new Date(l.timestamp?.seconds * 1000).toLocaleString(),
           l.hgt || '-', l.mealStatus,
           Object.entries(l.insulinDoses||{}).map(([id, d]) => `${prescription.insulins.find(i=>i.id===id)?.name||'Ins'}: ${d}u`).join(', '),
-          (l.tags||[]).map(t => TAG_EMOJIS[t] || '').join(' ')
+          (l.tags||[]).join(', ') // Task 3: Text only (no emojis)
       ]);
       runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
       
-      // 3. Save
       try {
         doc.save("SugarDiary_Report.pdf");
       } catch (e) {
@@ -694,12 +720,11 @@ export default function App() {
   };
 
   if (loading) return <div className="p-10 text-center font-bold text-stone-400">Loading Secure Environment...</div>;
-  if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4"/><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
+  if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4"/><h1 className="text-2xl font-bold text-stone-800 mb-6">Sugar Diary</h1><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
   if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({...p, hasConsented: true}))} />;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative">
-      {/* EXPANDED GRAPH OVERLAY (Rendered if state exists) */}
       {expandedGraphData && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setExpandedGraphData(null)} />
@@ -710,7 +735,6 @@ export default function App() {
         </>
       )}
 
-      {/* HEADER */}
       {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto"/><h3 className="font-bold mt-2">Saved!</h3></div></div>}
       
       <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
@@ -740,7 +764,11 @@ export default function App() {
       {/* --- DIARY VIEW --- */}
       {view === 'diary' && (
         <div className="px-6 animate-in fade-in">
-          {hgt && parseInt(hgt) < 60 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle/> LOW SUGAR! TAKE GLUCOSE</div>}
+          {/* Task 6: Granular High Sugar Alerts */}
+          {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle/> LOW SUGAR! TAKE GLUCOSE</div>}
+          {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle/> POOR CONTROL</div>}
+          {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle/> HIGH SUGAR!</div>}
+          {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle/> DANGER! CHECK KETONES</div>}
           
           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
               <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
@@ -760,7 +788,6 @@ export default function App() {
                     <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
                  </div>
                  <div className="flex items-center gap-2">
-                     {/* RESTORED: Prediction UI (Advisory Only + Grey Styling) */}
                      {getSuggestion(insulin.id) && (
                          <div className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
                              <div className="flex items-center gap-1"><Zap size={10}/> {getSuggestion(insulin.id)}u</div>
@@ -843,6 +870,31 @@ export default function App() {
                          <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({...vitalsForm, pregnancyStatus: e.target.checked})} className="ml-auto w-5 h-5 accent-red-500"/>
                      </label>
                  )}
+
+                 {/* Task 3: Comorbidities Section (Multi-Select Fixed) */}
+                 <div className="mb-6">
+                    <h3 className="font-bold text-stone-400 text-xs uppercase mb-2 flex items-center gap-2"><Activity size={12}/> Comorbidities</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        {["Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
+                            <label key={c} className="flex items-center gap-2 p-2 bg-stone-50 rounded-lg text-xs font-bold text-stone-600 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    disabled={!unlockPersonal && (profile.comorbidities||[]).length > 0}
+                                    checked={(profile.comorbidities||[]).includes(c)}
+                                    onChange={e => {
+                                        const current = profile.comorbidities || [];
+                                        const newC = e.target.checked 
+                                            ? [...current, c] 
+                                            : current.filter(i => i !== c);
+                                        setProfile(prev => ({...prev, comorbidities: newC}));
+                                    }}
+                                    className="accent-stone-900 w-4 h-4"
+                                />
+                                {c}
+                            </label>
+                        ))}
+                    </div>
+                 </div>
 
                  {/* INSTRUCTIONS */}
                  <div className="mt-4">
@@ -969,7 +1021,8 @@ export default function App() {
                  <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
              </div>
              <div className="space-y-3">
-                 {fullHistory.filter(item => item.type !== 'vital_update').map(item => (
+                 {/* Task 7: Filter out Prescription Updates from Daily Logs */}
+                 {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
                      <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100">
                          <div className="flex justify-between items-start mb-2"><div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div><span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span></div>
                          <div className="text-xs text-stone-500 mb-2">
