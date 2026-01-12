@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "sections": [
+    {
+      "id": "disclaimer",
+      "header": { "text": "1. Disclaimer of Liability", "icon": "Activity", "colorClass": "text-blue-500" },
+      "blocks": [
+        { "type": "paragraph", "content": [ { "text": "SugarDiary is NOT a medical device.", "bold": true }, { "text": " It is a passive data recording tool designed for informational purposes only. It does not provide medical advice, diagnosis, or treatment." } ] },
+        { "type": "alert_paragraph", "content": [ { "text": "Always consult your physician for insulin dosing and medical management." } ] }
+      ]
+    },
+    {
+      "id": "privacy",
+      "header": { "text": "2. Data & Privacy", "icon": "ScrollText", "colorClass": "text-emerald-500" },
+      "blocks": [
+        { "type": "paragraph", "content": [ { "text": "By proceeding, you explicitly consent to:" } ] },
+        { "type": "list", "items": [
+            { "content": [ { "text": "Collection and storage of health data (Glucose, Insulin, Vitals)." } ] },
+            { "content": [ { "text": "Data is restricted to your account and stored securely." } ] },
+            { "content": [ { "text": "Right to Withdraw:", "bold": true }, { "text": " You may cease use at any time. Data deletion requests can be processed via settings." } ] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "emergency",
+      "header": { "text": "3. Emergency Protocol", "icon": "ShieldAlert", "colorClass": "text-amber-500" },
+      "blocks": [
+        { "type": "paragraph", "content": [ { "text": "This app ", "bold": false }, { "text": "does not monitor", "bold": true }, { "text": " your health in real-time. If you experience symptoms of severe hypoglycemia (confusion, loss of consciousness) or hyperglycemia (DKA symptoms), " }, { "text": "contact emergency services immediately", "bold": true }, { "text": "." } ] }
+      ]
+    }
+  ]
+}
