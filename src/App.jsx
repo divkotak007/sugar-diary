@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import {
@@ -10,57 +10,11 @@ import {
   User, CheckCircle2, Clock, Utensils, Syringe, FileText, Download,
   ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell,
   AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare,
-  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X, Contrast, Moon
+  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X
 } from 'lucide-react';
 
-// --- NEW MODULAR IMPORTS ---
-// Data modules
-import {
-  DEFAULT_MED_DATABASE as IMPORTED_MED_DATABASE,
-  FREQUENCY_RULES as IMPORTED_FREQUENCY_RULES,
-  INSULIN_FREQUENCIES as IMPORTED_INSULIN_FREQUENCIES,
-  ALL_TIMINGS as IMPORTED_ALL_TIMINGS,
-  CONTRAINDICATIONS as IMPORTED_CONTRAINDICATIONS,
-  TAG_EMOJIS as IMPORTED_TAG_EMOJIS,
-  isContraindicated,
-  checkGlucoseLevel
-} from './data/medications.js';
-
-// Validation utilities
-import {
-  validateGlucose,
-  validateProfile,
-  validateLogEntry,
-  VALIDATION_STATUS
-} from './utils/schemaValidation.js';
-
-// Graph calculation utilities
-import {
-  getTrendData as calculateTrendData,
-  analyzeTrend,
-  GRAPH_COLORS
-} from './utils/graphCalculations.js';
-
-// Components
-import StatBadge from './components/StatBadge.jsx';
-import { SimpleTrendGraph, ExpandedGraphModal } from './components/TrendGraph.jsx';
-import ConsentScreen from './components/ConsentScreen.jsx';
-import ExtremeValueConfirmation from './components/ExtremeValueConfirmation.jsx';
-import MedicalDisclaimer from './components/MedicalDisclaimer.jsx';
-import SyncIndicator from './components/SyncIndicator.jsx';
-
-// Lazy load heavier components
-const ExportPanel = lazy(() => import('./components/ExportPanel.jsx'));
-const DataManagement = lazy(() => import('./components/DataManagement.jsx'));
-
-// Services
-import { downloadAllDataAsJSON, downloadLogsAsCSV } from './services/exportService.js';
-
-// Hooks
-import useAccessibility from './hooks/useAccessibility.js';
-import useOfflineSync from './hooks/useOfflineSync.js';
-
 // NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
+
 
 // --- CONFIGURATION ---
 const firebaseConfig = typeof __firebase_config !== 'undefined' ?
@@ -79,8 +33,8 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'sugar-diary-v1';
 
-// --- USE IMPORTED CONSTANTS (with fallbacks for safety) ---
-const DEFAULT_MED_DATABASE = IMPORTED_MED_DATABASE || {
+// --- FALLBACK MEDICAL DATABASE ---
+const DEFAULT_MED_DATABASE = {
   insulins: {
     rapid: ["Insulin Aspart (NovoRapid)", "Insulin Lispro (Humalog)", "Insulin Glulisine (Apidra)", "Fiasp"],
     short: ["Regular Human Insulin (Actrapid)", "Humulin R"],
@@ -99,7 +53,7 @@ const DEFAULT_MED_DATABASE = IMPORTED_MED_DATABASE || {
   }
 };
 
-const FREQUENCY_RULES = IMPORTED_FREQUENCY_RULES || {
+const FREQUENCY_RULES = {
   "Once Daily": ["Morning"],
   "Twice Daily": ["Morning", "Evening"],
   "Thrice Daily": ["Morning", "Afternoon", "Evening"],
@@ -108,16 +62,17 @@ const FREQUENCY_RULES = IMPORTED_FREQUENCY_RULES || {
   "SOS": ["As Needed"]
 };
 
-const INSULIN_FREQUENCIES = IMPORTED_INSULIN_FREQUENCIES || ["Bedtime", "Before Meals", "Twice Daily", "Once Daily", "SOS"];
-const ALL_TIMINGS = IMPORTED_ALL_TIMINGS || ["Morning", "Breakfast", "Lunch", "Afternoon", "Evening", "Dinner", "Bedtime", "As Needed"];
-const CONTRAINDICATIONS = IMPORTED_CONTRAINDICATIONS || {
+const INSULIN_FREQUENCIES = ["Bedtime", "Before Meals", "Twice Daily", "Once Daily", "SOS"];
+const ALL_TIMINGS = ["Morning", "Breakfast", "Lunch", "Afternoon", "Evening", "Dinner", "Bedtime", "As Needed"];
+const CONTRAINDICATIONS = {
   pregnancy: ["Pioglitazone", "Dapagliflozin", "Empagliflozin", "Canagliflozin", "Glimepiride", "Gliclazide", "Rybelsus"]
 };
 
-const TAG_EMOJIS = IMPORTED_TAG_EMOJIS || {
+const TAG_EMOJIS = {
   "Sick": "🤒", "Sweets": "🍬", "Heavy Meal": "🍔", "Exercise": "🏃", "Missed Dose": "❌", "Travel": "✈️",
   "Fasting": "⏳"
 };
+
 
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -409,20 +364,6 @@ export default function App() {
   const [pdfEndDate, setPdfEndDate] = useState('');
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
-
-  // --- NEW: Accessibility & Offline States ---
-  const { highContrast, toggleHighContrast, fontSize, setFontSize } = useAccessibility();
-  const { isOnline, pendingCount, isSyncing, queueForSync, processSyncQueue } = useOfflineSync();
-
-  // --- NEW: Extreme value confirmation state ---
-  const [extremeValueConfirm, setExtremeValueConfirm] = useState({
-    isOpen: false,
-    value: '',
-    unit: '',
-    message: '',
-    severity: 'warning',
-    onConfirm: null
-  });
 
   useEffect(() => {
     const loadScript = (src) => {
