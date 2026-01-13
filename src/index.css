@@ -2,10 +2,293 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #fdfcfb; /* Cream color paper */
-  color: #44403c;
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+/* --- CSS CUSTOM PROPERTIES --- */
+:root {
+  /* Color Palette - Standard Theme */
+  --bg-primary: #fffbf5;
+  --bg-secondary: #ffffff;
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  --text-muted: #a8a29e;
+  --accent-color: #059669;
+  --accent-light: #ecfdf5;
+  --danger-color: #dc2626;
+  --danger-light: #fef2f2;
+  --warning-color: #f59e0b;
+  --warning-light: #fffbeb;
+  
+  /* Typography - Minimum sizes for elderly users */
+  --font-size-base: 16px;
+  --font-size-sm: 14px;
+  --font-size-xs: 12px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  
+  /* Spacing & Sizing */
+  --touch-target-min: 48px;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+  --border-radius-2xl: 32px;
+  
+  /* Animation */
+  --animation-duration: 0.3s;
+  --transition-duration: 0.2s;
 }
-input:focus { outline: none; }
+
+/* --- HIGH CONTRAST MODE --- */
+.high-contrast {
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  --text-muted: #b3b3b3;
+  --accent-color: #4ade80;
+  --accent-light: #166534;
+  --danger-color: #f87171;
+  --danger-light: #7f1d1d;
+  --warning-color: #fbbf24;
+  --warning-light: #78350f;
+}
+
+.high-contrast body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.high-contrast .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+.high-contrast .text-stone-800,
+.high-contrast .text-stone-700,
+.high-contrast .text-stone-600 {
+  color: var(--text-primary) !important;
+}
+
+.high-contrast .text-stone-500,
+.high-contrast .text-stone-400,
+.high-contrast .text-stone-300 {
+  color: var(--text-secondary) !important;
+}
+
+.high-contrast .border-stone-100,
+.high-contrast .border-stone-200 {
+  border-color: #404040 !important;
+}
+
+.high-contrast .bg-stone-50,
+.high-contrast .bg-stone-100 {
+  background-color: #262626 !important;
+}
+
+/* --- BASE STYLES --- */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- FOCUS STYLES FOR ACCESSIBILITY --- */
+*:focus-visible {
+  outline: 3px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--accent-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(5, 150, 105, 0.2);
+}
+
+/* Remove default outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* --- TOUCH TARGETS --- */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+/* Checkbox and radio specific sizing */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 24px;
+  height: 24px;
+}
+
+/* --- INPUT STYLES --- */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* --- SCROLLBAR STYLING --- */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for better visibility */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* --- ANIMATION UTILITIES --- */
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up var(--animation-duration) ease-out;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- GRAPH STYLES --- */
+.graph-container {
+  position: relative;
+  overflow: visible;
+}
+
+.graph-tooltip {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.graph-point:hover + .graph-tooltip,
+.graph-point:focus + .graph-tooltip {
+  opacity: 1;
+}
+
+/* --- LARGE TEXT MODE --- */
+.large-text {
+  --font-size-base: 18px;
+  --font-size-sm: 16px;
+  --font-size-xs: 14px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 28px;
+}
+
+.large-text body {
+  font-size: var(--font-size-base);
+}
+
+/* --- UTILITY CLASSES --- */
+.min-touch {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+.text-readable {
+  font-size: max(16px, 1rem);
+  line-height: 1.6;
+}
+
+/* Ensure labels are always readable */
+label {
+  font-size: max(14px, 0.875rem);
+}
+
+/* --- SAFE AREA INSETS FOR MOBILE --- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* --- PRINT STYLES --- */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  button,
+  nav {
+    display: none !important;
+  }
+}
