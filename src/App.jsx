@@ -34,7 +34,8 @@ const provider = new GoogleAuthProvider();
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'sugar-diary-v1';
 
 // --- FALLBACK MEDICAL DATABASE ---
-const DEFAULT_MED_DATABASE = {
+import { DEFAULT_MED_DATABASE as EXPANDED_MED_DATABASE } from './data/index.js';
+const DEFAULT_MED_DATABASE = EXPANDED_MED_DATABASE || {
   insulins: {
     rapid: ["Insulin Aspart (NovoRapid)", "Insulin Lispro (Humalog)", "Insulin Glulisine (Apidra)", "Fiasp"],
     short: ["Regular Human Insulin (Actrapid)", "Humulin R"],
@@ -90,8 +91,8 @@ const calculateAge = (dob) => {
 };
 
 // --- COMPONENTS ---
-const StatBadge = ({ emoji, label, value, unit, color }) => (
-  <div className={`flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-${color}-100 min-w-[90px]`}>
+const StatBadge = ({ emoji, label, value, unit, color, onClick }) => (
+  <div onClick={onClick} className={`flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-${color}-100 min-w-[90px] ${onClick ? 'cursor-pointer hover:bg-stone-50 active:scale-95 transition-all' : ''}`}>
     <div className="text-2xl mb-1">{emoji}</div>
     <div className="font-bold text-stone-800 text-lg leading-none">{value || '-'}</div>
     <div className="text-[10px] text-stone-400 font-bold uppercase mt-1">{label}</div>
@@ -474,7 +475,7 @@ export default function App() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 300)) return alert("Invalid Weight");
+    if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight (Max 1000kg)");
     if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
     const updatedProfile = { ...profile };
     if (vitalsForm.dob) updatedProfile.dob = vitalsForm.dob;
@@ -681,10 +682,10 @@ export default function App() {
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" />
-          <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" />
-          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" />
-          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" />
+          <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => setView('profile')} />
+          <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" onClick={() => setView('profile')} />
+          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" onClick={() => setView('profile')} />
+          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" onClick={() => setView('profile')} />
         </div>
       </div>
 
@@ -698,7 +699,7 @@ export default function App() {
           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
             <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
             <div className="flex items-baseline gap-2 mb-4">
-              <input type="number" value={hgt} onChange={e => setHgt(e.target.value)} className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
+              <input type="number" value={hgt} onChange={e => setHgt(e.target.value)} min="1" max="1000" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
               <span className="text-xl font-bold text-stone-400">mg/dL</span>
             </div>
             <div className="flex gap-2 mb-4">
@@ -790,17 +791,26 @@ export default function App() {
                   {unlockComorbidities && <button onClick={() => setUnlockComorbidities(false)}><Unlock size={16} className="text-stone-400" /></button>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {["Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
-                    <label key={c} className="flex items-center gap-2 p-2 bg-stone-50 rounded-lg text-xs font-bold text-stone-600 cursor-pointer">
+                  {["Nill", "Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
+                    <label key={c} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${(profile.comorbidities || []).includes(c) ? 'bg-stone-900 text-white' : 'bg-stone-50 text-stone-600'}`}>
                       <input
                         type="checkbox"
                         checked={(profile.comorbidities || []).includes(c)}
                         onChange={e => {
                           const current = profile.comorbidities || [];
-                          const newC = e.target.checked ? [...current, c] : current.filter(i => i !== c);
+                          let newC;
+                          if (c === "Nill") {
+                            newC = e.target.checked ? ["Nill"] : [];
+                          } else {
+                            if (e.target.checked) {
+                              newC = [...current.filter(i => i !== "Nill"), c];
+                            } else {
+                              newC = current.filter(i => i !== c);
+                            }
+                          }
                           setProfile(prev => ({ ...prev, comorbidities: newC }));
                         }}
-                        className="accent-stone-900 w-4 h-4"
+                        className="hidden"
                       />
                       {c}
                     </label>
@@ -811,7 +821,7 @@ export default function App() {
 
             <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <input type="number" placeholder={`Wt: ${profile.weight || '-'} kg`} min="1" max="300" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
+              <input type="number" placeholder={`Wt: ${profile.weight || '-'} kg`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
               <input type="number" step="0.1" placeholder={`A1c: ${profile.hba1c || '-'}%`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
               <input type="number" step="0.1" placeholder={`Cr: ${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
             </div>
