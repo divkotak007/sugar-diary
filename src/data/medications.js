@@ -150,7 +150,13 @@ export const INSULINS_DATABASE = {
 // --- LEGACY FORMAT FOR BACKWARD COMPATIBILITY ---
 // --- DYNAMICALLY COMPILED DATABASE ---
 export const DEFAULT_MED_DATABASE = {
-    insulins: INSULINS_DATABASE, // Use the structured insulin DB
+    insulins: {
+        rapid: INSULINS_DATABASE.rapid.map(i => i.name),
+        short: INSULINS_DATABASE.short.map(i => i.name),
+        intermediate: INSULINS_DATABASE.intermediate.map(i => i.name),
+        basal: INSULINS_DATABASE.basal.map(i => i.name),
+        premix: INSULINS_DATABASE.premix.map(i => i.name)
+    },
     oralMeds: {
         biguanides: ORAL_MEDS_DETAILED.filter(m => m.class.includes("Biguanide")).map(m => m.name),
         sulfonylureas: ORAL_MEDS_DETAILED.filter(m => m.class.includes("SU")).map(m => m.name),

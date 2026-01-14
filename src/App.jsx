@@ -156,7 +156,7 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
-    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 relative overflow-hidden hover:overflow-visible z-0 hover:z-50 bg-opacity-100">
+    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer hover:shadow-md transition-all duration-300 relative overflow-hidden bg-opacity-100">
       <div className="flex justify-between items-center mb-4">
         <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
         <span className={`text-sm font-bold text-${color}-600`}>{data[data.length - 1].value} {unit}</span>
