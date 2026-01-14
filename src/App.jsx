@@ -712,11 +712,11 @@ export default function App() {
       });
     };
 
-    const gW = 60; const gH = 30;
+    const gW = 60; const gH = 32; // Slightly more height
     drawGraph(getTrendData('weight'), "Weight (kg)", 14, finalY, gW, gH, null, 'orange');
     drawGraph(getTrendData('hba1c'), "HbA1c (%)", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
     drawGraph(getTrendData('creatinine'), "Creatinine", 14 + (gW + 5) * 2, finalY, gW, gH, 1.2, 'purple');
-    finalY += gH + 20;
+    finalY += gH + 25; // More padding after trends
 
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
     const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
@@ -725,6 +725,9 @@ export default function App() {
     const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
     runAutoTable({ startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
 
+    // Update finalY after Oral Meds Table
+    finalY = (doc.lastAutoTable || {}).finalY + 15;
+
     const pdfFilteredHistory = fullHistory.filter(l => {
       if (l.type === 'vital_update') return false;
       const d = new Date(l.timestamp?.seconds * 1000 || l.timestamp);
@@ -732,14 +735,13 @@ export default function App() {
       if (pdfEndDate) { const end = new Date(pdfEndDate); end.setHours(23, 59, 59, 999); if (d > end) return false; }
       return true;
     });
-    const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
 
     if (profile.instructions) {
       doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.text("Medical Instructions", 14, finalY);
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
       const splitText = doc.splitTextToSize(profile.instructions, 180);
-      doc.text(splitText, 14, finalY + 7);
-      finalY += splitText.length * 5 + 15;
+      doc.text(splitText, 14, finalY + 8);
+      finalY += (splitText.length * 6) + 15;
     }
 
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
