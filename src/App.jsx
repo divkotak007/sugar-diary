@@ -322,6 +322,7 @@ export default function App() {
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
+  const [logTime, setLogTime] = useState(new Date().toISOString().slice(0, 16));
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
   const [highlightField, setHighlightField] = useState(null);
@@ -509,10 +510,11 @@ export default function App() {
       insulinTaken += Object.keys(log.insulinDoses || {}).length;
     });
 
-    return {
-      oral: oralPrescribed ? Math.round((oralTaken / oralPrescribed) * 100) : 100,
-      insulin: insulinPrescribed ? Math.round((insulinTaken / insulinPrescribed) * 100) : 100
-    };
+    const oralPerc = oralPrescribed ? Math.round((oralTaken / oralPrescribed) * 100) : 100;
+    const insulinPerc = insulinPrescribed ? Math.round((insulinTaken / insulinPrescribed) * 100) : 100;
+    const overall = Math.round((oralPerc + insulinPerc) / 2);
+
+    return { oral: oralPerc, insulin: insulinPerc, overall };
   };
 
   const compliance = calculateCompliance();
@@ -554,8 +556,25 @@ export default function App() {
   const handleSaveEntry = async () => {
     const hasMeds = Object.keys(medsTaken).some(k => medsTaken[k]) || Object.keys(insulinDoses).length > 0;
     if (!hgt && !hasMeds) return alert("Enter Glucose or Medication");
-    const entry = { hgt: hgt ? parseFloat(hgt) : null, mealStatus, insulinDoses, medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]), tags: contextTags, timestamp: serverTimestamp(), snapshot: { profile, prescription } };
-    setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
+
+    // Support back-time entry
+    const timestamp = logTime ? new Date(logTime) : new Date();
+
+    const entry = {
+      hgt: hgt ? parseFloat(hgt) : null,
+      mealStatus,
+      insulinDoses,
+      medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]),
+      tags: contextTags,
+      timestamp: timestamp, // Using Date object instead of serverTimestamp for back-dating
+      snapshot: { profile, prescription }
+    };
+
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 2000);
+    setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
+    setLogTime(new Date().toISOString().slice(0, 16)); // Reset to current time
+
     await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
   };
 
@@ -691,19 +710,12 @@ export default function App() {
 
     const pdfFilteredHistory = fullHistory.filter(l => {
       if (l.type === 'vital_update') return false;
-      const d = new Date(l.timestamp?.seconds * 1000);
+      const d = new Date(l.timestamp?.seconds * 1000 || l.timestamp);
       if (pdfStartDate && d < new Date(pdfStartDate)) return false;
       if (pdfEndDate) { const end = new Date(pdfEndDate); end.setHours(23, 59, 59, 999); if (d > end) return false; }
       return true;
     });
     const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
-    finalY = (doc.lastAutoTable || {}).finalY + 12;
-    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 16, 'F');
-    doc.setFontSize(9); doc.setTextColor(100); doc.setFont("helvetica", "bold");
-    doc.text("Clinical Compliance (Last 7 Days):", 20, finalY + 10);
-    doc.setTextColor(5, 150, 105); doc.text(`Oral Meds: ${compliance.oral}%`, 85, finalY + 10);
-    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 135, finalY + 10);
-    finalY += 22; // Move past the compliance box
 
     if (profile.instructions) {
       doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.text("Medical Instructions", 14, finalY);
@@ -715,11 +727,23 @@ export default function App() {
 
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
     const logRows = pdfFilteredHistory.map(l => [
-      new Date(l.timestamp?.seconds * 1000).toLocaleString(), l.hgt || '-', l.mealStatus,
+      new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(), l.hgt || '-', l.mealStatus,
       Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}: ${d}u`).join(', '),
       (l.tags || []).join(', ')
     ]);
     runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
+
+    // COMPLIANCE SECTION AT THE END
+    finalY = (doc.lastAutoTable || {}).finalY + 15;
+    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 20, 'F');
+    doc.setFontSize(10); doc.setTextColor(80); doc.setFont("helvetica", "bold");
+    doc.text("Medication Compliance Summary (7-Day Trend)", 20, finalY + 8);
+
+    doc.setFontSize(9);
+    doc.setTextColor(5, 150, 105); doc.text(`Oral: ${compliance.oral}%`, 20, finalY + 16);
+    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 60, finalY + 16);
+    doc.setTextColor(15, 23, 42); doc.text(`Overall Compliance Score: ${compliance.overall}%`, 110, finalY + 16);
+
     try { doc.save("SugarDiary_Report.pdf"); } catch (e) { alert("Failed to save PDF. Please try again."); }
   };
 
@@ -787,13 +811,18 @@ export default function App() {
           {/* COMPLIANCE STATS - SUBTLE STYLE */}
           <div className="bg-stone-50/50 p-3 rounded-2xl mb-4 flex justify-around items-center border border-stone-100">
             <div className="text-center">
-              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral Compliance</div>
+              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral</div>
               <div className="text-xs font-black text-stone-600">{compliance.oral}%</div>
             </div>
             <div className="w-px h-4 bg-stone-200" />
             <div className="text-center">
-              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin Compliance</div>
+              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin</div>
               <div className="text-xs font-black text-stone-600">{compliance.insulin}%</div>
+            </div>
+            <div className="w-px h-4 bg-stone-200" />
+            <div className="text-center">
+              <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Overall</div>
+              <div className="text-xs font-black text-emerald-600">{compliance.overall}%</div>
             </div>
           </div>
 
@@ -843,8 +872,21 @@ export default function App() {
             </div>
           ))}
 
-          <div className="flex flex-wrap gap-2 mt-4 mb-6">
+          <div className="flex flex-wrap gap-2 mt-4 mb-4">
             {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
+          </div>
+
+          <div className="mb-6 bg-white p-4 rounded-2xl border border-stone-100">
+            <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
+            <div className="flex items-center gap-2 bg-stone-50 p-3 rounded-xl border border-stone-100 focus-within:border-emerald-500 transition-all">
+              <Calendar size={18} className="text-stone-400" />
+              <input
+                type="datetime-local"
+                value={logTime}
+                onChange={(e) => setLogTime(e.target.value)}
+                className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+              />
+            </div>
           </div>
 
           <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
