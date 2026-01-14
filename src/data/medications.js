@@ -148,22 +148,17 @@ export const INSULINS_DATABASE = {
 };
 
 // --- LEGACY FORMAT FOR BACKWARD COMPATIBILITY ---
+// --- DYNAMICALLY COMPILED DATABASE ---
 export const DEFAULT_MED_DATABASE = {
-    insulins: {
-        rapid: ["Insulin Aspart (NovoRapid)", "Insulin Lispro (Humalog)", "Insulin Glulisine (Apidra)", "Fiasp"],
-        short: ["Regular Human Insulin (Actrapid)", "Humulin R"],
-        intermediate: ["NPH (Insulatard)", "Humulin N"],
-        basal: ["Glargine U-100 (Lantus)", "Glargine U-300 (Toujeo)", "Detemir (Levemir)", "Degludec (Tresiba)", "Basalog"],
-        premix: ["Mixtard 30/70", "NovoMix 30", "Humalog Mix 25", "Humalog Mix 50", "Ryzodeg"]
-    },
+    insulins: INSULINS_DATABASE, // Use the structured insulin DB
     oralMeds: {
-        biguanides: ["Metformin 500mg", "Metformin 850mg", "Metformin 1000mg ER"],
-        sulfonylureas: ["Glimepiride 1mg", "Glimepiride 2mg", "Gliclazide 80mg", "Gliclazide MR 60mg"],
-        dpp4: ["Sitagliptin 100mg", "Vildagliptin 50mg", "Teneligliptin 20mg", "Linagliptin 5mg"],
-        sglt2: ["Dapagliflozin 10mg", "Empagliflozin 25mg", "Canagliflozin 100mg", "Remogliflozin 100mg"],
-        tzd: ["Pioglitazone 15mg", "Pioglitazone 30mg"],
-        combinations: ["Glimepiride + Metformin", "Vildagliptin + Metformin", "Sitagliptin + Metformin", "Dapagliflozin + Metformin"],
-        others: ["Voglibose 0.2mg", "Acarbose 25mg", "Rybelsus 3mg"]
+        biguanides: ORAL_MEDS_DETAILED.filter(m => m.class.includes("Biguanide")).map(m => m.name),
+        sulfonylureas: ORAL_MEDS_DETAILED.filter(m => m.class.includes("SU")).map(m => m.name),
+        dpp4: ORAL_MEDS_DETAILED.filter(m => m.class.includes("DPP4")).map(m => m.name),
+        sglt2: ORAL_MEDS_DETAILED.filter(m => m.class.includes("SGLT2")).map(m => m.name),
+        tzd: ORAL_MEDS_DETAILED.filter(m => m.class.includes("TZD")).map(m => m.name),
+        combinations: ORAL_MEDS_DETAILED.filter(m => m.class.length > 1).map(m => m.name),
+        others: ORAL_MEDS_DETAILED.filter(m => m.class.includes("AGI") || m.class.includes("GLP1")).map(m => m.name)
     }
 };
 

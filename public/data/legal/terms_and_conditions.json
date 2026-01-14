@@ -1,32 +1,124 @@
 {
-  "version": "1.0",
   "sections": [
     {
       "id": "disclaimer",
-      "header": { "text": "1. Disclaimer of Liability", "icon": "Activity", "colorClass": "text-blue-500" },
+      "header": {
+        "text": "Medical Disclaimer",
+        "icon": "ShieldAlert",
+        "colorClass": "text-red-500"
+      },
       "blocks": [
-        { "type": "paragraph", "content": [ { "text": "SugarDiary is NOT a medical device.", "bold": true }, { "text": " It is a passive data recording tool designed for informational purposes only. It does not provide medical advice, diagnosis, or treatment." } ] },
-        { "type": "alert_paragraph", "content": [ { "text": "Always consult your physician for insulin dosing and medical management." } ] }
-      ]
-    },
-    {
-      "id": "privacy",
-      "header": { "text": "2. Data & Privacy", "icon": "ScrollText", "colorClass": "text-emerald-500" },
-      "blocks": [
-        { "type": "paragraph", "content": [ { "text": "By proceeding, you explicitly consent to:" } ] },
-        { "type": "list", "items": [
-            { "content": [ { "text": "Collection and storage of health data (Glucose, Insulin, Vitals)." } ] },
-            { "content": [ { "text": "Data is restricted to your account and stored securely." } ] },
-            { "content": [ { "text": "Right to Withdraw:", "bold": true }, { "text": " You may cease use at any time. Data deletion requests can be processed via settings." } ] }
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "This application is for ",
+              "bold": false
+            },
+            {
+              "text": "educational and informational purposes only",
+              "bold": true
+            },
+            {
+              "text": ". It does not constitute medical advice, diagnosis, or treatment.",
+              "bold": false
+            }
+          ]
+        },
+        {
+          "type": "alert_paragraph",
+          "content": [
+            {
+              "text": "ALWAYS consult your physician before making any changes to your medication, diet, or insulin regimen.",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "The 'Smart Suggestions' and 'Safety Alerts' are based on standard algorithms but may not account for your specific individual factors.",
+              "bold": false
+            }
           ]
         }
       ]
     },
     {
-      "id": "emergency",
-      "header": { "text": "3. Emergency Protocol", "icon": "ShieldAlert", "colorClass": "text-amber-500" },
+      "id": "privacy",
+      "header": {
+        "text": "Privacy & Data Security",
+        "icon": "Lock",
+        "colorClass": "text-emerald-500"
+      },
       "blocks": [
-        { "type": "paragraph", "content": [ { "text": "This app ", "bold": false }, { "text": "does not monitor", "bold": true }, { "text": " your health in real-time. If you experience symptoms of severe hypoglycemia (confusion, loss of consciousness) or hyperglycemia (DKA symptoms), " }, { "text": "contact emergency services immediately", "bold": true }, { "text": "." } ] }
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "Your health data is stored securely. We adhere to strict data protection standards.",
+              "bold": false
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "content": [
+                {
+                  "text": "Local Encryption: Data on your device is encrypted.",
+                  "bold": true
+                }
+              ]
+            },
+            {
+              "content": [
+                {
+                  "text": "Cloud Security: We use industry-standard Firebase security rules.",
+                  "bold": true
+                }
+              ]
+            },
+            {
+              "content": [
+                {
+                  "text": "No Third-Party Sharing: Your data is never sold to advertisers.",
+                  "bold": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "liability",
+      "header": {
+        "text": "Limitation of Liability",
+        "icon": "ScrollText",
+        "colorClass": "text-stone-500"
+      },
+      "blocks": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "By using this app, you agree that the developers and providers are not liable for any direct, indirect, incidental, or consequential damages arising from your use of the application.",
+              "bold": false
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "You are solely responsible for verifying the accuracy of any information obtained from this app before relying on it.",
+              "bold": false
+            }
+          ]
+        }
       ]
     }
   ]

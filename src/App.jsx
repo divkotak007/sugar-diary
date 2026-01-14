@@ -10,8 +10,10 @@ import {
   User, CheckCircle2, Clock, Utensils, Syringe, FileText, Download,
   ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell,
   AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare,
-  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X
+  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X,
+  Search, Eye
 } from 'lucide-react';
+import { getPrescriptionAlerts, ORAL_MEDS_DETAILED } from './data/index.js';
 
 // NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
 
@@ -242,7 +244,7 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
 
           {refY && refY > 0 && refY < height && (
             <g>
-              <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal Limit: {normalRange}</text>
+              <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal: {normalRange}</text>
             </g>
           )}
           <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
@@ -365,6 +367,41 @@ export default function App() {
   const [pdfEndDate, setPdfEndDate] = useState('');
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
+  const [highlightField, setHighlightField] = useState(null);
+  const [safetyAlerts, setSafetyAlerts] = useState([]);
+
+  useEffect(() => {
+    // Re-calculate alerts whenever profile (comorbidities/age etc.) or prescription changes
+    if (!profile || !prescription) return;
+
+    // Construct simplified profile object for alert check logic
+    const alertProfile = {
+      isElderly: parseInt(profile.age) > 65,
+      hasRenalImpairment: (profile.comorbidities || []).includes('Kidney Disease') || (profile.creatinine && parseFloat(profile.creatinine) > 1.3),
+      hasHeartFailure: (profile.comorbidities || []).includes('Heart Disease'),
+      isPregnant: profile.pregnancyStatus,
+      hasObesity: profile.weight && parseFloat(profile.weight) > 100
+    };
+
+    const alerts = getPrescriptionAlerts(prescription, alertProfile);
+    setSafetyAlerts(alerts);
+  }, [profile, prescription]);
+
+
+  useEffect(() => {
+    if (view === 'profile' && highlightField) {
+      setTimeout(() => {
+        const el = document.getElementById(`field-${highlightField}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus();
+          el.classList.add('ring-4', 'ring-blue-200', 'bg-blue-50');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-blue-200', 'bg-blue-50'), 2000);
+          setHighlightField(null);
+        }
+      }, 500);
+    }
+  }, [view, highlightField]);
 
   useEffect(() => {
     const loadScript = (src) => {
@@ -682,10 +719,10 @@ export default function App() {
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => setView('profile')} />
-          <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" onClick={() => setView('profile')} />
-          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" onClick={() => setView('profile')} />
-          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" onClick={() => setView('profile')} />
+          <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
+          <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" onClick={() => { setHighlightField('weight'); setView('profile'); }} />
+          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
+          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
         </div>
       </div>
 
@@ -725,6 +762,19 @@ export default function App() {
             </div>
           ))}
 
+          {/* SAFETY ALERTS */}
+          {safetyAlerts.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {safetyAlerts.map((alert, idx) => (
+                <div key={idx} className={`p-3 rounded-xl border flex items-start gap-3 ${alert.type === 'danger' ? 'bg-red-50 border-red-200 text-red-800' : alert.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                  <div className="flex-1 text-xs font-bold">{alert.message}</div>
+                  <button onClick={() => setSafetyAlerts(p => p.filter((_, i) => i !== idx))}><X size={14} className="opacity-50 hover:opacity-100" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {prescription.oralMeds.map(med => (
             <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
               <div className="font-bold text-sm mb-2">{med.name}</div>
@@ -761,10 +811,10 @@ export default function App() {
               <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
                 <div>
                   <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
-                  <input type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
+                  <input id="field-dob" type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
                     const dob = e.target.value;
                     setVitalsForm(p => ({ ...p, dob, age: calculateAge(dob) }));
-                  }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm" />
+                  }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm transition-all duration-500" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
@@ -821,9 +871,9 @@ export default function App() {
 
             <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <input type="number" placeholder={`Wt: ${profile.weight || '-'} kg`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
-              <input type="number" step="0.1" placeholder={`A1c: ${profile.hba1c || '-'}%`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
-              <input type="number" step="0.1" placeholder={`Cr: ${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50" />
+              <input id="field-weight" type="number" placeholder={`Wt: ${profile.weight || '-'} kg`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
+              <input id="field-hba1c" type="number" step="0.1" placeholder={`A1c: ${profile.hba1c || '-'}%`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
+              <input id="field-creatinine" type="number" step="0.1" placeholder={`Cr: ${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
             </div>
 
             {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
