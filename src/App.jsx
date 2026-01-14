@@ -127,6 +127,13 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
 
 
 
+        {label === "HbA1c" && (
+          <g opacity="0.1">
+            <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
+            <rect x={padding} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
+            <rect x={padding} y={0} width={width - 2 * padding} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
+          </g>
+        )}
         {refY && refY > 0 && refY < height && (
           <g>
             <text x={width - padding} y={refY - 2} textAnchor="end" fontSize="8" fill="#6b7280" fontStyle="italic">Normal Range: {normalRange}</text>
@@ -188,6 +195,13 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
 
 
 
+          {label === "HbA1c" && (
+            <g opacity="0.1">
+              <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
+              <rect x={padding} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
+              <rect x={padding} y={0} width={graphWidth - 2 * padding} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
+            </g>
+          )}
           {refY && refY > 0 && refY < height && (
             <g>
               <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal Range: {normalRange}</text>
@@ -195,9 +209,6 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
           )}
           <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
           {points.map((p, i) => {
-            // For expanded view, we can keep the "show only if changed" logic to reduce clutter if desired, 
-            // but for consistency with small graph request, I'll show all dots here too unless they overlap too much.
-            // Given user asked "5 dots as before" for small chart specifically, I will show all dots here.
             return (
               <g key={i}>
                 <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
@@ -458,25 +469,33 @@ export default function App() {
   };
 
   // FIX: Filter NaN values and remove duplicates to prevent clutter
-  const getTrendData = (metric) => {
-    const data = fullHistory
-      .filter(log => log.snapshot?.profile?.[metric] && !isNaN(parseFloat(log.snapshot.profile[metric])))
-      .map(log => ({ date: log.timestamp?.seconds * 1000, value: parseFloat(log.snapshot.profile[metric]) }))
-      .reverse();
+  const calculateCompliance = () => {
+    const last7Days = fullHistory.filter(log => log.timestamp?.seconds * 1000 > Date.now() - 7 * 24 * 60 * 60 * 1000);
+    if (last7Days.length === 0) return { oral: 0, insulin: 0 };
 
-    // Filter out identical consecutive values to prevent clutter (dot only if value changed)
-    const filteredData = data.filter((item, index, arr) => {
-      if (index === 0) return true;
-      return item.value !== arr[index - 1].value;
+    let oralTaken = 0, oralPrescribed = 0;
+    let insulinTaken = 0, insulinPrescribed = 0;
+
+    // Estimate prescribed doses over 7 days based on current prescription
+    const days = 7;
+    prescription.oralMeds.forEach(m => { oralPrescribed += m.timings.length * days; });
+    prescription.insulins.forEach(i => {
+      const freq = i.frequency === 'Once Daily' ? 1 : i.frequency === 'Twice Daily' ? 2 : i.frequency === 'Thrice Daily' ? 3 : 1;
+      insulinPrescribed += freq * days;
     });
 
-    if (profile[metric] && (filteredData.length === 0 || filteredData[filteredData.length - 1].value !== parseFloat(profile[metric]))) {
-      if (!isNaN(parseFloat(profile[metric]))) {
-        filteredData.push({ date: Date.now(), value: parseFloat(profile[metric]) });
-      }
-    }
-    return filteredData;
+    last7Days.forEach(log => {
+      oralTaken += (log.medsTaken || []).length;
+      insulinTaken += Object.keys(log.insulinDoses || {}).length;
+    });
+
+    return {
+      oral: oralPrescribed ? Math.round((oralTaken / oralPrescribed) * 100) : 100,
+      insulin: insulinPrescribed ? Math.round((insulinTaken / insulinPrescribed) * 100) : 100
+    };
   };
+
+  const compliance = calculateCompliance();
 
   const handleSeedDatabase = async () => {
     if (!confirm("Initialize Medication Database?")) return;
@@ -702,6 +721,19 @@ export default function App() {
 
       {view === 'diary' && (
         <div className="px-6 animate-in fade-in">
+          {/* COMPLIANCE STATS */}
+          <div className="bg-stone-900 text-white p-4 rounded-3xl mb-4 shadow-xl flex justify-around items-center border border-white/10">
+            <div className="text-center">
+              <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Oral Compliance</div>
+              <div className="text-2xl font-black">{compliance.oral}%</div>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Insulin Compliance</div>
+              <div className="text-2xl font-black">{compliance.insulin}%</div>
+            </div>
+          </div>
+
           {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
           {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle /> POOR CONTROL</div>}
           {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> HIGH SUGAR!</div>}
@@ -974,14 +1006,14 @@ export default function App() {
               {/* INSULINS */}
               {prescription.insulins.map((ins, idx) => (
                 <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
-                  <div className="flex justify-between mb-2">
-                    <div>
-                      <span className="font-bold block text-sm">{ins.name}</span>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex-1 mr-4">
+                      <span className="font-bold block text-sm text-stone-800">{ins.name}</span>
                       <select value={ins.frequency} onChange={(e) => { const newI = [...prescription.insulins]; newI[idx].frequency = e.target.value; setPrescription({ ...prescription, insulins: newI }); }} className="text-xs text-stone-500 bg-transparent outline-none font-bold">
                         {['Once Daily', 'Twice Daily', 'Bedtime', 'Before Meals', 'SOS'].map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-500 bg-red-50 p-2 rounded-xl hover:bg-red-100 transition-colors shadow-sm"><Trash2 size={18} /></button>
+                    <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
                   </div>
                   <div className="bg-stone-50 p-3 rounded-xl space-y-3">
                     <div className="flex bg-white p-1 rounded-lg border border-stone-200">
@@ -1030,14 +1062,14 @@ export default function App() {
               {/* ORAL MEDS */}
               {prescription.oralMeds.map((med, idx) => (
                 <div key={med.id} className="pb-4 border-b border-stone-100 last:border-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <div className="font-bold text-sm text-stone-800">{med.name}</div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex-1 mr-4">
+                      <div className="font-bold text-sm text-stone-800 leading-tight">{med.name}</div>
                       <select value={med.frequency} onChange={(e) => { const nM = [...prescription.oralMeds]; nM[idx].frequency = e.target.value; nM[idx].timings = FREQUENCY_RULES[e.target.value] || []; setPrescription({ ...prescription, oralMeds: nM }) }} className="text-xs text-stone-500 bg-stone-50 rounded px-1 py-0.5 mt-1 outline-none font-bold">
                         {Object.keys(FREQUENCY_RULES).map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-500 bg-red-50 p-2 rounded-xl hover:bg-red-100 transition-colors shadow-sm"><Trash2 size={18} /></button>
+                    <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {(FREQUENCY_RULES[med.frequency] || []).map(t => (
