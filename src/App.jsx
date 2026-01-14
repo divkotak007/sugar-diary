@@ -602,47 +602,84 @@ export default function App() {
     // Graph Drawing Logic (Side-by-Side)
     const drawGraph = (data, title, startX, startY, width, height, norm, color) => {
       if (!data || data.length < 2) return;
-      doc.setFontSize(9); doc.setTextColor(0); doc.text(title, startX, startY + 5);
-      const gX = startX; const gY = startY + 8;
+
+      // Draw background frame
+      doc.setFillColor(252, 252, 250); doc.rect(startX, startY + 6, width, height, 'F');
+      doc.setDrawColor(240); doc.rect(startX, startY + 6, width, height, 'S');
+
+      doc.setFontSize(9); doc.setTextColor(80); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
+      const gX = startX; const gY = startY + 6;
       const vals = data.map(d => d.value);
-      let min = Math.min(...vals) * 0.98; let max = Math.max(...vals) * 1.02;
+      let min = Math.min(...vals); let max = Math.max(...vals);
+
+      // Clinical ranges for better context
+      if (title === "HbA1c") { min = Math.min(min, 4); max = Math.max(max, 9); }
+      if (title === "Weight") { min *= 0.95; max *= 1.05; }
+      if (title === "Creatinine") { min = 0; max = Math.max(max, 2); }
+
       if (min === max) { min -= 1; max += 1; }
       const range = max - min;
 
-      doc.setDrawColor(200); doc.line(gX, gY + height, gX + width, gY + height);
+      // Clinical Color Zones for HbA1c
+      if (title === "HbA1c") {
+        const getY = (val) => gY + height - ((val - min) / range) * height;
 
-      // CORRECTION: Background lines in PDF graphs
-      [0.25, 0.5, 0.75].forEach(r => {
-        doc.setDrawColor(220); doc.setLineWidth(0.1); doc.line(gX, gY + height * r, gX + width, gY + height * r);
-      });
+        // Green < 5.7
+        doc.setFillColor(240, 253, 244);
+        const y57 = Math.max(gY, Math.min(gY + height, getY(5.7)));
+        doc.rect(gX, y57, width, (gY + height) - y57, 'F');
+
+        // Yellow 5.7 - 6.5
+        doc.setFillColor(255, 251, 235);
+        const y65 = Math.max(gY, Math.min(gY + height, getY(6.5)));
+        doc.rect(gX, y65, width, y57 - y65, 'F');
+
+        // Red > 6.5
+        doc.setFillColor(254, 242, 242);
+        doc.rect(gX, gY, width, y65 - gY, 'F');
+      }
+
+      // Grid lines
+      doc.setDrawColor(230); doc.setLineWidth(0.1);
+      [0.25, 0.5, 0.75].forEach(r => { doc.line(gX, gY + height * r, gX + width, gY + height * r); });
 
       if (norm) {
         const refY = gY + height - ((norm - min) / range) * height;
-        if (refY > gY && refY < gY + height) { doc.setDrawColor(200); doc.setLineWidth(0.1); doc.line(gX, refY, gX + width, refY); }
+        if (refY >= gY && refY <= gY + height) {
+          doc.setDrawColor(180); doc.setLineDashPattern([1, 1], 0); doc.line(gX, refY, gX + width, refY);
+          doc.setLineDashPattern([], 0);
+        }
       }
-      const [r, g, b] = color === 'orange' ? [249, 115, 22] : color === 'purple' ? [168, 85, 247] : [16, 185, 129];
 
-      // CORRECTION: PDF graphs now use 5 dots format
-      let pdfPoints = data;
-      if (data.length > 5) pdfPoints = data.slice(-5);
+      const [r, g, b] = color === 'orange' ? [249, 115, 22] : color === 'purple' ? [168, 85, 247] : [16, 185, 129];
+      let pdfPoints = data.slice(-5);
 
       pdfPoints.forEach((d, i) => {
-        if (i === 0) return;
-        const prev = pdfPoints[i - 1];
-        const x1 = gX + (i - 1) / (pdfPoints.length - 1) * width; const y1 = gY + height - ((prev.value - min) / range) * height;
-        const x2 = gX + i / (pdfPoints.length - 1) * width; const y2 = gY + height - ((d.value - min) / range) * height;
-        doc.setDrawColor(r, g, b); doc.setLineWidth(0.5); doc.line(x1, y1, x2, y2);
-        doc.setFillColor(r, g, b); doc.circle(x2, y2, 1, 'F');
-        doc.setFontSize(6); doc.setTextColor(50); doc.text(d.value.toString(), x2, y2 - 2, { align: 'center' });
-        doc.setTextColor(150); doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x2, y2 + 4, { align: 'center' });
+        const x = gX + i / (pdfPoints.length - 1) * width;
+        const y = gY + height - ((d.value - min) / range) * height;
+
+        if (i > 0) {
+          const prev = pdfPoints[i - 1];
+          const x1 = gX + (i - 1) / (pdfPoints.length - 1) * width;
+          const y1 = gY + height - ((prev.value - min) / range) * height;
+          doc.setDrawColor(r, g, b); doc.setLineWidth(0.8); doc.line(x1, y1, x, y);
+        }
+
+        doc.setFillColor(r, g, b); doc.circle(x, y, 1.2, 'F');
+        doc.setFillColor(255); doc.circle(x, y, 0.6, 'F'); // Inner white dot for "premium" look
+
+        doc.setFontSize(7); doc.setTextColor(40); doc.setFont("helvetica", "bold");
+        doc.text(d.value.toString(), x, y - 3, { align: 'center' });
+        doc.setFontSize(5); doc.setTextColor(150); doc.setFont("helvetica", "normal");
+        doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, y + 5, { align: 'center' });
       });
     };
 
-    const gW = 60; const gH = 25;
-    drawGraph(getTrendData('weight'), "Weight", 14, finalY, gW, gH, null, 'orange');
-    drawGraph(getTrendData('hba1c'), "HbA1c", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
+    const gW = 60; const gH = 30;
+    drawGraph(getTrendData('weight'), "Weight (kg)", 14, finalY, gW, gH, null, 'orange');
+    drawGraph(getTrendData('hba1c'), "HbA1c (%)", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
     drawGraph(getTrendData('creatinine'), "Creatinine", 14 + (gW + 5) * 2, finalY, gW, gH, 1.2, 'purple');
-    finalY += gH + 15;
+    finalY += gH + 20;
 
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
     const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
@@ -660,7 +697,11 @@ export default function App() {
     });
     const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
     finalY = (doc.lastAutoTable || {}).finalY + 10;
-    doc.setFontSize(10); doc.setTextColor(100); doc.text(`Adherence Summary: ${totalMeds} Oral Medication Doses Recorded in Logged Period`, 14, finalY);
+    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 15, 'F');
+    doc.setFontSize(9); doc.setTextColor(100); doc.setFont("helvetica", "bold");
+    doc.text("Clinical Compliance (Last 7 Days):", 20, finalY + 9);
+    doc.setTextColor(5, 150, 105); doc.text(`Oral Meds: ${compliance.oral}%`, 85, finalY + 9);
+    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 135, finalY + 9);
 
     if (profile.instructions) {
       finalY += 10; doc.setFontSize(12); doc.setTextColor(0); doc.text("Medical Instructions", 14, finalY);
