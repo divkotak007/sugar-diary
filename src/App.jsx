@@ -489,32 +489,49 @@ export default function App() {
     return filteredData;
   };
 
-  // FIX: Filter NaN values and remove duplicates to prevent clutter
+  // FIX: Calculate 7-day stats for breakdown, and all-time for Overall
   const calculateCompliance = () => {
-    const last7Days = fullHistory.filter(log => log.timestamp?.seconds * 1000 > Date.now() - 7 * 24 * 60 * 60 * 1000);
-    if (last7Days.length === 0) return { oral: 0, insulin: 0 };
+    const logs = fullHistory.filter(l => !l.type); // only entry logs
+    if (logs.length === 0) return { oral: 0, insulin: 0, overall: 0 };
 
-    let oralTaken = 0, oralPrescribed = 0;
-    let insulinTaken = 0, insulinPrescribed = 0;
+    // 1. 7-Day Stats (Oral & Insulin Breakdown)
+    const last7Days = logs.filter(log => (log.timestamp?.seconds * 1000 || log.timestamp) > Date.now() - 7 * 24 * 60 * 60 * 1000);
+    let oralTaken7 = 0, oralPres7 = 0;
+    let insTaken7 = 0, insPres7 = 0;
 
-    // Estimate prescribed doses over 7 days based on current prescription
-    const days = 7;
-    prescription.oralMeds.forEach(m => { oralPrescribed += m.timings.length * days; });
+    prescription.oralMeds.forEach(m => { oralPres7 += m.timings.length * 7; });
     prescription.insulins.forEach(i => {
-      const freq = i.frequency === 'Once Daily' ? 1 : i.frequency === 'Twice Daily' ? 2 : i.frequency === 'Thrice Daily' ? 3 : 1;
-      insulinPrescribed += freq * days;
+      const f = i.frequency === 'Once Daily' ? 1 : i.frequency === 'Twice Daily' ? 2 : 1;
+      insPres7 += f * 7;
     });
 
     last7Days.forEach(log => {
-      oralTaken += (log.medsTaken || []).length;
-      insulinTaken += Object.keys(log.insulinDoses || {}).length;
+      oralTaken7 += (log.medsTaken || []).length;
+      insTaken7 += Object.keys(log.insulinDoses || {}).length;
     });
 
-    const oralPerc = oralPrescribed ? Math.round((oralTaken / oralPrescribed) * 100) : 100;
-    const insulinPerc = insulinPrescribed ? Math.round((insulinTaken / insulinPrescribed) * 100) : 100;
-    const overall = Math.round((oralPerc + insulinPerc) / 2);
+    // 2. All-Time Overall (Day 1 to Now)
+    const earliestLog = logs[logs.length - 1];
+    const startTime = earliestLog.timestamp?.seconds * 1000 || earliestLog.timestamp;
+    const totalDays = Math.max(1, Math.ceil((Date.now() - startTime) / (24 * 60 * 60 * 1000)));
 
-    return { oral: oralPerc, insulin: insulinPerc, overall };
+    let totalTaken = 0, totalPrescribed = 0;
+    prescription.oralMeds.forEach(m => { totalPrescribed += m.timings.length * totalDays; });
+    prescription.insulins.forEach(i => {
+      const f = i.frequency === 'Once Daily' ? 1 : i.frequency === 'Twice Daily' ? 2 : 1;
+      totalPrescribed += f * totalDays;
+    });
+
+    logs.forEach(log => {
+      totalTaken += (log.medsTaken || []).length;
+      totalTaken += Object.keys(log.insulinDoses || {}).length;
+    });
+
+    return {
+      oral: oralPres7 ? Math.min(100, Math.round((oralTaken7 / oralPres7) * 100)) : 100,
+      insulin: insPres7 ? Math.min(100, Math.round((insTaken7 / insPres7) * 100)) : 100,
+      overall: totalPrescribed ? Math.min(100, Math.round((totalTaken / totalPrescribed) * 100)) : 100
+    };
   };
 
   const compliance = calculateCompliance();
