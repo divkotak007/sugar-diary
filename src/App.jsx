@@ -211,18 +211,12 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
             <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
             {points.map((p, i) => (
               <g key={i} className="cursor-pointer" onClick={() => {
-                const action = prompt(`Vital: ${p.val} on ${new Date(p.date).toLocaleString()}\nType 'delete' to remove or enter NEW value to edit:`, p.val);
-                if (action === null) return;
-                if (action.toLowerCase() === 'delete') {
-                  handleDeleteEntry(p.id);
-                } else if (!isNaN(parseFloat(action))) {
-                  // handleEditVitals(p.id, parseFloat(action));
-                  const confirmEdit = confirm(`Change value from ${p.val} to ${action}?`);
-                  if (confirmEdit) {
-                    updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', p.id), {
-                      ["snapshot.profile." + label.toLowerCase().replace(' trend', '')]: parseFloat(action)
-                    }).then(() => alert("Updated.")).catch(() => alert("Update failed."));
-                  }
+                const action = confirm(`Vital: ${p.val} on ${new Date(p.date).toLocaleString()}\n\nClick OK to EDIT or Cancel to DELETE this record.`);
+                if (action) {
+                  const log = fullHistory.find(l => l.id === p.id);
+                  if (log) { handleStartEditVital(log); setExpandedGraphData(null); }
+                } else {
+                  if (confirm("Permanently delete this vital record?")) handleDeleteEntry(p.id);
                 }
               }}>
                 <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
@@ -580,13 +574,22 @@ export default function App() {
     if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
     const timestamp = vitalsLogTime ? new Date(vitalsLogTime) : new Date();
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, schemaVersion: 2, lastUpdated: new Date().toISOString() }, { merge: true });
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'vital_update', snapshot: { profile: updatedProfile, prescription }, timestamp, tags: ['Vital Update'] });
+      if (editingLog && editingLog.type === 'vital_update') {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), {
+          snapshot: { ...editingLog.snapshot, profile: updatedProfile },
+          timestamp
+        });
+        alert("Vital Record Updated!");
+      } else {
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, schemaVersion: 2, lastUpdated: new Date().toISOString() }, { merge: true });
+        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'vital_update', snapshot: { profile: updatedProfile, prescription }, timestamp, tags: ['Vital Update'] });
+        alert("Profile & Vitals Updated.");
+      }
       setProfile(updatedProfile); setVitalsForm(prev => ({ ...prev, weight: '', hba1c: '', creatinine: '' })); setUnlockPersonal(false); setUnlockComorbidities(false);
       setVitalsLogTime(new Date().toISOString().slice(0, 16));
-      alert("Profile & Vitals Updated.");
+      setEditingLog(null);
       if (!prescription.insulins.length) setView('prescription');
-    } catch (err) { alert("Save failed."); }
+    } catch (err) { alert("Save failed: " + err.message); }
   };
 
   const handleDeleteEntry = async (id) => {
@@ -609,25 +612,63 @@ export default function App() {
     const hasMeds = Object.keys(medsTaken).some(k => medsTaken[k]) || Object.keys(insulinDoses).length > 0;
     if (!hgt && !hasMeds) return alert("Enter Glucose or Medication");
 
-    // Support back-time entry
     const timestamp = logTime ? new Date(logTime) : new Date();
-
-    const entry = {
+    const entryData = {
       hgt: hgt ? parseFloat(hgt) : null,
       mealStatus,
       insulinDoses,
       medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]),
       tags: contextTags,
-      timestamp: timestamp, // Using Date object instead of serverTimestamp for back-dating
+      timestamp,
       snapshot: { profile, prescription }
     };
 
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000);
-    setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-    setLogTime(new Date().toISOString().slice(0, 16)); // Reset to current time
+    try {
+      if (editingLog && !editingLog.type) {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), entryData);
+        alert("Record Updated!");
+      } else {
+        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
+      }
+      setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
+      setLogTime(new Date().toISOString().slice(0, 16));
+      setEditingLog(null);
+    } catch (err) { alert("Save failed: " + err.message); }
+  };
 
-    await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
+  const handleStartEdit = (log) => {
+    setEditingLog(log);
+    setHgt(log.hgt?.toString() || '');
+    setMealStatus(log.mealStatus || 'Pre-Meal');
+    setInsulinDoses(log.insulinDoses || {});
+    const medsMap = {};
+    (log.medsTaken || []).forEach(m => medsMap[m] = true);
+    setMedsTaken(medsMap);
+    setContextTags(log.tags || []);
+    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
+    setLogTime(date.toISOString().slice(0, 16));
+    setView('diary');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartEditVital = (log) => {
+    setEditingLog(log);
+    const p = log.snapshot.profile || {};
+    setVitalsForm({
+      weight: p.weight || '',
+      hba1c: p.hba1c || '',
+      creatinine: p.creatinine || '',
+      instructions: p.instructions || '',
+      dob: p.dob || '',
+      gender: p.gender || '',
+      pregnancyStatus: p.pregnancyStatus || false
+    });
+    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
+    setVitalsLogTime(date.toISOString().slice(0, 16));
+    setView('profile');
+    setHighlightField('weight');
   };
 
   const generatePDF = () => {
@@ -955,7 +996,14 @@ export default function App() {
             </div>
           </div>
 
-          <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
+          {editingLog && !editingLog.type ? (
+            <div className="flex gap-2 mb-6">
+              <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
+              <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-2xl font-bold">Cancel</button>
+            </div>
+          ) : (
+            <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
+          )}
         </div>
       )}
 
@@ -1072,7 +1120,14 @@ export default function App() {
               </div>
             </div>
 
-            <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+            {editingLog && editingLog.type === 'vital_update' ? (
+              <div className="flex gap-2">
+                <button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg">Update Record</button>
+                <button onClick={() => { setEditingLog(null); setVitalsForm({}); setVitalsLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-xl font-bold">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+            )}
           </div>
 
           <div className="mt-8 text-center">
@@ -1302,16 +1357,11 @@ export default function App() {
           <div className="space-y-3">
             {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
               <div key={item.id} onClick={() => {
-                const action = prompt(`Edit Log Entry:\nSugar: ${item.hgt || '-'}\nType 'delete' to remove or enter NEW sugar value to edit:`, item.hgt || '');
-                if (action === null) return;
-                if (action.toLowerCase() === 'delete') {
-                  handleDeleteEntry(item.id);
-                } else if (!isNaN(parseFloat(action))) {
-                  const confirmEdit = confirm(`Change sugar value to ${action}?`);
-                  if (confirmEdit) {
-                    updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', item.id), { hgt: parseFloat(action) })
-                      .then(() => alert("Updated.")).catch(() => alert("Update failed."));
-                  }
+                const action = confirm(`Log Entry: ${item.hgt || '-'}\n\nClick OK to EDIT or Cancel to DELETE this entry.`);
+                if (action) {
+                  handleStartEdit(item);
+                } else {
+                  if (confirm("Permanently delete this entry?")) handleDeleteEntry(item.id);
                 }
               }} className="bg-white p-4 rounded-2xl border border-stone-100 active:scale-95 transition-all cursor-pointer">
                 <div className="flex justify-between items-start mb-2"><div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div><span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span></div>
