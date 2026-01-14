@@ -697,21 +697,22 @@ export default function App() {
       return true;
     });
     const totalMeds = pdfFilteredHistory.reduce((acc, log) => acc + (log.medsTaken?.length || 0), 0);
-    finalY = (doc.lastAutoTable || {}).finalY + 10;
-    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 15, 'F');
+    finalY = (doc.lastAutoTable || {}).finalY + 12;
+    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 16, 'F');
     doc.setFontSize(9); doc.setTextColor(100); doc.setFont("helvetica", "bold");
-    doc.text("Clinical Compliance (Last 7 Days):", 20, finalY + 9);
-    doc.setTextColor(5, 150, 105); doc.text(`Oral Meds: ${compliance.oral}%`, 85, finalY + 9);
-    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 135, finalY + 9);
+    doc.text("Clinical Compliance (Last 7 Days):", 20, finalY + 10);
+    doc.setTextColor(5, 150, 105); doc.text(`Oral Meds: ${compliance.oral}%`, 85, finalY + 10);
+    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 135, finalY + 10);
+    finalY += 22; // Move past the compliance box
 
     if (profile.instructions) {
-      finalY += 10; doc.setFontSize(12); doc.setTextColor(0); doc.text("Medical Instructions", 14, finalY);
+      doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.text("Medical Instructions", 14, finalY);
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
       const splitText = doc.splitTextToSize(profile.instructions, 180);
       doc.text(splitText, 14, finalY + 7);
-      finalY += splitText.length * 5 + 10;
+      finalY += splitText.length * 5 + 15;
     }
-    finalY = Math.max(finalY, (doc.lastAutoTable || {}).finalY + 20);
+
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
     const logRows = pdfFilteredHistory.map(l => [
       new Date(l.timestamp?.seconds * 1000).toLocaleString(), l.hgt || '-', l.mealStatus,
