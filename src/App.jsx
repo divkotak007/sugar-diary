@@ -473,18 +473,22 @@ export default function App() {
     // 1. Extract all valid entries for this metric
     const allEntries = fullHistory
       .filter(log => log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric])))
-      .map(log => ({ date: log.timestamp?.seconds * 1000 || log.timestamp, value: parseFloat(log.snapshot.profile[metric]) }))
-      .sort((a, b) => a.date - b.date); // Sort chronologically
+      .map(log => ({
+        date: log.timestamp?.seconds * 1000 || (log.timestamp instanceof Date ? log.timestamp.getTime() : new Date(log.timestamp).getTime()),
+        value: parseFloat(log.snapshot.profile[metric])
+      }))
+      .sort((a, b) => a.date - b.date);
 
-    // 2. Add current profile value as the latest point (if valid)
-    if (profile[metric] && !isNaN(parseFloat(profile[metric]))) {
-      allEntries.push({ date: Date.now(), value: parseFloat(profile[metric]) });
+    // 2. Combine with prospective point from profile
+    const currentVal = profile[metric] ? parseFloat(profile[metric]) : null;
+    if (currentVal !== null && !isNaN(currentVal)) {
+      allEntries.push({ date: Date.now(), value: currentVal });
     }
 
-    // 3. Strict filtering: Only keep points where the value actually CHANGED from the previous record
+    // 3. Strict filtering: Only keep points where the value actually CHANGED
     const uniqueChanges = [];
     allEntries.forEach((entry, i) => {
-      if (i === 0 || entry.value !== allEntries[i - 1].value) {
+      if (i === 0 || entry.value !== uniqueChanges[uniqueChanges.length - 1].value) {
         uniqueChanges.push(entry);
       }
     });
@@ -738,8 +742,11 @@ export default function App() {
     // Update finalY after Oral Meds Table
     finalY = (doc.lastAutoTable || {}).finalY + 15;
 
+    // Page break safety for Instructions
+    if (finalY > 260 && profile.instructions) { doc.addPage(); finalY = 20; }
+
     const pdfFilteredHistory = fullHistory.filter(l => {
-      if (l.type === 'vital_update') return false;
+      if (l.type === 'vital_update' || l.type === 'prescription_update') return false;
       const d = new Date(l.timestamp?.seconds * 1000 || l.timestamp);
       if (pdfStartDate && d < new Date(pdfStartDate)) return false;
       if (pdfEndDate) { const end = new Date(pdfEndDate); end.setHours(23, 59, 59, 999); if (d > end) return false; }
@@ -754,6 +761,8 @@ export default function App() {
       finalY += (splitText.length * 6) + 15;
     }
 
+    // Page break safety for Logbook
+    if (finalY > 260) { doc.addPage(); finalY = 20; }
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
     const logRows = pdfFilteredHistory.map(l => [
       new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(), l.hgt || '-', l.mealStatus,
@@ -1258,7 +1267,9 @@ export default function App() {
                   {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10} /> {insName}: {d}u</div> })}
                 </div>
                 {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
-                <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between"><span>{new Date(item.timestamp?.seconds * 1000).toLocaleString()}</span></div>
+                <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between">
+                  <span>{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</span>
+                </div>
               </div>
             ))}
           </div>
