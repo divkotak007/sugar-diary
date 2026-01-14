@@ -153,21 +153,31 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
 
 // Expanded Graph Modal
 const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) => {
+  const containerRef = React.useRef(null);
   const height = 300;
-  // CORRECTION: Calculate width to show ~7 points per view width, allowing scrolling
-  const pointsPerView = 7;
-  const screenWidth = Math.min(window.innerWidth - 48, 600); // 48px for padding/margins
+  const pointsPerView = 5; // Visible area shows 5 most recent
+  const screenWidth = Math.min(window.innerWidth - 48, 600);
   const pointSpacing = screenWidth / pointsPerView;
   const graphWidth = Math.max(screenWidth, data.length * pointSpacing);
   const padding = 40;
 
+  useEffect(() => {
+    // Scroll to the end (most recent points) on open
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+    }
+  }, [data]);
+
   const values = data.map(d => d.value);
-  const min = Math.min(...values) * 0.9;
-  const max = Math.max(...values) * 1.1;
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const dataRange = (dataMax - dataMin) || (dataMax * 0.1) || 1;
+  const min = dataMin - (dataRange * 0.4);
+  const max = dataMax + (dataRange * 0.4);
   const range = max - min || 1;
 
   const points = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1)) * (graphWidth - 2 * padding);
+    const x = padding + (i / (data.length - 1 === 0 ? 1 : data.length - 1)) * (graphWidth - 2 * padding);
     const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
     return { x, y, val: d.value, date: d.date };
   });
@@ -179,45 +189,35 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
     <div className="fixed inset-x-0 bottom-0 z-[100] bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h3 className={`text-2xl font-bold text-${color}-600`}>{label} Analysis</h3>
-          <p className="text-sm text-stone-400 font-medium">Detailed trend view ({data.length} records)</p>
+          <h3 className={`text-2xl font-bold text-${color}-600`}>{label} History</h3>
+          <p className="text-sm text-stone-400 font-medium">Full scrollable trend view ({data.length} records)</p>
         </div>
         <button onClick={onClose} className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={20} className="text-stone-500" /></button>
       </div>
 
-      {/* CORRECTION: Horizontal Scroll Container */}
-      <div className="w-full overflow-x-auto pb-4">
-        <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-visible">
-          {/* Horizontal Background Lines */}
-          {[0.2, 0.4, 0.6, 0.8].map(ratio => (
-            <line key={ratio} x1={padding} y1={height * ratio} x2={graphWidth - padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
-          ))}
-
-
-
-          {label === "HbA1c" && (
-            <g opacity="0.1">
-              <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
-              <rect x={padding} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
-              <rect x={padding} y={0} width={graphWidth - 2 * padding} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
-            </g>
-          )}
-          {refY && refY > 0 && refY < height && (
-            <g>
-              <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal Range: {normalRange}</text>
-            </g>
-          )}
-          <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
-          {points.map((p, i) => {
-            return (
+      <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth">
+        <div style={{ width: graphWidth, height }}>
+          <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-visible">
+            {[0.2, 0.4, 0.6, 0.8].map(ratio => (
+              <line key={ratio} x1={0} y1={height * ratio} x2={graphWidth} y2={height * ratio} stroke="#f1f5f9" strokeWidth="1" />
+            ))}
+            {label === "HbA1c" && (
+              <g opacity="0.05">
+                <rect x={0} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
+                <rect x={0} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
+                <rect x={0} y={0} width={graphWidth} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
+              </g>
+            )}
+            <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
+            {points.map((p, i) => (
               <g key={i}>
                 <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
                 <text x={p.x} y={p.y - 15} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
-                <text x={p.x} y={height} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
+                <text x={p.x} y={height - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
               </g>
-            );
-          })}
-        </svg>
+            ))}
+          </svg>
+        </div>
       </div>
     </div>
   );
@@ -470,23 +470,26 @@ export default function App() {
   };
 
   const getTrendData = (metric) => {
-    const data = fullHistory
-      .filter(log => log.snapshot?.profile?.[metric] && !isNaN(parseFloat(log.snapshot.profile[metric])))
-      .map(log => ({ date: log.timestamp?.seconds * 1000, value: parseFloat(log.snapshot.profile[metric]) }))
-      .reverse();
+    // 1. Extract all valid entries for this metric
+    const allEntries = fullHistory
+      .filter(log => log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric])))
+      .map(log => ({ date: log.timestamp?.seconds * 1000 || log.timestamp, value: parseFloat(log.snapshot.profile[metric]) }))
+      .sort((a, b) => a.date - b.date); // Sort chronologically
 
-    // Filter out identical consecutive values to prevent clutter
-    const filteredData = data.filter((item, index, arr) => {
-      if (index === 0) return true;
-      return item.value !== arr[index - 1].value;
+    // 2. Add current profile value as the latest point (if valid)
+    if (profile[metric] && !isNaN(parseFloat(profile[metric]))) {
+      allEntries.push({ date: Date.now(), value: parseFloat(profile[metric]) });
+    }
+
+    // 3. Strict filtering: Only keep points where the value actually CHANGED from the previous record
+    const uniqueChanges = [];
+    allEntries.forEach((entry, i) => {
+      if (i === 0 || entry.value !== allEntries[i - 1].value) {
+        uniqueChanges.push(entry);
+      }
     });
 
-    if (profile[metric] && (filteredData.length === 0 || filteredData[filteredData.length - 1].value !== parseFloat(profile[metric]))) {
-      if (!isNaN(parseFloat(profile[metric]))) {
-        filteredData.push({ date: Date.now(), value: parseFloat(profile[metric]) });
-      }
-    }
-    return filteredData;
+    return uniqueChanges;
   };
 
   // FIX: Calculate 7-day stats for breakdown, and all-time for Overall
@@ -686,10 +689,17 @@ export default function App() {
       }
 
       const [r, g, b] = color === 'orange' ? [234, 88, 12] : color === 'purple' ? [147, 51, 234] : [5, 150, 105];
-      let pdfPoints = data.slice(-5);
+
+      // Strategy: 1st point is baseline (first entry ever), then 4 most recent
+      let pdfPoints = [];
+      if (data.length <= 5) {
+        pdfPoints = data;
+      } else {
+        pdfPoints = [data[0], ...data.slice(-4)];
+      }
 
       pdfPoints.forEach((d, i) => {
-        const x = gX + i / (pdfPoints.length - 1) * width;
+        const x = gX + i / (pdfPoints.length - 1 === 0 ? 1 : pdfPoints.length - 1) * width;
         const y = gY + height - ((d.value - min) / range) * height;
 
         if (i > 0) {
@@ -702,11 +712,11 @@ export default function App() {
         // Darker, solid dots
         doc.setFillColor(r, g, b); doc.circle(x, y, 1.5, 'F');
 
-        // Value Labels - Increased vertical offset and centered alignment
+        // Value Labels
         doc.setFontSize(8); doc.setTextColor(40); doc.setFont("helvetica", "bold");
         doc.text(d.value.toString(), x, y - 4, { align: 'center' });
 
-        // Date Labels - Faded and smaller
+        // Date Labels
         doc.setFontSize(5); doc.setTextColor(180); doc.setFont("helvetica", "normal");
         doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, gY + height + 4, { align: 'center' });
       });
