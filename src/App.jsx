@@ -1003,19 +1003,22 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                         {(ins.slidingScale || []).map((row, rIdx) => (
-                          <div key={rIdx} className="flex gap-2 items-center bg-white p-2 rounded-xl border border-stone-100 shadow-sm">
-                            <span className="text-[10px] text-stone-400 font-bold uppercase shrink-0">BG</span>
-                            <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-bold outline-none bg-stone-50 rounded p-1" />
-                            <span className="text-stone-300">-</span>
-                            <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-bold outline-none bg-stone-50 rounded p-1" />
-                            <span className="mx-1 text-stone-300">→</span>
-                            <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-black text-emerald-600 outline-none bg-emerald-50 rounded p-1" />
-                            <span className="text-xs font-bold text-stone-400">u</span>
+                          <div key={rIdx} className="flex gap-1.5 items-center bg-white p-1.5 rounded-xl border border-stone-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center gap-1 bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
+                              <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
+                              <span className="text-[10px] text-stone-300">-</span>
+                              <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
+                            </div>
+                            <ChevronRight size={12} className="text-stone-300 shrink-0" />
+                            <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-1 min-w-0">
+                              <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-sm font-black text-emerald-700 outline-none bg-transparent" />
+                              <span className="text-[10px] font-bold text-emerald-600/50 uppercase">u</span>
+                            </div>
                             <button onClick={() => {
                               const n = [...prescription.insulins];
                               n[idx].slidingScale = n[idx].slidingScale.filter((_, i) => i !== rIdx);
                               setPrescription({ ...prescription, insulins: n });
-                            }} className="ml-auto text-red-400 hover:text-red-500 p-2"><Trash2 size={16} /></button>
+                            }} className="shrink-0 text-red-300 hover:text-red-500 p-1.5"><Trash2 size={16} /></button>
                           </div>
                         ))}
                       </div>
