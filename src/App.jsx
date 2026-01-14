@@ -152,7 +152,7 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
 };
 
 // Expanded Graph Modal
-const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) => {
+const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fullHistory, onEdit, onDelete }) => {
   const containerRef = React.useRef(null);
   const height = 300;
   const pointsPerView = 5; // Visible area shows 5 most recent
@@ -179,11 +179,10 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
   const points = data.map((d, i) => {
     const x = padding + (i / (data.length - 1 === 0 ? 1 : data.length - 1)) * (graphWidth - 2 * padding);
     const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
-    return { x, y, val: d.value, date: d.date };
+    return { x, y, val: d.value, date: d.date, id: d.id }; // Added ID here
   });
 
   const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-  const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[100] bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
@@ -214,9 +213,9 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
                 const action = confirm(`Vital: ${p.val} on ${new Date(p.date).toLocaleString()}\n\nClick OK to EDIT or Cancel to DELETE this record.`);
                 if (action) {
                   const log = fullHistory.find(l => l.id === p.id);
-                  if (log) { handleStartEditVital(log); setExpandedGraphData(null); }
+                  if (log) { onEdit(log, label.toLowerCase().replace(' trend', '')); onClose(); }
                 } else {
-                  if (confirm("Permanently delete this vital record?")) handleDeleteEntry(p.id);
+                  if (confirm("Permanently delete this vital record?")) onDelete(p.id);
                 }
               }}>
                 <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
@@ -490,13 +489,7 @@ export default function App() {
       }))
       .sort((a, b) => a.date - b.date);
 
-    // 2. Combine with prospective point from profile
-    const currentVal = profile[metric] ? parseFloat(profile[metric]) : null;
-    if (currentVal !== null && !isNaN(currentVal)) {
-      allEntries.push({ date: Date.now(), value: currentVal });
-    }
-
-    // 3. Strict filtering: Only keep points where the value actually CHANGED
+    // 2. Strict filtering: Only keep points where the value actually CHANGED
     const uniqueChanges = [];
     allEntries.forEach((entry, i) => {
       if (i === 0 || entry.value !== uniqueChanges[uniqueChanges.length - 1].value) {
@@ -653,7 +646,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleStartEditVital = (log) => {
+  const handleStartEditVital = (log, activeField = 'weight') => {
     setEditingLog(log);
     const p = log.snapshot.profile || {};
     setVitalsForm({
@@ -668,7 +661,7 @@ export default function App() {
     const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
     setVitalsLogTime(date.toISOString().slice(0, 16));
     setView('profile');
-    setHighlightField('weight');
+    setHighlightField(activeField);
   };
 
   const generatePDF = () => {
@@ -1356,20 +1349,25 @@ export default function App() {
           </div>
           <div className="space-y-3">
             {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
-              <div key={item.id} onClick={() => {
-                const action = confirm(`Log Entry: ${item.hgt || '-'}\n\nClick OK to EDIT or Cancel to DELETE this entry.`);
-                if (action) {
-                  handleStartEdit(item);
-                } else {
-                  if (confirm("Permanently delete this entry?")) handleDeleteEntry(item.id);
-                }
-              }} className="bg-white p-4 rounded-2xl border border-stone-100 active:scale-95 transition-all cursor-pointer">
-                <div className="flex justify-between items-start mb-2"><div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div><span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span></div>
+              <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100 transition-all flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xl font-bold text-emerald-800">{item.hgt || '-'}</span>
+                    <span className="text-xs text-stone-400 ml-1">mg/dL</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleStartEdit(item)} className="p-2 bg-stone-50 text-stone-400 hover:text-emerald-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                    <button onClick={() => handleDeleteEntry(item.id)} className="p-2 bg-red-50 text-red-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+
                 <div className="text-xs text-stone-500 mb-2">
+                  <div className="font-bold text-[10px] text-stone-300 uppercase mb-1">{item.mealStatus}</div>
                   {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500" /> {name} ({time})</div> })}
                   {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400" /> {m}</div>))}
                   {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10} /> {insName}: {d}u</div> })}
                 </div>
+
                 {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
                 <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between">
                   <span>{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</span>
@@ -1387,6 +1385,15 @@ export default function App() {
         <button onClick={() => setView('history')} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText /></button>
         <button onClick={() => setView('profile')} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User /></button>
       </nav>
+      {expandedGraphData && (
+        <ExpandedGraphModal
+          {...expandedGraphData}
+          fullHistory={fullHistory}
+          onEdit={handleStartEditVital}
+          onDelete={handleDeleteEntry}
+          onClose={() => setExpandedGraphData(null)}
+        />
+      )}
     </div>
   );
 }
