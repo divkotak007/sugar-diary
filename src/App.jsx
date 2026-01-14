@@ -6,12 +6,10 @@ import {
   onSnapshot, query, orderBy, limit
 } from 'firebase/firestore';
 import {
-  BookOpen, Settings, Edit3, Save, LogOut, Activity, Droplet,
-  User, CheckCircle2, Clock, Utensils, Syringe, FileText, Download,
-  ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell,
-  AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare,
-  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X,
-  Search, Eye
+  Activity, AlertCircle, AlertTriangle, Baby, BookOpen, Calendar, Candy, CheckCircle2, CheckSquare, ChevronRight,
+  Clock, Database, Download, Droplet, Dumbbell, Edit3, Eye, FileText, Info, Lock, LogOut, Pill, PlusCircle,
+  Printer, Save, Sandwich, ScrollText, Search, Settings, ShieldAlert, Stethoscope, Syringe, Thermometer, Trash2,
+  TrendingUp, Unlock, User, Utensils, Wine, X, XCircle, Zap
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
 
