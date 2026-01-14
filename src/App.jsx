@@ -468,6 +468,26 @@ export default function App() {
     return totalDose > 0 ? totalDose : null;
   };
 
+  const getTrendData = (metric) => {
+    const data = fullHistory
+      .filter(log => log.snapshot?.profile?.[metric] && !isNaN(parseFloat(log.snapshot.profile[metric])))
+      .map(log => ({ date: log.timestamp?.seconds * 1000, value: parseFloat(log.snapshot.profile[metric]) }))
+      .reverse();
+
+    // Filter out identical consecutive values to prevent clutter
+    const filteredData = data.filter((item, index, arr) => {
+      if (index === 0) return true;
+      return item.value !== arr[index - 1].value;
+    });
+
+    if (profile[metric] && (filteredData.length === 0 || filteredData[filteredData.length - 1].value !== parseFloat(profile[metric]))) {
+      if (!isNaN(parseFloat(profile[metric]))) {
+        filteredData.push({ date: Date.now(), value: parseFloat(profile[metric]) });
+      }
+    }
+    return filteredData;
+  };
+
   // FIX: Filter NaN values and remove duplicates to prevent clutter
   const calculateCompliance = () => {
     const last7Days = fullHistory.filter(log => log.timestamp?.seconds * 1000 > Date.now() - 7 * 24 * 60 * 60 * 1000);
