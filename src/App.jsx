@@ -583,8 +583,9 @@ export default function App() {
     };
 
     doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 25);
-    doc.setFontSize(10); doc.text(`Patient: ${user.displayName || 'User'} | Generated: ${new Date().toLocaleDateString()}`, 14, 35);
+    doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 22);
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text(`Patient: ${user.displayName || 'User'}`, 14, 32);
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37);
     doc.setTextColor(0);
 
     const vitalsHead = ['Age', 'Gender', 'Weight', 'HbA1c', 'Creatinine'];
@@ -603,55 +604,52 @@ export default function App() {
     const drawGraph = (data, title, startX, startY, width, height, norm, color) => {
       if (!data || data.length < 2) return;
 
-      // Draw background frame
-      doc.setFillColor(252, 252, 250); doc.rect(startX, startY + 6, width, height, 'F');
-      doc.setDrawColor(240); doc.rect(startX, startY + 6, width, height, 'S');
-
-      doc.setFontSize(9); doc.setTextColor(80); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
       const gX = startX; const gY = startY + 6;
+      doc.setFontSize(9); doc.setTextColor(60); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
+
       const vals = data.map(d => d.value);
-      let min = Math.min(...vals); let max = Math.max(...vals);
+      const dataMin = Math.min(...vals);
+      const dataMax = Math.max(...vals);
+      const dataRange = (dataMax - dataMin) || (dataMax * 0.1) || 1;
 
-      // Clinical ranges for better context
-      if (title === "HbA1c") { min = Math.min(min, 4); max = Math.max(max, 9); }
-      if (title === "Weight") { min *= 0.95; max *= 1.05; }
-      if (title === "Creatinine") { min = 0; max = Math.max(max, 2); }
+      // Keep trend in mid section by adding 40% padding above and below
+      let min = dataMin - (dataRange * 0.4);
+      let max = dataMax + (dataRange * 0.4);
 
-      if (min === max) { min -= 1; max += 1; }
       const range = max - min;
 
-      // Clinical Color Zones for HbA1c
-      if (title === "HbA1c") {
+      // Subtle Clinical Color Zones for HbA1c
+      if (title.includes("HbA1c")) {
         const getY = (val) => gY + height - ((val - min) / range) * height;
 
-        // Green < 5.7
+        // Green Zone
         doc.setFillColor(240, 253, 244);
         const y57 = Math.max(gY, Math.min(gY + height, getY(5.7)));
         doc.rect(gX, y57, width, (gY + height) - y57, 'F');
 
-        // Yellow 5.7 - 6.5
+        // Yellow Zone
         doc.setFillColor(255, 251, 235);
         const y65 = Math.max(gY, Math.min(gY + height, getY(6.5)));
         doc.rect(gX, y65, width, y57 - y65, 'F');
 
-        // Red > 6.5
+        // Red Zone
         doc.setFillColor(254, 242, 242);
         doc.rect(gX, gY, width, y65 - gY, 'F');
       }
 
-      // Grid lines
-      doc.setDrawColor(230); doc.setLineWidth(0.1);
+      // Horizontal reference lines (very faint)
+      doc.setDrawColor(240); doc.setLineWidth(0.1);
       [0.25, 0.5, 0.75].forEach(r => { doc.line(gX, gY + height * r, gX + width, gY + height * r); });
 
       if (norm) {
         const refY = gY + height - ((norm - min) / range) * height;
         if (refY >= gY && refY <= gY + height) {
-          doc.setDrawColor(180); doc.setLineDashPattern([1, 1], 0); doc.line(gX, refY, gX + width, refY);
+          doc.setDrawColor(200); doc.setLineDashPattern([1, 1], 0); doc.line(gX, refY, gX + width, refY);
           doc.setLineDashPattern([], 0);
         }
       }
 
-      const [r, g, b] = color === 'orange' ? [249, 115, 22] : color === 'purple' ? [168, 85, 247] : [16, 185, 129];
+      const [r, g, b] = color === 'orange' ? [234, 88, 12] : color === 'purple' ? [147, 51, 234] : [5, 150, 105];
       let pdfPoints = data.slice(-5);
 
       pdfPoints.forEach((d, i) => {
@@ -662,16 +660,19 @@ export default function App() {
           const prev = pdfPoints[i - 1];
           const x1 = gX + (i - 1) / (pdfPoints.length - 1) * width;
           const y1 = gY + height - ((prev.value - min) / range) * height;
-          doc.setDrawColor(r, g, b); doc.setLineWidth(0.8); doc.line(x1, y1, x, y);
+          doc.setDrawColor(r, g, b); doc.setLineWidth(1.2); doc.line(x1, y1, x, y);
         }
 
-        doc.setFillColor(r, g, b); doc.circle(x, y, 1.2, 'F');
-        doc.setFillColor(255); doc.circle(x, y, 0.6, 'F'); // Inner white dot for "premium" look
+        // Darker, solid dots
+        doc.setFillColor(r, g, b); doc.circle(x, y, 1.5, 'F');
 
-        doc.setFontSize(7); doc.setTextColor(40); doc.setFont("helvetica", "bold");
-        doc.text(d.value.toString(), x, y - 3, { align: 'center' });
-        doc.setFontSize(5); doc.setTextColor(150); doc.setFont("helvetica", "normal");
-        doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, y + 5, { align: 'center' });
+        // Value Labels - Increased vertical offset and centered alignment
+        doc.setFontSize(8); doc.setTextColor(40); doc.setFont("helvetica", "bold");
+        doc.text(d.value.toString(), x, y - 4, { align: 'center' });
+
+        // Date Labels - Faded and smaller
+        doc.setFontSize(5); doc.setTextColor(180); doc.setFont("helvetica", "normal");
+        doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, gY + height + 4, { align: 'center' });
       });
     };
 
