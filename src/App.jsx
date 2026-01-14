@@ -130,17 +130,11 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
             <line key={ratio} x1={padding} y1={height * ratio} x2={width - padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
           ))}
 
-          {label === 'HbA1c' && (
-            <g>
-              <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((5.7 - min) / range) * (height - 2 * padding))} fill="#ecfdf5" opacity="0.5" />
-              <rect x={padding} y={height - padding - ((6.4 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={Math.max(0, ((6.4 - 5.7) / range) * (height - 2 * padding))} fill="#fefce8" opacity="0.5" />
-              <rect x={padding} y={padding} width={width - 2 * padding} height={Math.max(0, (height - padding - ((6.4 - min) / range) * (height - 2 * padding)) - padding)} fill="#fff7ed" opacity="0.5" />
-            </g>
-          )}
+
 
           {refY && refY > 0 && refY < height && (
             <g>
-              <text x={width - padding} y={refY - 2} textAnchor="end" fontSize="8" fill="#6b7280" fontStyle="italic">Target: {normalRange}</text>
+              <text x={width - padding} y={refY - 2} textAnchor="end" fontSize="8" fill="#6b7280" fontStyle="italic">Normal Range: {normalRange}</text>
             </g>
           )}
           <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" points={polylinePoints} />
@@ -197,17 +191,11 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
               <line key={ratio} x1={padding} y1={height * ratio} x2={graphWidth - padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
             ))}
 
-            {label === 'HbA1c' && (
-              <g>
-                <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={Math.max(0, ((5.7 - min) / range) * (height - 2 * padding))} fill="#ecfdf5" />
-                <rect x={padding} y={height - padding - ((6.4 - min) / range) * (height - 2 * padding)} width={graphWidth - 2 * padding} height={Math.max(0, ((6.4 - 5.7) / range) * (height - 2 * padding))} fill="#fefce8" />
-                <rect x={padding} y={padding} width={graphWidth - 2 * padding} height={Math.max(0, (height - padding - ((6.4 - min) / range) * (height - 2 * padding)) - padding)} fill="#fff7ed" />
-              </g>
-            )}
+
 
             {refY && refY > 0 && refY < height && (
               <g>
-                <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal: {normalRange}</text>
+                <text x={graphWidth - padding} y={refY - 5} textAnchor="end" fontSize="12" fill="#9ca3af" fontWeight="bold">Normal Range: {normalRange}</text>
               </g>
             )}
             <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
