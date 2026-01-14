@@ -721,16 +721,16 @@ export default function App() {
 
       {view === 'diary' && (
         <div className="px-6 animate-in fade-in">
-          {/* COMPLIANCE STATS */}
-          <div className="bg-stone-900 text-white p-4 rounded-3xl mb-4 shadow-xl flex justify-around items-center border border-white/10">
+          {/* COMPLIANCE STATS - SUBTLE STYLE */}
+          <div className="bg-stone-50/50 p-3 rounded-2xl mb-4 flex justify-around items-center border border-stone-100">
             <div className="text-center">
-              <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Oral Compliance</div>
-              <div className="text-2xl font-black">{compliance.oral}%</div>
+              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral Compliance</div>
+              <div className="text-xs font-black text-stone-600">{compliance.oral}%</div>
             </div>
-            <div className="w-px h-8 bg-white/10" />
+            <div className="w-px h-4 bg-stone-200" />
             <div className="text-center">
-              <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Insulin Compliance</div>
-              <div className="text-2xl font-black">{compliance.insulin}%</div>
+              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin Compliance</div>
+              <div className="text-xs font-black text-stone-600">{compliance.insulin}%</div>
             </div>
           </div>
 
@@ -1001,8 +1001,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* LIST ACTIVE MEDS - Scrollable container */}
-            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-4 custom-scrollbar">
+            {/* LIST ACTIVE MEDS - Continuity (No Scroll) */}
+            <div className="space-y-6 mt-6">
               {/* INSULINS */}
               {prescription.insulins.map((ins, idx) => (
                 <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
