@@ -315,8 +315,10 @@ export default function App() {
   const [expandedGraphData, setExpandedGraphData] = useState(null);
   const [highlightField, setHighlightField] = useState(null);
   const [safetyAlerts, setSafetyAlerts] = useState([]);
-  const [medSearch, setMedSearch] = useState('');
-  const [showMedResults, setShowMedResults] = useState(false);
+  const [insulinSearch, setInsulinSearch] = useState('');
+  const [oralSearch, setOralSearch] = useState('');
+  const [showInsulinResults, setShowInsulinResults] = useState(false);
+  const [showOralResults, setShowOralResults] = useState(false);
 
   useEffect(() => {
     // Re-calculate alerts whenever profile (comorbidities/age etc.) or prescription changes
@@ -416,21 +418,31 @@ export default function App() {
     return onSnapshot(q, (s) => setFullHistory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [user]);
 
-  const checkContraindication = (medName) => profile.pregnancyStatus && CONTRAINDICATIONS.pregnancy.some(c => medName.toLowerCase().includes(c.toLowerCase()));
+  const checkContraindication = (medName) => {
+    const med = MEDICATION_DATABASE.find(m => m.name.toLowerCase().includes(medName.toLowerCase()));
+    return profile.pregnancyStatus && med?.flags?.pregnancy === 'avoid';
+  };
 
   const getSuggestion = (insulinId) => {
     const insulin = prescription.insulins.find(i => i.id === insulinId);
-    if (!insulin || !insulin.slidingScale || !hgt) return null;
+    if (!insulin || !hgt) return null;
     const current = parseFloat(hgt);
     if (isNaN(current)) return null;
     if (current < 70) return "HYPO ALERT";
+
     const medDetails = MEDICATION_DATABASE.find(m => m.name === insulin.name);
     if (profile.pregnancyStatus && medDetails?.flags?.pregnancy === 'avoid') return "Unsafe (Pregnancy)";
-    const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
-    if (!rule) return null;
-    let dose = parseFloat(rule.dose);
-    if (insulin.maxDose && dose > parseFloat(insulin.maxDose)) dose = parseFloat(insulin.maxDose);
-    return dose;
+
+    let baseDose = parseFloat(insulin.fixedDose || 0);
+    let scaleDose = 0;
+
+    if (insulin.slidingScale && insulin.slidingScale.length > 0) {
+      const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
+      if (rule) scaleDose = parseFloat(rule.dose || 0);
+    }
+
+    let totalDose = baseDose + scaleDose;
+    return totalDose > 0 ? totalDose : null;
   };
 
   // FIX: Filter NaN values and remove duplicates to prevent clutter
@@ -883,46 +895,77 @@ export default function App() {
           <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
             <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
 
-            {/* SEARCH ADD */}
-            <div className="relative mb-6">
-              <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
-                <Search className="text-stone-400 mr-2" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search medication (e.g. Metformin, Lantus)..."
-                  value={medSearch}
-                  onChange={(e) => { setMedSearch(e.target.value); setShowMedResults(true); }}
-                  onFocus={() => setShowMedResults(true)}
-                  className="bg-transparent font-bold text-stone-700 outline-none w-full"
-                />
-                {medSearch && <button onClick={() => { setMedSearch(''); setShowMedResults(false); }}><X size={16} className="text-stone-400 hover:text-red-500" /></button>}
+            {/* SEPARATE SEARCH ADDITIONS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {/* INSULIN SEARCH */}
+              <div className="relative">
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Insulin</label>
+                <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
+                  <Syringe className="text-stone-400 mr-2" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search Insulin..."
+                    value={insulinSearch}
+                    onChange={(e) => { setInsulinSearch(e.target.value); setShowInsulinResults(true); }}
+                    onFocus={() => setShowInsulinResults(true)}
+                    className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                  />
+                </div>
+                {showInsulinResults && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
+                    {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase())))).map(med => (
+                      <div key={med.name} onClick={() => {
+                        setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Before Meals', slidingScale: [{ min: 0, max: 200, dose: 0 }] }] }));
+                        setInsulinSearch('');
+                        setShowInsulinResults(false);
+                      }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
+                        <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                        <PlusCircle size={14} className="text-emerald-400" />
+                      </div>
+                    ))}
+                    {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()))).length === 0 && (
+                      <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching insulins</div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {showMedResults && medSearch.length > 1 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
-                  {MEDICATION_DATABASE.filter(m => m.name.toLowerCase().includes(medSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(medSearch.toLowerCase()))).map(med => (
-                    <div key={med.name} onClick={() => {
-                      if (med.route === 'injectable') {
-                        setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Once Daily', type: med.class[0] || 'Manual', slidingScale: [] }] }));
-                      } else {
-                        setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, { id: generateId(), name: med.name, frequency: 'Once Daily', timings: ['Morning'] }] }));
-                      }
-                      setMedSearch('');
-                      setShowMedResults(false);
-                    }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
-                      <div>
-                        <div className="font-bold text-sm text-stone-800 group-hover:text-emerald-700">{med.name}</div>
-                        <div className="text-[10px] text-stone-400 font-bold uppercase">{med.class.join(', ')} • {med.brands?.join(', ')}</div>
-                      </div>
-                      <PlusCircle size={16} className="text-emerald-400 group-hover:text-emerald-600" />
-                    </div>
-                  ))}
+              {/* ORAL MEDS SEARCH */}
+              <div className="relative">
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Medicine</label>
+                <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
+                  <Pill className="text-stone-400 mr-2" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search Medicine..."
+                    value={oralSearch}
+                    onChange={(e) => { setOralSearch(e.target.value); setShowOralResults(true); }}
+                    onFocus={() => setShowOralResults(true)}
+                    className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                  />
                 </div>
-              )}
+                {showOralResults && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
+                    {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase())))).map(med => (
+                      <div key={med.name} onClick={() => {
+                        setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, { id: generateId(), name: med.name, frequency: 'Once Daily', timings: ['Morning'] }] }));
+                        setOralSearch('');
+                        setShowOralResults(false);
+                      }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
+                        <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                        <PlusCircle size={14} className="text-emerald-400" />
+                      </div>
+                    ))}
+                    {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()))).length === 0 && (
+                      <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching medications</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* LIST ACTIVE MEDS */}
-            <div className="space-y-4">
+            {/* LIST ACTIVE MEDS - Scrollable container */}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {/* INSULINS */}
               {prescription.insulins.map((ins, idx) => (
                 <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
@@ -935,10 +978,42 @@ export default function App() {
                     </div>
                     <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-400 bg-red-50 p-1.5 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
                   </div>
-                  <div className="bg-stone-50 p-3 rounded-xl">
-                    <div className="flex bg-white p-1 rounded-lg border border-stone-200 mb-2">
-                      <input type="number" placeholder="Max Dose" value={ins.maxDose || ''} onChange={(e) => { const n = [...prescription.insulins]; n[idx].maxDose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-xs font-bold outline-none" />
-                      <span className="text-[10px] font-bold text-stone-400 shrink-0 self-center pr-2">UNITS</span>
+                  <div className="bg-stone-50 p-3 rounded-xl space-y-3">
+                    <div className="flex bg-white p-1 rounded-lg border border-stone-200">
+                      <input type="number" placeholder="Fixed Dose" value={ins.fixedDose || ''} onChange={(e) => { const n = [...prescription.insulins]; n[idx].fixedDose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-xs font-bold outline-none" />
+                      <span className="text-[10px] font-bold text-stone-400 shrink-0 self-center pr-2">UNITS FIXED</span>
+                    </div>
+
+                    {/* SLIDING SCALE restoration */}
+                    <div className="border-t border-stone-200 pt-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-bold text-stone-500 uppercase">Sliding Scale (Optional)</span>
+                        <button onClick={() => {
+                          const n = [...prescription.insulins];
+                          n[idx].slidingScale = [...(n[idx].slidingScale || []), { min: 200, max: 250, dose: 2 }];
+                          setPrescription({ ...prescription, insulins: n });
+                        }} className="text-emerald-600 text-[10px] font-bold flex items-center gap-1 hover:underline">
+                          <PlusCircle size={10} /> Add Range
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {(ins.slidingScale || []).map((row, rIdx) => (
+                          <div key={rIdx} className="flex gap-1 items-center bg-white p-1 rounded-lg border border-stone-100">
+                            <span className="text-[9px] text-stone-400 font-bold w-12 text-center uppercase">BG Value</span>
+                            <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold outline-none" />
+                            <span className="text-stone-300">-</span>
+                            <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold outline-none" />
+                            <span className="mx-1 text-stone-300">→</span>
+                            <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold text-emerald-600 outline-none" />
+                            <span className="text-[9px] font-bold text-stone-400">u</span>
+                            <button onClick={() => {
+                              const n = [...prescription.insulins];
+                              n[idx].slidingScale = n[idx].slidingScale.filter((_, i) => i !== rIdx);
+                              setPrescription({ ...prescription, insulins: n });
+                            }} className="ml-auto text-red-300 hover:text-red-500 p-1"><X size={10} /></button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
