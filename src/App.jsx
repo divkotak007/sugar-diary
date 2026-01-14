@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import {
   getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
-  onSnapshot, query, orderBy, limit
+  onSnapshot, query, orderBy, limit, deleteDoc, updateDoc
 } from 'firebase/firestore';
 import {
   Activity, AlertCircle, AlertTriangle, Baby, BookOpen, Calendar, Candy, CheckCircle2, CheckSquare, ChevronDown, ChevronRight, ChevronUp,
@@ -210,9 +210,23 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose }) 
             )}
             <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
             {points.map((p, i) => (
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
-                <text x={p.x} y={p.y - 15} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
+              <g key={i} className="cursor-pointer" onClick={() => {
+                const action = prompt(`Vital: ${p.val} on ${new Date(p.date).toLocaleString()}\nType 'delete' to remove or enter NEW value to edit:`, p.val);
+                if (action === null) return;
+                if (action.toLowerCase() === 'delete') {
+                  handleDeleteEntry(p.id);
+                } else if (!isNaN(parseFloat(action))) {
+                  // handleEditVitals(p.id, parseFloat(action));
+                  const confirmEdit = confirm(`Change value from ${p.val} to ${action}?`);
+                  if (confirmEdit) {
+                    updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', p.id), {
+                      ["snapshot.profile." + label.toLowerCase().replace(' trend', '')]: parseFloat(action)
+                    }).then(() => alert("Updated.")).catch(() => alert("Update failed."));
+                  }
+                }
+              }}>
+                <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
+                <text x={p.x} y={p.y - 18} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
                 <text x={p.x} y={height - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
               </g>
             ))}
@@ -323,6 +337,8 @@ export default function App() {
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
   const [logTime, setLogTime] = useState(new Date().toISOString().slice(0, 16));
+  const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
+  const [editingLog, setEditingLog] = useState(null);
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
   const [highlightField, setHighlightField] = useState(null);
@@ -474,6 +490,7 @@ export default function App() {
     const allEntries = fullHistory
       .filter(log => log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric])))
       .map(log => ({
+        id: log.id,
         date: log.timestamp?.seconds * 1000 || (log.timestamp instanceof Date ? log.timestamp.getTime() : new Date(log.timestamp).getTime()),
         value: parseFloat(log.snapshot.profile[metric])
       }))
@@ -561,12 +578,23 @@ export default function App() {
     if (vitalsForm.instructions !== undefined) updatedProfile.instructions = vitalsForm.instructions;
     if (updatedProfile.gender === 'Female') updatedProfile.pregnancyStatus = vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus; else updatedProfile.pregnancyStatus = false;
     if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
+    const timestamp = vitalsLogTime ? new Date(vitalsLogTime) : new Date();
     try {
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, schemaVersion: 2, lastUpdated: new Date().toISOString() }, { merge: true });
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'vital_update', snapshot: { profile: updatedProfile, prescription }, timestamp: serverTimestamp(), tags: ['Vital Update'] });
-      setProfile(updatedProfile); setVitalsForm(prev => ({ ...prev, weight: '', hba1c: '', creatinine: '' })); setUnlockPersonal(false); setUnlockComorbidities(false); alert("Profile & Vitals Updated.");
+      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'vital_update', snapshot: { profile: updatedProfile, prescription }, timestamp, tags: ['Vital Update'] });
+      setProfile(updatedProfile); setVitalsForm(prev => ({ ...prev, weight: '', hba1c: '', creatinine: '' })); setUnlockPersonal(false); setUnlockComorbidities(false);
+      setVitalsLogTime(new Date().toISOString().slice(0, 16));
+      alert("Profile & Vitals Updated.");
       if (!prescription.insulins.length) setView('prescription');
     } catch (err) { alert("Save failed."); }
+  };
+
+  const handleDeleteEntry = async (id) => {
+    if (!confirm("Are you sure you want to delete this record?")) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
+      setEditingLog(null);
+    } catch (err) { alert("Delete failed."); }
   };
 
   const handleSavePrescription = async () => {
@@ -1021,7 +1049,7 @@ export default function App() {
               </label>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 mb-4">
               <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
               <textarea
                 value={vitalsForm.instructions !== undefined ? vitalsForm.instructions : profile.instructions}
@@ -1031,7 +1059,20 @@ export default function App() {
               ></textarea>
             </div>
 
-            <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg mt-4">Save & Update</button>
+            <div className="mb-4 bg-stone-50 p-4 rounded-xl border border-stone-100">
+              <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Vital Record Date & Time</label>
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-stone-300" />
+                <input
+                  type="datetime-local"
+                  value={vitalsLogTime}
+                  onChange={(e) => setVitalsLogTime(e.target.value)}
+                  className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                />
+              </div>
+            </div>
+
+            <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
           </div>
 
           <div className="mt-8 text-center">
@@ -1256,10 +1297,23 @@ export default function App() {
           <div className="flex flex-col gap-4 mb-6">
             <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16} /> PDF</button></div>
             <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
+            <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
           </div>
           <div className="space-y-3">
             {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
-              <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100">
+              <div key={item.id} onClick={() => {
+                const action = prompt(`Edit Log Entry:\nSugar: ${item.hgt || '-'}\nType 'delete' to remove or enter NEW sugar value to edit:`, item.hgt || '');
+                if (action === null) return;
+                if (action.toLowerCase() === 'delete') {
+                  handleDeleteEntry(item.id);
+                } else if (!isNaN(parseFloat(action))) {
+                  const confirmEdit = confirm(`Change sugar value to ${action}?`);
+                  if (confirmEdit) {
+                    updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', item.id), { hgt: parseFloat(action) })
+                      .then(() => alert("Updated.")).catch(() => alert("Update failed."));
+                  }
+                }
+              }} className="bg-white p-4 rounded-2xl border border-stone-100 active:scale-95 transition-all cursor-pointer">
                 <div className="flex justify-between items-start mb-2"><div><span className="text-xl font-bold text-emerald-800">{item.hgt}</span><span className="text-xs text-stone-400 ml-1">mg/dL</span></div><span className="text-[10px] font-bold bg-stone-100 px-2 py-1 rounded text-stone-500">{item.mealStatus}</span></div>
                 <div className="text-xs text-stone-500 mb-2">
                   {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500" /> {name} ({time})</div> })}
