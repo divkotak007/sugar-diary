@@ -11,8 +11,6 @@ import {
   ShieldAlert, ScrollText, Printer, Info, Thermometer, Candy, Dumbbell,
   AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare,
   PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X,
-  AlertTriangle, Zap, Wine, Sandwich, Pill, Trash2, XCircle, CheckSquare,
-  PlusCircle, Stethoscope, Baby, AlertCircle, ChevronRight, Calendar, TrendingUp, Lock, Unlock, Database, X,
   Search, Eye
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
@@ -429,7 +427,8 @@ const SimpleTrendGraph = ({ data, color, label, unit, normalRange, onClick }) =>
       const current = parseFloat(hgt);
       if (isNaN(current)) return null;
       if (current < 70) return "HYPO ALERT";
-      if (profile.pregnancyStatus && CONTRAINDICATIONS.pregnancy.some(c => insulin.name.toLowerCase().includes(c.toLowerCase()))) return "Unsafe (Pregnancy)";
+      const medDetails = MEDICATION_DATABASE.find(m => m.name === insulin.name);
+      if (profile.pregnancyStatus && medDetails?.flags?.pregnancy === 'avoid') return "Unsafe (Pregnancy)";
       const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
       if (!rule) return null;
       let dose = parseFloat(rule.dose);
