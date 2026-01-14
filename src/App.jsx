@@ -6,7 +6,7 @@ import {
   onSnapshot, query, orderBy, limit
 } from 'firebase/firestore';
 import {
-  Activity, AlertCircle, AlertTriangle, Baby, BookOpen, Calendar, Candy, CheckCircle2, CheckSquare, ChevronRight,
+  Activity, AlertCircle, AlertTriangle, Baby, BookOpen, Calendar, Candy, CheckCircle2, CheckSquare, ChevronDown, ChevronRight, ChevronUp,
   Clock, Database, Download, Droplet, Dumbbell, Pen as Edit3, Eye, FileText, Info, Lock, LogOut, Pill, PlusCircle,
   Printer, Save, Sandwich, ScrollText, Search, Settings, ShieldAlert, Stethoscope, Syringe, Thermometer, Trash as Trash2,
   TrendingUp, Unlock, User, Utensils, Wine, X, XCircle, Zap
@@ -319,6 +319,7 @@ export default function App() {
   const [oralSearch, setOralSearch] = useState('');
   const [showInsulinResults, setShowInsulinResults] = useState(false);
   const [showOralResults, setShowOralResults] = useState(false);
+  const [showAlertDetails, setShowAlertDetails] = useState(false);
 
   useEffect(() => {
     // Re-calculate alerts whenever profile (comorbidities/age etc.) or prescription changes
@@ -337,6 +338,17 @@ export default function App() {
     setSafetyAlerts(alerts);
   }, [profile, prescription]);
 
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.search-container')) {
+        setShowInsulinResults(false);
+        setShowOralResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (view === 'profile' && highlightField) {
@@ -501,8 +513,9 @@ export default function App() {
   };
 
   const handleSaveEntry = async () => {
-    if (!hgt) return alert("Enter Glucose Value");
-    const entry = { hgt: parseFloat(hgt), mealStatus, insulinDoses, medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]), tags: contextTags, timestamp: serverTimestamp(), snapshot: { profile, prescription } };
+    const hasMeds = Object.keys(medsTaken).some(k => medsTaken[k]) || Object.keys(insulinDoses).length > 0;
+    if (!hgt && !hasMeds) return alert("Enter Glucose or Medication");
+    const entry = { hgt: hgt ? parseFloat(hgt) : null, mealStatus, insulinDoses, medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]), tags: contextTags, timestamp: serverTimestamp(), snapshot: { profile, prescription } };
     setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
     await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entry);
   };
@@ -697,7 +710,7 @@ export default function App() {
           <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
             <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
             <div className="flex items-baseline gap-2 mb-4">
-              <input type="number" value={hgt} onChange={e => setHgt(e.target.value)} min="1" max="1000" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
+              <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
               <span className="text-xl font-bold text-stone-400">mg/dL</span>
             </div>
             <div className="flex gap-2 mb-4">
@@ -723,20 +736,6 @@ export default function App() {
             </div>
           ))}
 
-          {/* SAFETY ALERTS (SUBTLE STYLE) */}
-          {safetyAlerts.length > 0 && (
-            <div className="fixed top-4 left-4 right-4 z-[60] flex flex-col gap-2 animate-in slide-in-from-top fade-in">
-              {safetyAlerts.map((alert, idx) => (
-                <div key={idx} className={`p-4 rounded-xl shadow-lg flex items-center justify-between border ${alert.type === 'danger' ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-stone-50 border-stone-200 text-stone-700'}`}>
-                  <div className="flex items-center gap-3">
-                    <ShieldAlert size={20} className={alert.type === 'danger' ? 'text-orange-500' : 'text-stone-400'} />
-                    <span className="font-bold text-sm">{alert.message}</span>
-                  </div>
-                  <button onClick={() => setSafetyAlerts(s => s.filter((_, i) => i !== idx))}><X size={16} className="text-stone-400 hover:text-stone-600" /></button>
-                </div>
-              ))}
-            </div>
-          )}
 
           {prescription.oralMeds.map(med => (
             <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
@@ -898,7 +897,7 @@ export default function App() {
             {/* SEPARATE SEARCH ADDITIONS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {/* INSULIN SEARCH */}
-              <div className="relative">
+              <div className="relative search-container">
                 <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Insulin</label>
                 <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
                   <Syringe className="text-stone-400 mr-2" size={18} />
@@ -907,7 +906,7 @@ export default function App() {
                     placeholder="Search Insulin..."
                     value={insulinSearch}
                     onChange={(e) => { setInsulinSearch(e.target.value); setShowInsulinResults(true); }}
-                    onFocus={() => setShowInsulinResults(true)}
+                    onFocus={() => { setShowInsulinResults(true); setShowOralResults(false); }}
                     className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
                   />
                 </div>
@@ -915,11 +914,14 @@ export default function App() {
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
                     {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase())))).map(med => (
                       <div key={med.name} onClick={() => {
-                        setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Before Meals', slidingScale: [{ min: 0, max: 200, dose: 0 }] }] }));
+                        setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Before Meals', slidingScale: [] }] }));
                         setInsulinSearch('');
                         setShowInsulinResults(false);
                       }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
-                        <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                        <div>
+                          <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                          {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
+                        </div>
                         <PlusCircle size={14} className="text-emerald-400" />
                       </div>
                     ))}
@@ -931,7 +933,7 @@ export default function App() {
               </div>
 
               {/* ORAL MEDS SEARCH */}
-              <div className="relative">
+              <div className="relative search-container">
                 <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Medicine</label>
                 <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
                   <Pill className="text-stone-400 mr-2" size={18} />
@@ -940,7 +942,7 @@ export default function App() {
                     placeholder="Search Medicine..."
                     value={oralSearch}
                     onChange={(e) => { setOralSearch(e.target.value); setShowOralResults(true); }}
-                    onFocus={() => setShowOralResults(true)}
+                    onFocus={() => { setShowOralResults(true); setShowInsulinResults(false); }}
                     className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
                   />
                 </div>
@@ -952,7 +954,10 @@ export default function App() {
                         setOralSearch('');
                         setShowOralResults(false);
                       }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
-                        <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                        <div>
+                          <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                          {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
+                        </div>
                         <PlusCircle size={14} className="text-emerald-400" />
                       </div>
                     ))}
@@ -1041,6 +1046,25 @@ export default function App() {
 
               {prescription.insulins.length === 0 && prescription.oralMeds.length === 0 && (
                 <div className="text-center py-8 text-stone-400 text-xs font-bold uppercase">No active medications</div>
+              )}
+            </div>
+
+            <div className="mt-8 border-t border-stone-100 pt-4 mb-4">
+              <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex justify-between items-center text-stone-400 hover:text-stone-500 transition-colors">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300">Prescription Safety Review ({safetyAlerts.length})</span>
+                {showAlertDetails ? <ChevronUp size={16} className="text-stone-300" /> : <ChevronDown size={16} className="text-stone-300" />}
+              </button>
+
+              {showAlertDetails && (
+                <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-1">
+                  {safetyAlerts.length > 0 ? safetyAlerts.map((alert, i) => (
+                    <div key={i} className={`p-2 rounded-lg text-xs font-medium bg-stone-50/50 border border-stone-100/50 ${alert.type === 'danger' ? 'text-red-300' : 'text-stone-400'}`}>
+                      {alert.message}
+                    </div>
+                  )) : (
+                    <div className="text-[10px] text-stone-200 font-bold italic text-center py-2">No safety concerns detected</div>
+                  )}
+                </div>
               )}
             </div>
 
