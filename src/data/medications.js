@@ -110,11 +110,4 @@ export const getPrescriptionAlerts = (prescription, patientProfile) => {
 };
 
 
-export const FREQUENCY_RULES = {
-  'Once Daily': ['Morning'],
-  'Twice Daily': ['Morning', 'Evening'],
-  'Thrice Daily': ['Morning', 'Afternoon', 'Evening'],
-  'Bedtime': ['Bedtime'],
-  'Before Meals': ['Breakfast', 'Lunch', 'Dinner'],
-  'SOS': ['As Needed']
-};
+
