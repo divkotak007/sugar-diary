@@ -970,7 +970,7 @@ export default function App() {
             </div>
 
             {/* LIST ACTIVE MEDS - Scrollable container */}
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[420px] overflow-y-auto pr-4 custom-scrollbar">
               {/* INSULINS */}
               {prescription.insulins.map((ins, idx) => (
                 <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
@@ -981,7 +981,7 @@ export default function App() {
                         {['Once Daily', 'Twice Daily', 'Bedtime', 'Before Meals', 'SOS'].map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-400 bg-red-50 p-1.5 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
+                    <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-500 bg-red-50 p-2 rounded-xl hover:bg-red-100 transition-colors shadow-sm"><Trash2 size={18} /></button>
                   </div>
                   <div className="bg-stone-50 p-3 rounded-xl space-y-3">
                     <div className="flex bg-white p-1 rounded-lg border border-stone-200">
@@ -991,31 +991,31 @@ export default function App() {
 
                     {/* SLIDING SCALE restoration */}
                     <div className="border-t border-stone-200 pt-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Sliding Scale (Optional)</span>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-stone-500 uppercase tracking-tight">Sliding Scale (Optional)</span>
                         <button onClick={() => {
                           const n = [...prescription.insulins];
                           n[idx].slidingScale = [...(n[idx].slidingScale || []), { min: 200, max: 250, dose: 2 }];
                           setPrescription({ ...prescription, insulins: n });
-                        }} className="text-emerald-600 text-[10px] font-bold flex items-center gap-1 hover:underline">
-                          <PlusCircle size={10} /> Add Range
+                        }} className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-100 transition-colors">
+                          <PlusCircle size={14} /> Add Range
                         </button>
                       </div>
                       <div className="space-y-2">
                         {(ins.slidingScale || []).map((row, rIdx) => (
-                          <div key={rIdx} className="flex gap-1 items-center bg-white p-1 rounded-lg border border-stone-100">
-                            <span className="text-[9px] text-stone-400 font-bold w-12 text-center uppercase">BG Value</span>
-                            <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold outline-none" />
+                          <div key={rIdx} className="flex gap-2 items-center bg-white p-2 rounded-xl border border-stone-100 shadow-sm">
+                            <span className="text-[10px] text-stone-400 font-bold uppercase shrink-0">BG</span>
+                            <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-bold outline-none bg-stone-50 rounded p-1" />
                             <span className="text-stone-300">-</span>
-                            <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold outline-none" />
+                            <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-bold outline-none bg-stone-50 rounded p-1" />
                             <span className="mx-1 text-stone-300">→</span>
-                            <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-12 text-center text-[10px] font-bold text-emerald-600 outline-none" />
-                            <span className="text-[9px] font-bold text-stone-400">u</span>
+                            <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-14 text-center text-sm font-black text-emerald-600 outline-none bg-emerald-50 rounded p-1" />
+                            <span className="text-xs font-bold text-stone-400">u</span>
                             <button onClick={() => {
                               const n = [...prescription.insulins];
                               n[idx].slidingScale = n[idx].slidingScale.filter((_, i) => i !== rIdx);
                               setPrescription({ ...prescription, insulins: n });
-                            }} className="ml-auto text-red-300 hover:text-red-500 p-1"><X size={10} /></button>
+                            }} className="ml-auto text-red-400 hover:text-red-500 p-2"><Trash2 size={16} /></button>
                           </div>
                         ))}
                       </div>
@@ -1034,7 +1034,7 @@ export default function App() {
                         {Object.keys(FREQUENCY_RULES).map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-400 bg-red-50 p-1.5 rounded-lg hover:bg-red-100"><Trash2 size={14} /></button>
+                    <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-500 bg-red-50 p-2 rounded-xl hover:bg-red-100 transition-colors shadow-sm"><Trash2 size={18} /></button>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {(FREQUENCY_RULES[med.frequency] || []).map(t => (
