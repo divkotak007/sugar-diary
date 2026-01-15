@@ -15,6 +15,7 @@ import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './d
 import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
+import { TERMS_AND_CONDITIONS } from './data/terms.js';
 
 // NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
 
@@ -412,21 +413,9 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
 // --- CONSENT SCREEN ---
 const ConsentScreen = ({ onConsent }) => {
   const [agreed, setAgreed] = useState(false);
-  const [termsData, setTermsData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/data/legal/terms_and_conditions.json')
-      .then(res => res.json())
-      .then(data => {
-        setTermsData(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load terms:", err);
-        setLoading(false);
-      });
-  }, []);
+  // PRELOADED TERMS
+  const termsData = TERMS_AND_CONDITIONS;
+  const loading = false;
 
   const iconMap = { Activity, ScrollText, ShieldAlert };
   const renderContent = (content) => content.map((part, idx) => <span key={idx} className={part.bold ? "font-bold" : ""}>{part.text}</span>);
