@@ -147,26 +147,51 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
           </g>
         ))}
       </svg>
-      <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Click to Expand</div>
+      {/* Read-Only Indicator */}
+      <div className="absolute top-2 right-2 flex items-center gap-1 bg-stone-50 px-2 py-0.5 rounded-full border border-stone-200">
+        <Eye size={10} className="text-stone-400" />
+        <span className="text-[8px] font-black text-stone-400 uppercase tracking-tighter">Read Only</span>
+      </div>
+      <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Tap to View History</div>
     </div>
   );
+};
+
+// Error Boundary Fallback for Graphs
+const GraphErrorBoundary = ({ children }) => {
+  try {
+    return children;
+  } catch (e) {
+    return (
+      <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-center justify-center h-24 text-stone-400 text-xs italic">
+        Unable to load trend data safely.
+      </div>
+    );
+  }
 };
 
 // Expanded Graph Modal
 const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fullHistory, onEdit, onDelete }) => {
   const containerRef = React.useRef(null);
+  const [isLogOpen, setIsLogOpen] = useState(false);
   const height = 300;
-  const pointsPerView = 5; // Visible area shows 5 most recent
-  const screenWidth = Math.min(window.innerWidth - 48, 600);
-  const pointSpacing = screenWidth / pointsPerView;
-  const graphWidth = Math.max(screenWidth, data.length * pointSpacing);
   const padding = 40;
 
+  // Crash Prevention
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-[32px] w-full max-w-sm text-center">
+          <AlertCircle size={48} className="mx-auto text-stone-300 mb-4" />
+          <h3 className="text-xl font-bold text-stone-800 mb-2">No Data Points</h3>
+          <button onClick={onClose} className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold">Close View</button>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
-    // Scroll to the end (most recent points) on open
-    if (containerRef.current) {
-      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
-    }
+    if (containerRef.current) containerRef.current.scrollLeft = containerRef.current.scrollWidth;
   }, [data]);
 
   const values = data.map(d => d.value);
@@ -177,85 +202,137 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
   const max = dataMax + (dataRange * 0.4);
   const range = max - min || 1;
 
+  const screenWidth = Math.min(window.innerWidth - 48, 600);
+  const pointsPerView = 5;
+  const pointSpacing = screenWidth / pointsPerView;
+  const graphWidth = Math.max(screenWidth, data.length * pointSpacing);
+
   const points = data.map((d, i) => {
     const x = padding + (i / (data.length - 1 === 0 ? 1 : data.length - 1)) * (graphWidth - 2 * padding);
     const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
-    return { x, y, val: d.value, date: d.date, id: d.id }; // Added ID here
+    return { x, y, val: d.value, date: d.date, id: d.id };
   });
 
   const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
 
+  // Filter history for this specific vital
+  const vitalType = label.toLowerCase();
+  const relevantLogs = [...fullHistory]
+    .filter(log => log.type === 'vital_update' && log.snapshot?.profile?.[vitalType] !== undefined && log.snapshot?.profile?.[vitalType] !== null)
+    .sort((a, b) => {
+      const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
+      const tb = b.timestamp?.seconds || new Date(b.timestamp).getTime() / 1000 || 0;
+      return tb - ta;
+    });
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[100] bg-white rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 animate-in slide-in-from-bottom border-t border-stone-100">
-      <div className="flex justify-between items-start mb-6">
+    <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-in fade-in flex flex-col">
+      <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-6 py-6 border-b border-stone-100 flex justify-between items-center">
         <div>
-          <h3 className={`text-2xl font-bold text-${color}-600`}>{label} History</h3>
-          <p className="text-sm text-stone-400 font-medium">Full scrollable trend view ({data.length} records)</p>
+          <h3 className={`text-2xl font-black text-${color}-600 uppercase tracking-tighter`}>{label} Trends</h3>
+          <p className="text-xs text-stone-400 font-bold uppercase">Medical Record History</p>
         </div>
-        <button onClick={onClose} className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={20} className="text-stone-500" /></button>
+        <button onClick={onClose} className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={24} className="text-stone-600" /></button>
       </div>
 
-      <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth">
-        <div style={{ width: graphWidth, height }}>
-          <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-visible">
-            {[0.2, 0.4, 0.6, 0.8].map(ratio => (
-              <line key={ratio} x1={0} y1={height * ratio} x2={graphWidth} y2={height * ratio} stroke="#f1f5f9" strokeWidth="1" />
-            ))}
-            {label === "HbA1c" && (
-              <g opacity="0.05">
-                <rect x={0} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
-                <rect x={0} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
-                <rect x={0} y={0} width={graphWidth} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
-              </g>
-            )}
-            <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
-            {points.map((p, i) => (
-              <g key={i} className="cursor-pointer" onClick={() => {
-                const log = fullHistory.find(l => l.id === p.id);
-                if (log) setVitalActionLog({ log, val: p.val, label, date: p.date });
-              }}>
-                <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
-                <text x={p.x} y={p.y - 18} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
-                <text x={p.x} y={height - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      </div>
-
-      {vitalActionLog && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom pb-8">
-            <div className="p-6 border-b border-stone-50 flex justify-between items-center bg-stone-50/50">
-              <div>
-                <h4 className="font-black text-stone-800 tracking-tight">{label} Record</h4>
-                <p className="text-[10px] text-stone-400 font-bold uppercase">{new Date(vitalActionLog.date).toLocaleString()}</p>
-              </div>
-              <button onClick={() => setVitalActionLog(null)} className="p-2 bg-white rounded-xl shadow-sm"><X size={16} /></button>
-            </div>
-
-            <div className="p-6 space-y-3">
-              <button onClick={() => { onEdit(vitalActionLog.log, label.toLowerCase().replace(' trend', '')); setVitalActionLog(null); onClose(); }} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all">
-                <Edit3 size={18} /> Edit Entry
-              </button>
-
-              <div className="relative">
-                {((Date.now() - (vitalActionLog.log.timestamp?.seconds * 1000 || new Date(vitalActionLog.log.timestamp))) / 1000 < 1800) ? (
-                  <button disabled className="w-full bg-stone-100 text-stone-300 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed opacity-50">
-                    <Trash2 size={18} /> Delete Locked (30m audit)
-                  </button>
-                ) : (
-                  <button onClick={() => { if (confirm("Permanently delete?")) { onDelete(vitalActionLog.log.id); setVitalActionLog(null); } }} className="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all border border-red-100">
-                    <Trash2 size={18} /> Delete Entry
-                  </button>
-                )}
-              </div>
-
-              <button onClick={() => setVitalActionLog(null)} className="w-full py-4 rounded-2xl font-bold text-stone-400 hover:bg-stone-50 transition-all">Cancel</button>
-            </div>
+      <div className="p-6 pb-0">
+        <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth cursor-default">
+          <div style={{ width: graphWidth, height }}>
+            <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-visible">
+              {[0.2, 0.4, 0.6, 0.8].map(ratio => (
+                <line key={ratio} x1={0} y1={height * ratio} x2={graphWidth} y2={height * ratio} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4" />
+              ))}
+              {label === "HbA1c" && (
+                <g opacity="0.05">
+                  <rect x={0} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
+                  <rect x={0} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
+                  <rect x={0} y={0} width={graphWidth} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
+                </g>
+              )}
+              <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" points={polylinePoints} />
+              {points.map((p, i) => (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" />
+                  <text x={p.x} y={p.y - 20} textAnchor="middle" fontSize="14" fontWeight="900" fill="#1c1917">{p.val}</text>
+                  <text x={p.x} y={height - 5} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#78716c">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
+                </g>
+              ))}
+            </svg>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="flex-1 bg-stone-50 rounded-t-[40px] p-6 shadow-inner mt-4">
+        <button
+          onClick={() => setIsLogOpen(!isLogOpen)}
+          className="w-full flex justify-between items-center p-6 bg-white rounded-3xl shadow-sm mb-4 border border-stone-100 group active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className={`p-3 bg-${color}-50 rounded-2xl`}>
+              <ScrollText className={`text-${color}-600`} size={24} />
+            </div>
+            <div className="text-left">
+              <h4 className="text-xl font-black text-stone-800 tracking-tighter uppercase">History Logbook</h4>
+              <p className="text-xs font-bold text-stone-400">{relevantLogs.length} Records Documented</p>
+            </div>
+          </div>
+          {isLogOpen ? <ChevronUp size={24} className="text-stone-300" /> : <ChevronDown size={24} className="text-stone-300" />}
+        </button>
+
+        {isLogOpen && (
+          <div className="space-y-3 animate-in fade-in slide-in-from-top duration-300">
+            {relevantLogs.map((log) => {
+              const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
+              const isLocked = (Date.now() - dateObj.getTime()) / 1000 < 1800;
+
+              return (
+                <div key={log.id} className="bg-white p-5 rounded-[24px] shadow-sm border border-stone-100 flex justify-between items-center group">
+                  <div className="flex items-center gap-4">
+                    <div className="text-center bg-stone-50 py-2 px-3 rounded-2xl min-w-[64px]">
+                      <div className="text-[10px] font-black text-stone-400 uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
+                      <div className="text-lg font-black text-stone-800 leading-tight">{dateObj.getDate()}</div>
+                    </div>
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-stone-800">{log.snapshot.profile[vitalType]}</span>
+                        <span className="text-xs font-bold text-stone-400 uppercase">{unit}</span>
+                      </div>
+                      <div className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">Recorded at {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onEdit(log, vitalType)}
+                      className="p-3 bg-stone-50 rounded-xl text-stone-400 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-90"
+                      title="Edit Entry"
+                    >
+                      <Edit3 size={18} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(log.id)}
+                      disabled={isLocked}
+                      className={`p-3 rounded-xl transition-all active:scale-90 ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                      title={isLocked ? "Delete Locked (30m audit)" : "Delete Entry"}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {relevantLogs.length === 0 && (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BookOpen size={24} className="text-stone-300" />
+                </div>
+                <p className="text-stone-400 font-bold text-sm">No recorded history for {label} yet.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -363,7 +440,6 @@ export default function App() {
   const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
   const [editingLog, setEditingLog] = useState(null);
 
-  const [vitalActionLog, setVitalActionLog] = useState(null);
   const [expandedGraphData, setExpandedGraphData] = useState(null);
   const [highlightField, setHighlightField] = useState(null);
   const [safetyAlerts, setSafetyAlerts] = useState([]);
@@ -622,13 +698,18 @@ export default function App() {
 
     const timestamp = vitalsLogTime ? new Date(vitalsLogTime) : new Date();
 
-    // 2. Duplicate Check (1 Hour Rule)
+    // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
     if (!editingLog) {
+      const updatedParams = Object.keys(vitalsForm).filter(k => vitalsForm[k] !== '' && vitalsForm[k] !== undefined);
       const recent = fullHistory.find(l =>
         l.type === 'vital_update' &&
+        l.updatedParams?.some(p => updatedParams.includes(p)) &&
         Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
       );
-      if (recent && !confirm("An entry was recorded in the last hour. Are you sure you want to add another?")) return;
+      if (recent) {
+        const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
+        if (!confirm(`Warning: ${pNames} was already recorded in the last hour. Are you sure this is a new measurement?`)) return;
+      }
     }
 
     // 3. Prep Data
@@ -1186,9 +1267,18 @@ export default function App() {
 
             <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <input id="field-weight" type="number" placeholder={`Wt: ${profile.weight || '-'} kg`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
-              <input id="field-hba1c" type="number" step="0.1" placeholder={`A1c: ${profile.hba1c || '-'}%`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
-              <input id="field-creatinine" type="number" step="0.1" placeholder={`Cr: ${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-3 rounded-xl font-bold outline-none focus:bg-blue-50 transition-all duration-500" />
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Weight (kg)</label>
+                <input id="field-weight" type="number" placeholder={`${profile.weight || '-'}`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-blue-50 border-2 border-transparent focus:border-blue-200 transition-all" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">HbA1c (%)</label>
+                <input id="field-hba1c" type="number" step="0.1" placeholder={`${profile.hba1c || '-'}`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-emerald-50 border-2 border-transparent focus:border-emerald-200 transition-all" />
+              </div>
+            </div>
+            <div className="flex flex-col mb-6">
+              <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Creatinine (mg/dL)</label>
+              <input id="field-creatinine" type="number" step="0.1" placeholder={`${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-purple-50 border-2 border-transparent focus:border-purple-200 transition-all" />
             </div>
 
             {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
@@ -1241,21 +1331,27 @@ export default function App() {
           </div>
           {/* Vertical Stack for Small Charts */}
           <div className="flex flex-col gap-3">
-            <SimpleTrendGraph
-              data={getTrendData('weight')} label="Weight" unit="kg" color="orange" normalRange={null}
-              onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
-              disableHover={!!expandedGraphData}
-            />
-            <SimpleTrendGraph
-              data={getTrendData('hba1c')} label="HbA1c" unit="%" color="emerald" normalRange={5.7}
-              onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
-              disableHover={!!expandedGraphData}
-            />
-            <SimpleTrendGraph
-              data={getTrendData('creatinine')} label="Creatinine" unit="mg/dL" color="purple" normalRange={1.2}
-              onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
-              disableHover={!!expandedGraphData}
-            />
+            <GraphErrorBoundary>
+              <SimpleTrendGraph
+                data={getTrendData('weight')} label="Weight" unit="kg" color="orange" normalRange={null}
+                onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
+                disableHover={!!expandedGraphData}
+              />
+            </GraphErrorBoundary>
+            <GraphErrorBoundary>
+              <SimpleTrendGraph
+                data={getTrendData('hba1c')} label="HbA1c" unit="%" color="emerald" normalRange={5.7}
+                onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
+                disableHover={!!expandedGraphData}
+              />
+            </GraphErrorBoundary>
+            <GraphErrorBoundary>
+              <SimpleTrendGraph
+                data={getTrendData('creatinine')} label="Creatinine" unit="mg/dL" color="purple" normalRange={1.2}
+                onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
+                disableHover={!!expandedGraphData}
+              />
+            </GraphErrorBoundary>
           </div>
         </div>
       )}
