@@ -47,6 +47,47 @@ const TAG_EMOJIS = {
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+// --- SECURITY GUARDIAN (Firewall Layer) ---
+const SecurityGuardian = ({ children }) => {
+  useEffect(() => {
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handleKeyDown = (e) => {
+      // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+      if (
+        e.keyCode === 123 ||
+        (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
+        (e.ctrlKey && e.keyCode === 85) ||
+        (e.ctrlKey && e.keyCode === 83)
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  return (
+    <div className="select-none h-full relative">
+      {/* Dynamic Watermark - IP Protection */}
+      <div className="fixed top-2 left-1/2 -translate-x-1/2 pointer-events-none z-[9999] opacity-[0.03] rotate-[-5deg]">
+        <div className="text-[120px] font-black leading-none whitespace-nowrap">D-KOTAK IP PROT</div>
+      </div>
+      {children}
+    </div>
+  );
+};
+
 const calculateAge = (dob) => {
   if (!dob) return '';
   const birthDate = new Date(dob);
@@ -115,18 +156,20 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
 
   return (
-    <div onClick={onClick} className={`bg-white p-4 rounded-2xl border border-stone-100 shadow-sm relative overflow-hidden bg-opacity-100 ${!disableHover ? 'cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 hover:overflow-visible z-0 hover:z-50' : ''}`}>
+    <div
+      onClick={onClick}
+      aria-label={`${label} progress trend chart`}
+      className={`bg-white p-4 rounded-2xl border border-stone-100 shadow-sm relative overflow-hidden bg-opacity-100 ${!disableHover ? 'cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 z-0 hover:z-50' : ''}`}
+    >
       <div className="flex justify-between items-center mb-4">
         <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
         <span className={`text-sm font-bold text-${color}-600`}>{data[data.length - 1].value} {unit}</span>
       </div>
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-        {/* CORRECTION: Darker background grid lines for visibility */}
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-hidden pointer-events-none">
+        {/* Grid lines */}
         {[0.2, 0.4, 0.6, 0.8].map(ratio => (
           <line key={ratio} x1={padding} y1={height * ratio} x2={width - padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
         ))}
-
-
 
         {label === "HbA1c" && (
           <g opacity="0.1">
@@ -147,11 +190,6 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, disa
           </g>
         ))}
       </svg>
-      {/* Read-Only Indicator */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 bg-stone-50 px-2 py-0.5 rounded-full border border-stone-200">
-        <Eye size={10} className="text-stone-400" />
-        <span className="text-[8px] font-black text-stone-400 uppercase tracking-tighter">Read Only</span>
-      </div>
       <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Tap to View History</div>
     </div>
   );
@@ -235,10 +273,10 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
         <button onClick={onClose} className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={24} className="text-stone-600" /></button>
       </div>
 
-      <div className="p-6 pb-0">
-        <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth cursor-default">
+      <div className="p-6 pb-0 overflow-hidden">
+        <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth cursor-default overflow-y-hidden">
           <div style={{ width: graphWidth, height }}>
-            <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-visible">
+            <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-hidden pointer-events-none">
               {[0.2, 0.4, 0.6, 0.8].map(ratio => (
                 <line key={ratio} x1={0} y1={height * ratio} x2={graphWidth} y2={height * ratio} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4" />
               ))}
@@ -1042,564 +1080,574 @@ export default function App() {
   if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative">
-      {expandedGraphData && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setExpandedGraphData(null)} />
-          <ExpandedGraphModal {...expandedGraphData} onClose={() => setExpandedGraphData(null)} />
-        </>
-      )}
-
-      {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
-
-      <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-4">
-            {/* FIX: Profile Picture Loading with Error Handler */}
-            {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt="Profile"
-                className="w-12 h-12 rounded-full border-2 border-stone-100"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            {/* Fallback Icon if image fails or missing */}
-            <div
-              className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"
-              style={{ display: user.photoURL ? 'none' : 'flex' }}
-            >
-              <User size={24} />
+    <SecurityGuardian>
+      <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative select-none">
+        {/* MEDICAL WATERMARK (Subtle bottom layer) */}
+        <div className="fixed inset-0 pointer-events-none opacity-[0.015] flex flex-col items-center justify-center gap-48 -z-10 overflow-hidden rotate-[-15deg]">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="text-4xl font-black whitespace-nowrap uppercase tracking-[1em]">
+              ONETRUTH MEDICAL • PROTECTED SYSTEM • DO NOT COPY • ONETRUTH MEDICAL
             </div>
+          ))}
+        </div>
+        {expandedGraphData && (
+          <>
+            <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setExpandedGraphData(null)} />
+            <ExpandedGraphModal {...expandedGraphData} onClose={() => setExpandedGraphData(null)} />
+          </>
+        )}
 
-            <div>
-              <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Sugar Diary</div>
-              <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
-              <div className="text-xs text-stone-400 flex items-center gap-2">
-                {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
-                {profile.pregnancyStatus && <span className="text-red-500 font-bold flex items-center gap-1"><Baby size={10} /> Preg</span>}
+        {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
+
+        <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              {/* FIX: Profile Picture Loading with Error Handler */}
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt="Profile"
+                  className="w-12 h-12 rounded-full border-2 border-stone-100"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              {/* Fallback Icon if image fails or missing */}
+              <div
+                className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"
+                style={{ display: user.photoURL ? 'none' : 'flex' }}
+              >
+                <User size={24} />
               </div>
-            </div>
-          </div>
-          <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
-        </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-          <StatBadge emoji="⚖️" label="Weight" value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
-          <StatBadge emoji="🩸" label="HbA1c" value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
-          <StatBadge emoji="🧪" label="Creat" value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
-        </div>
-      </div>
-
-      {view === 'diary' && (
-        <div className="px-6 animate-in fade-in">
-          {/* COMPLIANCE STATS - SUBTLE STYLE */}
-          <div className="bg-stone-50/50 p-3 rounded-2xl mb-4 flex justify-around items-center border border-stone-100">
-            <div className="text-center">
-              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral</div>
-              <div className="text-xs font-black text-stone-600">{compliance.oral}%</div>
-            </div>
-            <div className="w-px h-4 bg-stone-200" />
-            <div className="text-center">
-              <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin</div>
-              <div className="text-xs font-black text-stone-600">{compliance.insulin}%</div>
-            </div>
-            <div className="w-px h-4 bg-stone-200" />
-            <div className="text-center">
-              <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Overall</div>
-              <div className="text-xs font-black text-emerald-600">{compliance.overall}%</div>
-            </div>
-          </div>
-
-          {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
-          {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle /> POOR CONTROL</div>}
-          {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> HIGH SUGAR!</div>}
-          {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> DANGER! CHECK KETONES</div>}
-
-          <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
-            <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
-            <div className="flex items-baseline gap-2 mb-4">
-              <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
-              <span className="text-xl font-bold text-stone-400">mg/dL</span>
-            </div>
-            <div className="flex gap-2 mb-4">
-              {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => setMealStatus(m)} />)}
-            </div>
-          </div>
-
-          {prescription.insulins.map(insulin => (
-            <div key={insulin.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center mb-2">
               <div>
-                <span className="font-bold text-stone-700 block">{insulin.name}</span>
-                <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {getSuggestion(insulin.id) && (
-                  <div className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
-                    <div className="flex items-center gap-1"><Zap size={10} /> {getSuggestion(insulin.id)}u</div>
-                    <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
-                  </div>
-                )}
-                <input type="number" placeholder="0" className="w-16 bg-stone-50 p-2 rounded text-xl font-bold text-right" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
+                <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Sugar Diary</div>
+                <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
+                <div className="text-xs text-stone-400 flex items-center gap-2">
+                  {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
+                  {profile.pregnancyStatus && <span className="text-red-500 font-bold flex items-center gap-1"><Baby size={10} /> Preg</span>}
+                </div>
               </div>
             </div>
-          ))}
-
-
-          {prescription.oralMeds.map(med => (
-            <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
-              <div className="font-bold text-sm mb-2">{med.name}</div>
-              <div className="flex gap-2 flex-wrap">
-                {med.timings.map(t => (
-                  <button key={t} onClick={() => setMedsTaken(p => ({ ...p, [`${med.id}_${t}`]: !p[`${med.id}_${t}`] }))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : 'bg-stone-50'}`}>{t}</button>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          <div className="flex flex-wrap gap-2 mt-4 mb-4">
-            {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
+            <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
           </div>
 
-          <div className="mb-6 bg-white p-4 rounded-2xl border border-stone-100">
-            <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
-            <div className="flex items-center gap-2 bg-stone-50 p-3 rounded-xl border border-stone-100 focus-within:border-emerald-500 transition-all">
-              <Calendar size={18} className="text-stone-400" />
-              <input
-                type="datetime-local"
-                value={logTime}
-                onChange={(e) => setLogTime(e.target.value)}
-                className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
-              />
-            </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
+            <StatBadge emoji="⚖️" label="Weight" value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
+            <StatBadge emoji="🩸" label="HbA1c" value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
+            <StatBadge emoji="🧪" label="Creat" value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
           </div>
-
-          {editingLog && !editingLog.type ? (
-            <div className="flex gap-2 mb-6">
-              <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
-              <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-2xl font-bold">Cancel</button>
-            </div>
-          ) : (
-            <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
-          )}
         </div>
-      )}
 
-      {view === 'profile' && (
-        <div className="px-6 pb-32 animate-in slide-in-from-right">
-          <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
-            {/* LOCKED PERSONAL DETAILS */}
-            {(!unlockPersonal && (profile.dob || profile.gender)) ? (
-              <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
-                <div>
-                  <div className="text-[10px] font-bold text-stone-400 uppercase">Personal Details</div>
-                  <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
-                  <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
-                </div>
-                <button onClick={() => { if (confirm("Changing Date of Birth or Gender may affect medical records and trends. Proceed with caution.")) setUnlockPersonal(true); }}><Lock size={16} className="text-stone-400" /></button>
+        {view === 'diary' && (
+          <div className="px-6 animate-in fade-in">
+            {/* COMPLIANCE STATS - SUBTLE STYLE */}
+            <div className="bg-stone-50/50 p-3 rounded-2xl mb-4 flex justify-around items-center border border-stone-100">
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral</div>
+                <div className="text-xs font-black text-stone-600">{compliance.oral}%</div>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
-                <div>
-                  <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
-                  <input id="field-dob" type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
-                    const dob = e.target.value;
-                    setVitalsForm(p => ({ ...p, dob, age: calculateAge(dob) }));
-                  }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm transition-all duration-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
-                  <select value={vitalsForm.gender || profile.gender || ''} onChange={e => setVitalsForm(p => ({ ...p, gender: e.target.value }))} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm h-[46px]">
-                    <option value="">Select...</option><option value="Male">Male</option><option value="Female">Female</option>
-                  </select>
-                </div>
+              <div className="w-px h-4 bg-stone-200" />
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin</div>
+                <div className="text-xs font-black text-stone-600">{compliance.insulin}%</div>
               </div>
-            )}
+              <div className="w-px h-4 bg-stone-200" />
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Overall</div>
+                <div className="text-xs font-black text-emerald-600">{compliance.overall}%</div>
+              </div>
+            </div>
 
-            {/* Comorbidities Section */}
-            {!unlockComorbidities && profile.comorbidities?.length > 0 ? (
-              <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
-                <div>
-                  <div className="text-[10px] font-bold text-stone-400 uppercase">Comorbidities</div>
-                  <div className="font-bold text-stone-700 text-sm">{profile.comorbidities.join(', ')}</div>
-                </div>
-                <button onClick={() => setUnlockComorbidities(true)}><Lock size={16} className="text-stone-400" /></button>
+            {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
+            {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle /> POOR CONTROL</div>}
+            {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> HIGH SUGAR!</div>}
+            {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> DANGER! CHECK KETONES</div>}
+
+            <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
+              <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
+              <div className="flex items-baseline gap-2 mb-4">
+                <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
+                <span className="text-xl font-bold text-stone-400">mg/dL</span>
               </div>
-            ) : (
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><Activity size={12} /> Comorbidities</h3>
-                  {unlockComorbidities && <button onClick={() => setUnlockComorbidities(false)}><Unlock size={16} className="text-stone-400" /></button>}
+              <div className="flex gap-2 mb-4">
+                {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => setMealStatus(m)} />)}
+              </div>
+            </div>
+
+            {prescription.insulins.map(insulin => (
+              <div key={insulin.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center mb-2">
+                <div>
+                  <span className="font-bold text-stone-700 block">{insulin.name}</span>
+                  <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {["Nill", "Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
-                    <label key={c} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${(profile.comorbidities || []).includes(c) ? 'bg-stone-900 text-white' : 'bg-stone-50 text-stone-600'}`}>
-                      <input
-                        type="checkbox"
-                        checked={(profile.comorbidities || []).includes(c)}
-                        onChange={e => {
-                          const current = profile.comorbidities || [];
-                          let newC;
-                          if (c === "Nill") {
-                            newC = e.target.checked ? ["Nill"] : [];
-                          } else {
-                            if (e.target.checked) {
-                              newC = [...current.filter(i => i !== "Nill"), c];
-                            } else {
-                              newC = current.filter(i => i !== c);
-                            }
-                          }
-                          setProfile(prev => ({ ...prev, comorbidities: newC }));
-                        }}
-                        className="hidden"
-                      />
-                      {c}
-                    </label>
+                <div className="flex items-center gap-2">
+                  {getSuggestion(insulin.id) && (
+                    <div className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
+                      <div className="flex items-center gap-1"><Zap size={10} /> {getSuggestion(insulin.id)}u</div>
+                      <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
+                    </div>
+                  )}
+                  <input type="number" placeholder="0" className="w-16 bg-stone-50 p-2 rounded text-xl font-bold text-right" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
+                </div>
+              </div>
+            ))}
+
+
+            {prescription.oralMeds.map(med => (
+              <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
+                <div className="font-bold text-sm mb-2">{med.name}</div>
+                <div className="flex gap-2 flex-wrap">
+                  {med.timings.map(t => (
+                    <button key={t} onClick={() => setMedsTaken(p => ({ ...p, [`${med.id}_${t}`]: !p[`${med.id}_${t}`] }))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : 'bg-stone-50'}`}>{t}</button>
                   ))}
                 </div>
               </div>
-            )}
+            ))}
 
-            <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Weight (kg)</label>
-                <input id="field-weight" type="number" placeholder={`${profile.weight || '-'}`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-blue-50 border-2 border-transparent focus:border-blue-200 transition-all" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">HbA1c (%)</label>
-                <input id="field-hba1c" type="number" step="0.1" placeholder={`${profile.hba1c || '-'}`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-emerald-50 border-2 border-transparent focus:border-emerald-200 transition-all" />
-              </div>
-            </div>
-            <div className="flex flex-col mb-6">
-              <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Creatinine (mg/dL)</label>
-              <input id="field-creatinine" type="number" step="0.1" placeholder={`${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-purple-50 border-2 border-transparent focus:border-purple-200 transition-all" />
+            <div className="flex flex-wrap gap-2 mt-4 mb-4">
+              {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
             </div>
 
-            {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
-              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer mb-6 ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'border-red-200 bg-red-50' : 'border-stone-100'}`}>
-                <Baby className={vitalsForm.pregnancyStatus || profile.pregnancyStatus ? "text-red-500" : "text-stone-300"} />
-                <span className="font-bold text-sm text-stone-700">Patient is Pregnant</span>
-                <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({ ...vitalsForm, pregnancyStatus: e.target.checked })} className="ml-auto w-5 h-5 accent-red-500" />
-              </label>
-            )}
-
-            <div className="mt-4 mb-4">
-              <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
-              <textarea
-                value={vitalsForm.instructions !== undefined ? vitalsForm.instructions : profile.instructions}
-                onChange={e => setVitalsForm({ ...vitalsForm, instructions: e.target.value })}
-                className="w-full bg-stone-50 p-3 rounded-xl text-sm min-h-[80px] outline-none"
-                placeholder="Enter medical instructions here..."
-              ></textarea>
-            </div>
-
-            <div className="mb-4 bg-stone-50 p-4 rounded-xl border border-stone-100">
-              <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Vital Record Date & Time</label>
-              <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-stone-300" />
+            <div className="mb-6 bg-white p-4 rounded-2xl border border-stone-100">
+              <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
+              <div className="flex items-center gap-2 bg-stone-50 p-3 rounded-xl border border-stone-100 focus-within:border-emerald-500 transition-all">
+                <Calendar size={18} className="text-stone-400" />
                 <input
                   type="datetime-local"
-                  value={vitalsLogTime}
-                  onChange={(e) => setVitalsLogTime(e.target.value)}
+                  value={logTime}
+                  onChange={(e) => setLogTime(e.target.value)}
                   className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
                 />
               </div>
             </div>
 
-            {editingLog && editingLog.type === 'vital_update' ? (
-              <div className="flex gap-2">
-                <button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg">Update Record</button>
-                <button onClick={() => { setEditingLog(null); setVitalsForm({}); setVitalsLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-xl font-bold">Cancel</button>
+            {editingLog && !editingLog.type ? (
+              <div className="flex gap-2 mb-6">
+                <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
+                <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-2xl font-bold">Cancel</button>
               </div>
             ) : (
-              <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+              <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
             )}
           </div>
+        )}
 
-          <div className="mt-8 text-center">
-            <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
-          </div>
-
-          <div className="flex justify-between items-center mb-4 mt-8">
-            <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12} /> Vital Trends</h3>
-          </div>
-          {/* Vertical Stack for Small Charts */}
-          <div className="flex flex-col gap-3">
-            <GraphErrorBoundary>
-              <SimpleTrendGraph
-                data={getTrendData('weight')} label="Weight" unit="kg" color="orange" normalRange={null}
-                onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
-                disableHover={!!expandedGraphData}
-              />
-            </GraphErrorBoundary>
-            <GraphErrorBoundary>
-              <SimpleTrendGraph
-                data={getTrendData('hba1c')} label="HbA1c" unit="%" color="emerald" normalRange={5.7}
-                onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
-                disableHover={!!expandedGraphData}
-              />
-            </GraphErrorBoundary>
-            <GraphErrorBoundary>
-              <SimpleTrendGraph
-                data={getTrendData('creatinine')} label="Creatinine" unit="mg/dL" color="purple" normalRange={1.2}
-                onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
-                disableHover={!!expandedGraphData}
-              />
-            </GraphErrorBoundary>
-          </div>
-        </div>
-      )}
-
-      {view === 'prescription' && (
-        <div className="px-6 pb-32 animate-in slide-in-from-right">
-          <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800"><Stethoscope className="text-emerald-600" /> Prescription</h2>
-          {/* UNIFIED PRESCRIPTION MANAGER */}
-          <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
-            <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
-
-            {/* SEPARATE SEARCH ADDITIONS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {/* INSULIN SEARCH */}
-              <div className="relative search-container">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Insulin</label>
-                <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
-                  <Syringe className="text-stone-400 mr-2" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search Insulin..."
-                    value={insulinSearch}
-                    onChange={(e) => { setInsulinSearch(e.target.value); setShowInsulinResults(true); }}
-                    onFocus={() => { setShowInsulinResults(true); setShowOralResults(false); }}
-                    className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
-                  />
+        {view === 'profile' && (
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+            <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
+              {/* LOCKED PERSONAL DETAILS */}
+              {(!unlockPersonal && (profile.dob || profile.gender)) ? (
+                <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
+                  <div>
+                    <div className="text-[10px] font-bold text-stone-400 uppercase">Personal Details</div>
+                    <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
+                    <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
+                  </div>
+                  <button onClick={() => { if (confirm("Changing Date of Birth or Gender may affect medical records and trends. Proceed with caution.")) setUnlockPersonal(true); }}><Lock size={16} className="text-stone-400" /></button>
                 </div>
-                {showInsulinResults && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
-                    {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase())))).map(med => (
-                      <div key={med.name} onClick={() => {
-                        setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Before Meals', slidingScale: [] }] }));
-                        setInsulinSearch('');
-                        setShowInsulinResults(false);
-                      }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
-                        <div>
-                          <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
-                          {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
-                        </div>
-                        <PlusCircle size={14} className="text-emerald-400" />
-                      </div>
-                    ))}
-                    {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()))).length === 0 && (
-                      <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching insulins</div>
-                    )}
+              ) : (
+                <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
+                  <div>
+                    <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
+                    <input id="field-dob" type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
+                      const dob = e.target.value;
+                      setVitalsForm(p => ({ ...p, dob, age: calculateAge(dob) }));
+                    }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm transition-all duration-500" />
                   </div>
-                )}
-              </div>
-
-              {/* ORAL MEDS SEARCH */}
-              <div className="relative search-container">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Medicine</label>
-                <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
-                  <Pill className="text-stone-400 mr-2" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search Medicine..."
-                    value={oralSearch}
-                    onChange={(e) => { setOralSearch(e.target.value); setShowOralResults(true); }}
-                    onFocus={() => { setShowOralResults(true); setShowInsulinResults(false); }}
-                    className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
-                  />
-                </div>
-                {showOralResults && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
-                    {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase())))).map(med => (
-                      <div key={med.name} onClick={() => {
-                        setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, { id: generateId(), name: med.name, frequency: 'Once Daily', timings: ['Morning'] }] }));
-                        setOralSearch('');
-                        setShowOralResults(false);
-                      }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
-                        <div>
-                          <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
-                          {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
-                        </div>
-                        <PlusCircle size={14} className="text-emerald-400" />
-                      </div>
-                    ))}
-                    {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()))).length === 0 && (
-                      <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching medications</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* LIST ACTIVE MEDS - Continuity (No Scroll) */}
-            <div className="space-y-6 mt-6">
-              {/* INSULINS */}
-              {prescription.insulins.map((ins, idx) => (
-                <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex-1 mr-4">
-                      <span className="font-bold block text-sm text-stone-800">{ins.name}</span>
-                      <select value={ins.frequency} onChange={(e) => { const newI = [...prescription.insulins]; newI[idx].frequency = e.target.value; setPrescription({ ...prescription, insulins: newI }); }} className="text-xs text-stone-500 bg-transparent outline-none font-bold">
-                        {['Once Daily', 'Twice Daily', 'Bedtime', 'Before Meals', 'SOS'].map(f => <option key={f} value={f}>{f}</option>)}
-                      </select>
-                    </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
-                  </div>
-                  <div className="bg-stone-50 p-3 rounded-xl space-y-3">
-                    <div className="flex bg-white p-1 rounded-lg border border-stone-200">
-                      <input type="number" placeholder="Fixed Dose" value={ins.fixedDose || ''} onChange={(e) => { const n = [...prescription.insulins]; n[idx].fixedDose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-xs font-bold outline-none" />
-                      <span className="text-[10px] font-bold text-stone-400 shrink-0 self-center pr-2">UNITS FIXED</span>
-                    </div>
-
-                    {/* SLIDING SCALE restoration */}
-                    <div className="border-t border-stone-200 pt-3">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-stone-500 uppercase tracking-tight">Sliding Scale (Optional)</span>
-                        <button onClick={() => {
-                          const n = [...prescription.insulins];
-                          n[idx].slidingScale = [...(n[idx].slidingScale || []), { min: 200, max: 250, dose: 2 }];
-                          setPrescription({ ...prescription, insulins: n });
-                        }} className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-100 transition-colors">
-                          <PlusCircle size={14} /> Add Range
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {(ins.slidingScale || []).map((row, rIdx) => (
-                          <div key={rIdx} className="flex gap-1.5 items-center bg-white p-1.5 rounded-xl border border-stone-100 shadow-sm overflow-hidden">
-                            <div className="flex items-center gap-1 bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
-                              <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
-                              <span className="text-[10px] text-stone-300">-</span>
-                              <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
-                            </div>
-                            <ChevronRight size={12} className="text-stone-300 shrink-0" />
-                            <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-1 min-w-0">
-                              <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-sm font-black text-emerald-700 outline-none bg-transparent" />
-                              <span className="text-[10px] font-bold text-emerald-600/50 uppercase">u</span>
-                            </div>
-                            <button onClick={() => {
-                              const n = [...prescription.insulins];
-                              n[idx].slidingScale = n[idx].slidingScale.filter((_, i) => i !== rIdx);
-                              setPrescription({ ...prescription, insulins: n });
-                            }} className="shrink-0 text-red-300 hover:text-red-500 p-1.5"><Trash2 size={16} /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
+                    <select value={vitalsForm.gender || profile.gender || ''} onChange={e => setVitalsForm(p => ({ ...p, gender: e.target.value }))} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm h-[46px]">
+                      <option value="">Select...</option><option value="Male">Male</option><option value="Female">Female</option>
+                    </select>
                   </div>
                 </div>
-              ))}
+              )}
 
-              {/* ORAL MEDS */}
-              {prescription.oralMeds.map((med, idx) => (
-                <div key={med.id} className="pb-4 border-b border-stone-100 last:border-0">
+              {/* Comorbidities Section */}
+              {!unlockComorbidities && profile.comorbidities?.length > 0 ? (
+                <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
+                  <div>
+                    <div className="text-[10px] font-bold text-stone-400 uppercase">Comorbidities</div>
+                    <div className="font-bold text-stone-700 text-sm">{profile.comorbidities.join(', ')}</div>
+                  </div>
+                  <button onClick={() => setUnlockComorbidities(true)}><Lock size={16} className="text-stone-400" /></button>
+                </div>
+              ) : (
+                <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
-                    <div className="flex-1 mr-4">
-                      <div className="font-bold text-sm text-stone-800 leading-tight">{med.name}</div>
-                      <select value={med.frequency} onChange={(e) => { const nM = [...prescription.oralMeds]; nM[idx].frequency = e.target.value; nM[idx].timings = FREQUENCY_RULES[e.target.value] || []; setPrescription({ ...prescription, oralMeds: nM }) }} className="text-xs text-stone-500 bg-stone-50 rounded px-1 py-0.5 mt-1 outline-none font-bold">
-                        {Object.keys(FREQUENCY_RULES).map(f => <option key={f} value={f}>{f}</option>)}
-                      </select>
-                    </div>
-                    <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
+                    <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><Activity size={12} /> Comorbidities</h3>
+                    {unlockComorbidities && <button onClick={() => setUnlockComorbidities(false)}><Unlock size={16} className="text-stone-400" /></button>}
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {(FREQUENCY_RULES[med.frequency] || []).map(t => (
-                      <span key={t} className="text-[10px] font-bold px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100">{t}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Nill", "Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
+                      <label key={c} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${(profile.comorbidities || []).includes(c) ? 'bg-stone-900 text-white' : 'bg-stone-50 text-stone-600'}`}>
+                        <input
+                          type="checkbox"
+                          checked={(profile.comorbidities || []).includes(c)}
+                          onChange={e => {
+                            const current = profile.comorbidities || [];
+                            let newC;
+                            if (c === "Nill") {
+                              newC = e.target.checked ? ["Nill"] : [];
+                            } else {
+                              if (e.target.checked) {
+                                newC = [...current.filter(i => i !== "Nill"), c];
+                              } else {
+                                newC = current.filter(i => i !== c);
+                              }
+                            }
+                            setProfile(prev => ({ ...prev, comorbidities: newC }));
+                          }}
+                          className="hidden"
+                        />
+                        {c}
+                      </label>
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
 
-              {prescription.insulins.length === 0 && prescription.oralMeds.length === 0 && (
-                <div className="text-center py-8 text-stone-400 text-xs font-bold uppercase">No active medications</div>
+              <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Weight (kg)</label>
+                  <input id="field-weight" type="number" placeholder={`${profile.weight || '-'}`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-blue-50 border-2 border-transparent focus:border-blue-200 transition-all" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">HbA1c (%)</label>
+                  <input id="field-hba1c" type="number" step="0.1" placeholder={`${profile.hba1c || '-'}`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-emerald-50 border-2 border-transparent focus:border-emerald-200 transition-all" />
+                </div>
+              </div>
+              <div className="flex flex-col mb-6">
+                <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Creatinine (mg/dL)</label>
+                <input id="field-creatinine" type="number" step="0.1" placeholder={`${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-purple-50 border-2 border-transparent focus:border-purple-200 transition-all" />
+              </div>
+
+              {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
+                <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer mb-6 ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'border-red-200 bg-red-50' : 'border-stone-100'}`}>
+                  <Baby className={vitalsForm.pregnancyStatus || profile.pregnancyStatus ? "text-red-500" : "text-stone-300"} />
+                  <span className="font-bold text-sm text-stone-700">Patient is Pregnant</span>
+                  <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({ ...vitalsForm, pregnancyStatus: e.target.checked })} className="ml-auto w-5 h-5 accent-red-500" />
+                </label>
+              )}
+
+              <div className="mt-4 mb-4">
+                <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
+                <textarea
+                  value={vitalsForm.instructions !== undefined ? vitalsForm.instructions : profile.instructions}
+                  onChange={e => setVitalsForm({ ...vitalsForm, instructions: e.target.value })}
+                  className="w-full bg-stone-50 p-3 rounded-xl text-sm min-h-[80px] outline-none"
+                  placeholder="Enter medical instructions here..."
+                ></textarea>
+              </div>
+
+              <div className="mb-4 bg-stone-50 p-4 rounded-xl border border-stone-100">
+                <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Vital Record Date & Time</label>
+                <div className="flex items-center gap-2">
+                  <Calendar size={18} className="text-stone-300" />
+                  <input
+                    type="datetime-local"
+                    value={vitalsLogTime}
+                    onChange={(e) => setVitalsLogTime(e.target.value)}
+                    className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                  />
+                </div>
+              </div>
+
+              {editingLog && editingLog.type === 'vital_update' ? (
+                <div className="flex gap-2">
+                  <button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg">Update Record</button>
+                  <button onClick={() => { setEditingLog(null); setVitalsForm({}); setVitalsLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-xl font-bold">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
               )}
             </div>
 
-            <div className="mt-8 border-t border-stone-100 pt-4 mb-4">
-              <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex justify-between items-center text-stone-400 hover:text-stone-500 transition-colors">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300">Prescription Safety Review ({safetyAlerts.length})</span>
-                {showAlertDetails ? <ChevronUp size={16} className="text-stone-300" /> : <ChevronDown size={16} className="text-stone-300" />}
-              </button>
+            <div className="mt-8 text-center">
+              <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
+            </div>
 
-              {showAlertDetails && (
-                <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-1">
-                  {safetyAlerts.length > 0 ? safetyAlerts.map((alert, i) => (
-                    <div key={i} className={`p-2 rounded-lg text-xs font-medium bg-stone-50/50 border border-stone-100/50 ${alert.type === 'danger' ? 'text-red-300' : 'text-stone-400'}`}>
-                      {alert.message}
+            <div className="flex justify-between items-center mb-4 mt-8">
+              <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12} /> Vital Trends</h3>
+            </div>
+            {/* Vertical Stack for Small Charts */}
+            <div className="flex flex-col gap-3">
+              <GraphErrorBoundary>
+                <SimpleTrendGraph
+                  data={getTrendData('weight')} label="Weight" unit="kg" color="orange" normalRange={null}
+                  onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
+                  disableHover={!!expandedGraphData}
+                />
+              </GraphErrorBoundary>
+              <GraphErrorBoundary>
+                <SimpleTrendGraph
+                  data={getTrendData('hba1c')} label="HbA1c" unit="%" color="emerald" normalRange={5.7}
+                  onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
+                  disableHover={!!expandedGraphData}
+                />
+              </GraphErrorBoundary>
+              <GraphErrorBoundary>
+                <SimpleTrendGraph
+                  data={getTrendData('creatinine')} label="Creatinine" unit="mg/dL" color="purple" normalRange={1.2}
+                  onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
+                  disableHover={!!expandedGraphData}
+                />
+              </GraphErrorBoundary>
+            </div>
+          </div>
+        )}
+
+        {view === 'prescription' && (
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+            <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800"><Stethoscope className="text-emerald-600" /> Prescription</h2>
+            {/* UNIFIED PRESCRIPTION MANAGER */}
+            <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
+              <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
+
+              {/* SEPARATE SEARCH ADDITIONS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* INSULIN SEARCH */}
+                <div className="relative search-container">
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Insulin</label>
+                  <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
+                    <Syringe className="text-stone-400 mr-2" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Search Insulin..."
+                      value={insulinSearch}
+                      onChange={(e) => { setInsulinSearch(e.target.value); setShowInsulinResults(true); }}
+                      onFocus={() => { setShowInsulinResults(true); setShowOralResults(false); }}
+                      className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                    />
+                  </div>
+                  {showInsulinResults && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
+                      {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase())))).map(med => (
+                        <div key={med.name} onClick={() => {
+                          setPrescription(p => ({ ...p, insulins: [...p.insulins, { id: generateId(), name: med.name, frequency: 'Before Meals', slidingScale: [] }] }));
+                          setInsulinSearch('');
+                          setShowInsulinResults(false);
+                        }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
+                          <div>
+                            <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                            {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
+                          </div>
+                          <PlusCircle size={14} className="text-emerald-400" />
+                        </div>
+                      ))}
+                      {MEDICATION_DATABASE.filter(m => m.route === 'insulin' && (!insulinSearch || m.name.toLowerCase().includes(insulinSearch.toLowerCase()))).length === 0 && (
+                        <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching insulins</div>
+                      )}
                     </div>
-                  )) : (
-                    <div className="text-[10px] text-stone-200 font-bold italic text-center py-2">No safety concerns detected</div>
                   )}
                 </div>
-              )}
-            </div>
 
-          </div>
-          <button onClick={handleSavePrescription} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
-        </div>
-      )}
-
-      {view === 'history' && (
-        <div className="px-6 pb-32 animate-in slide-in-from-right">
-          <div className="flex flex-col gap-4 mb-6">
-            <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16} /> PDF</button></div>
-            <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
-            <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
-          </div>
-          <div className="space-y-3">
-            {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
-              <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100 transition-all flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="text-xl font-bold text-emerald-800">{item.hgt || '-'}</span>
-                    <span className="text-xs text-stone-400 ml-1">mg/dL</span>
+                {/* ORAL MEDS SEARCH */}
+                <div className="relative search-container">
+                  <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Add Medicine</label>
+                  <div className="bg-stone-50 rounded-xl flex items-center p-3 border border-stone-100 focus-within:border-emerald-500 transition-all">
+                    <Pill className="text-stone-400 mr-2" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Search Medicine..."
+                      value={oralSearch}
+                      onChange={(e) => { setOralSearch(e.target.value); setShowOralResults(true); }}
+                      onFocus={() => { setShowOralResults(true); setShowInsulinResults(false); }}
+                      className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleStartEdit(item)} className="p-2 bg-stone-50 text-stone-400 hover:text-emerald-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
-                    <button onClick={() => handleDeleteEntry(item.id)} className="p-2 bg-red-50 text-red-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-
-                <div className="text-xs text-stone-500 mb-2">
-                  <div className="font-bold text-[10px] text-stone-300 uppercase mb-1">{item.mealStatus}</div>
-                  {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500" /> {name} ({time})</div> })}
-                  {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400" /> {m}</div>))}
-                  {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10} /> {insName}: {d}u</div> })}
-                </div>
-
-                {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
-                <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between">
-                  <span>{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</span>
+                  {showOralResults && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50">
+                      {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase())))).map(med => (
+                        <div key={med.name} onClick={() => {
+                          setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, { id: generateId(), name: med.name, frequency: 'Once Daily', timings: ['Morning'] }] }));
+                          setOralSearch('');
+                          setShowOralResults(false);
+                        }} className="p-3 border-b border-stone-50 hover:bg-emerald-50 cursor-pointer flex justify-between items-center group">
+                          <div>
+                            <div className="font-bold text-xs text-stone-800 group-hover:text-emerald-700">{med.name}</div>
+                            {med.brands?.length > 0 && <div className="text-[10px] text-stone-400">Brands: {med.brands.slice(0, 2).join(', ')}...</div>}
+                          </div>
+                          <PlusCircle size={14} className="text-emerald-400" />
+                        </div>
+                      ))}
+                      {MEDICATION_DATABASE.filter(m => m.route === 'oral' && (!oralSearch || m.name.toLowerCase().includes(oralSearch.toLowerCase()))).length === 0 && (
+                        <div className="p-4 text-center text-xs text-stone-400 font-bold italic">No matching medications</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* NAV */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md p-2 flex justify-around border-t z-50">
-        <button onClick={() => setView('diary')} className={`p-3 rounded-2xl transition-all ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Edit3 /></button>
-        <button onClick={() => setView('prescription')} className={`p-3 rounded-2xl transition-all ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Stethoscope /></button>
-        <button onClick={() => setView('history')} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText /></button>
-        <button onClick={() => setView('profile')} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User /></button>
-      </nav>
-      {expandedGraphData && (
-        <ExpandedGraphModal
-          {...expandedGraphData}
-          fullHistory={fullHistory}
-          onEdit={handleStartEditVital}
-          onDelete={handleDeleteEntry}
-          onClose={() => setExpandedGraphData(null)}
-        />
-      )}
-    </div>
+              {/* LIST ACTIVE MEDS - Continuity (No Scroll) */}
+              <div className="space-y-6 mt-6">
+                {/* INSULINS */}
+                {prescription.insulins.map((ins, idx) => (
+                  <div key={ins.id} className="pb-4 border-b border-stone-100 last:border-0">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex-1 mr-4">
+                        <span className="font-bold block text-sm text-stone-800">{ins.name}</span>
+                        <select value={ins.frequency} onChange={(e) => { const newI = [...prescription.insulins]; newI[idx].frequency = e.target.value; setPrescription({ ...prescription, insulins: newI }); }} className="text-xs text-stone-500 bg-transparent outline-none font-bold">
+                          {['Once Daily', 'Twice Daily', 'Bedtime', 'Before Meals', 'SOS'].map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                      </div>
+                      <button onClick={() => setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== ins.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
+                    </div>
+                    <div className="bg-stone-50 p-3 rounded-xl space-y-3">
+                      <div className="flex bg-white p-1 rounded-lg border border-stone-200">
+                        <input type="number" placeholder="Fixed Dose" value={ins.fixedDose || ''} onChange={(e) => { const n = [...prescription.insulins]; n[idx].fixedDose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-xs font-bold outline-none" />
+                        <span className="text-[10px] font-bold text-stone-400 shrink-0 self-center pr-2">UNITS FIXED</span>
+                      </div>
+
+                      {/* SLIDING SCALE restoration */}
+                      <div className="border-t border-stone-200 pt-3">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-xs font-bold text-stone-500 uppercase tracking-tight">Sliding Scale (Optional)</span>
+                          <button onClick={() => {
+                            const n = [...prescription.insulins];
+                            n[idx].slidingScale = [...(n[idx].slidingScale || []), { min: 200, max: 250, dose: 2 }];
+                            setPrescription({ ...prescription, insulins: n });
+                          }} className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-100 transition-colors">
+                            <PlusCircle size={14} /> Add Range
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {(ins.slidingScale || []).map((row, rIdx) => (
+                            <div key={rIdx} className="flex gap-1.5 items-center bg-white p-1.5 rounded-xl border border-stone-100 shadow-sm overflow-hidden">
+                              <div className="flex items-center gap-1 bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
+                                <input type="number" placeholder="Min" value={row.min} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].min = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
+                                <span className="text-[10px] text-stone-300">-</span>
+                                <input type="number" placeholder="Max" value={row.max} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].max = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-10 text-center text-xs font-bold outline-none bg-transparent" />
+                              </div>
+                              <ChevronRight size={12} className="text-stone-300 shrink-0" />
+                              <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex-1 min-w-0">
+                                <input type="number" placeholder="Dose" value={row.dose} onChange={(e) => { const n = [...prescription.insulins]; n[idx].slidingScale[rIdx].dose = e.target.value; setPrescription({ ...prescription, insulins: n }) }} className="w-full text-center text-sm font-black text-emerald-700 outline-none bg-transparent" />
+                                <span className="text-[10px] font-bold text-emerald-600/50 uppercase">u</span>
+                              </div>
+                              <button onClick={() => {
+                                const n = [...prescription.insulins];
+                                n[idx].slidingScale = n[idx].slidingScale.filter((_, i) => i !== rIdx);
+                                setPrescription({ ...prescription, insulins: n });
+                              }} className="shrink-0 text-red-300 hover:text-red-500 p-1.5"><Trash2 size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* ORAL MEDS */}
+                {prescription.oralMeds.map((med, idx) => (
+                  <div key={med.id} className="pb-4 border-b border-stone-100 last:border-0">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex-1 mr-4">
+                        <div className="font-bold text-sm text-stone-800 leading-tight">{med.name}</div>
+                        <select value={med.frequency} onChange={(e) => { const nM = [...prescription.oralMeds]; nM[idx].frequency = e.target.value; nM[idx].timings = FREQUENCY_RULES[e.target.value] || []; setPrescription({ ...prescription, oralMeds: nM }) }} className="text-xs text-stone-500 bg-stone-50 rounded px-1 py-0.5 mt-1 outline-none font-bold">
+                          {Object.keys(FREQUENCY_RULES).map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                      </div>
+                      <button onClick={() => setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }))} className="text-red-500 bg-red-50 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-100 transition-colors shadow-sm shrink-0 outline-none"><Trash2 size={20} /></button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {(FREQUENCY_RULES[med.frequency] || []).map(t => (
+                        <span key={t} className="text-[10px] font-bold px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {prescription.insulins.length === 0 && prescription.oralMeds.length === 0 && (
+                  <div className="text-center py-8 text-stone-400 text-xs font-bold uppercase">No active medications</div>
+                )}
+              </div>
+
+              <div className="mt-8 border-t border-stone-100 pt-4 mb-4">
+                <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex justify-between items-center text-stone-400 hover:text-stone-500 transition-colors">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300">Prescription Safety Review ({safetyAlerts.length})</span>
+                  {showAlertDetails ? <ChevronUp size={16} className="text-stone-300" /> : <ChevronDown size={16} className="text-stone-300" />}
+                </button>
+
+                {showAlertDetails && (
+                  <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-1">
+                    {safetyAlerts.length > 0 ? safetyAlerts.map((alert, i) => (
+                      <div key={i} className={`p-2 rounded-lg text-xs font-medium bg-stone-50/50 border border-stone-100/50 ${alert.type === 'danger' ? 'text-red-300' : 'text-stone-400'}`}>
+                        {alert.message}
+                      </div>
+                    )) : (
+                      <div className="text-[10px] text-stone-200 font-bold italic text-center py-2">No safety concerns detected</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+            <button onClick={handleSavePrescription} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
+          </div>
+        )}
+
+        {view === 'history' && (
+          <div className="px-6 pb-32 animate-in slide-in-from-right">
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16} /> PDF</button></div>
+              <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
+              <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
+            </div>
+            <div className="space-y-3">
+              {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100 transition-all flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="text-xl font-bold text-emerald-800">{item.hgt || '-'}</span>
+                      <span className="text-xs text-stone-400 ml-1">mg/dL</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleStartEdit(item)} className="p-2 bg-stone-50 text-stone-400 hover:text-emerald-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
+                      <button onClick={() => handleDeleteEntry(item.id)} className="p-2 bg-red-50 text-red-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-stone-500 mb-2">
+                    <div className="font-bold text-[10px] text-stone-300 uppercase mb-1">{item.mealStatus}</div>
+                    {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500" /> {name} ({time})</div> })}
+                    {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400" /> {m}</div>))}
+                    {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10} /> {insName}: {d}u</div> })}
+                  </div>
+
+                  {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
+                  <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between">
+                    <span>{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* NAV */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md p-2 flex justify-around border-t z-50">
+          <button onClick={() => setView('diary')} className={`p-3 rounded-2xl transition-all ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Edit3 /></button>
+          <button onClick={() => setView('prescription')} className={`p-3 rounded-2xl transition-all ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Stethoscope /></button>
+          <button onClick={() => setView('history')} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText /></button>
+          <button onClick={() => setView('profile')} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User /></button>
+        </nav>
+        {expandedGraphData && (
+          <ExpandedGraphModal
+            {...expandedGraphData}
+            fullHistory={fullHistory}
+            onEdit={handleStartEditVital}
+            onDelete={handleDeleteEntry}
+            onClose={() => setExpandedGraphData(null)}
+          />
+        )}
+      </div>
+    </SecurityGuardian>
   );
 }
 
