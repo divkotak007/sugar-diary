@@ -343,6 +343,18 @@ export const calculateTimeInRange = (glucoseData, range = { min: 70, max: 180 })
     };
 };
 
+// --- GMI (ESTIMATED HBA1C) CALCULATION ---
+/**
+ * Calculate Glucose Management Indicator (Estimated HbA1c)
+ * Formula: GMI(%) = 3.31 + 0.02392 * mean_glucose(mg/dL)
+ * @param {number} meanGlucose - Average glucose in mg/dL
+ * @returns {number|null} GMI percentage or null
+ */
+export const calculateGMI = (meanGlucose) => {
+    if (!meanGlucose || meanGlucose < 40) return null;
+    return parseFloat((3.31 + (0.02392 * meanGlucose)).toFixed(1));
+};
+
 export default {
     GRAPH_COLORS,
     hexToRgb,
@@ -354,5 +366,6 @@ export default {
     detectRiskFlags,
     calculateMovingAverage,
     calculateStats,
-    calculateTimeInRange
+    calculateTimeInRange,
+    calculateGMI
 };

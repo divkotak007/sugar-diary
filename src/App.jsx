@@ -12,6 +12,9 @@ import {
   TrendingUp, Unlock, User, Utensils, Wine, X, XCircle, Zap, RefreshCw
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
+import { generateAllInsights } from './services/aiInsights.js';
+import { calculateGMI } from './utils/graphCalculations.js';
+import { TRANSLATIONS } from './data/translations.js';
 
 // NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
 
@@ -517,6 +520,12 @@ export default function App() {
   const [showInsulinResults, setShowInsulinResults] = useState(false);
   const [showOralResults, setShowOralResults] = useState(false);
   const [showAlertDetails, setShowAlertDetails] = useState(false);
+  const [lang, setLang] = useState('en');
+  const [isHighContrast, setIsHighContrast] = useState(false);
+  const [aiInsights, setAiInsights] = useState([]);
+  const [estimatedHbA1c, setEstimatedHbA1c] = useState(null);
+  const [isCaregiverMode, setIsCaregiverMode] = useState(false);
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
 
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
@@ -578,6 +587,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (fullHistory.length > 0) {
+      const insights = generateAllInsights(fullHistory);
+      setAiInsights(insights);
+
+      const glucoseReadings = fullHistory.filter(l => l.hgt).map(l => parseFloat(l.hgt));
+      if (glucoseReadings.length >= 5) {
+        const avg = glucoseReadings.reduce((a, b) => a + b, 0) / glucoseReadings.length;
+        setEstimatedHbA1c(calculateGMI(avg));
+      }
+    }
+  }, [fullHistory]);
+
+  useEffect(() => {
     if (view === 'profile' && highlightField) {
       setTimeout(() => {
         const el = document.getElementById(`field-${highlightField}`);
@@ -617,6 +639,12 @@ export default function App() {
       }
     };
     initAuth();
+    // Caregiver Mode Detection (Simulation)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('caregiver') === 'true') {
+      setIsCaregiverMode(true);
+      // In a real app, we would use a token to fetch specific shared data
+    }
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -1106,16 +1134,76 @@ export default function App() {
     try { doc.save("SugarDiary_Report.pdf"); } catch (e) { alert("Failed to save PDF. Please try again."); }
   };
 
-  if (loading) return <div className="p-10 text-center font-bold text-stone-400">Loading Secure Environment...</div>;
+  const generateCSV = () => {
+    const headers = ["Time", "Sugar (mg/dL)", "Meal Status", "Insulin Doses", "Meds Taken", "Tags"];
+    const rows = fullHistory.filter(l => !l.type).map(l => [
+      new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(),
+      l.hgt || '',
+      l.mealStatus || '',
+      Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}:${d}u`).join(';'),
+      (l.medsTaken || []).join(';'),
+      (l.tags || []).join(';')
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `SugarDiary_Data_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  const handleShareLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?caregiver=true&user=${user.uid}`;
+    navigator.clipboard.writeText(url).then(() => {
+      alert("Secure Caregiver Link copied to clipboard!\nYou can share this with your doctor or family.");
+    });
+  };
+
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setRemindersEnabled(true);
+      new Notification("Smart Reminders Active", { body: "OneTruth will now help you stay on track with your doses.", icon: "/favicon.ico" });
+    }
+  };
+
+  const scheduleDemoReminder = () => {
+    if (!remindersEnabled) {
+      alert("Please enable reminders first.");
+      return;
+    }
+    alert("Test reminder scheduled for 10 seconds from now.");
+    setTimeout(() => {
+      new Notification("Medicine Reminder (Test)", {
+        body: "Time to check your blood sugar and take your scheduled dose.",
+        vibrate: [200, 100, 200]
+      });
+    }, 10000);
+  };
+
+  const T = (key) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en'][key] || key;
+
+  if (loading) return <div className="p-10 text-center font-bold text-stone-400">{T('loading')}</div>;
   if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4" /><h1 className="text-2xl font-bold text-stone-800 mb-6">Sugar Diary</h1><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
   if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />;
 
   return (
     <GlobalRecoveryBoundary>
       <SecurityGuardian>
-        <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative select-none">
+        <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
 
           {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
+
+          {isCaregiverMode && (
+            <div className="bg-blue-600 text-white p-2 text-[10px] font-black uppercase tracking-widest text-center sticky top-0 z-[60] flex items-center justify-center gap-2">
+              <Eye size={12} /> Secure Caregiver Access • Read Only Mode
+            </div>
+          )}
 
           <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
             <div className="flex justify-between items-center mb-4">
@@ -1142,7 +1230,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Sugar Diary</div>
+                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">{T('diary')}</div>
                   <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
                   <div className="text-xs text-stone-400 flex items-center gap-2">
                     {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
@@ -1154,10 +1242,11 @@ export default function App() {
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-              <StatBadge emoji="⚖️" label="Weight" value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
-              <StatBadge emoji="🩸" label="HbA1c" value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
-              <StatBadge emoji="🧪" label="Creat" value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
+              <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
+              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
+              <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
+              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
+              {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setView('profile'); }} />}
             </div>
           </div>
 
@@ -1391,6 +1480,69 @@ export default function App() {
                 <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
               </div>
 
+              {/* NEW: App Settings & Share */}
+              <div className="mt-8 bg-white p-6 rounded-[32px] border border-stone-100 shadow-sm">
+                <h3 className="text-xs font-black text-stone-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Settings size={14} /> Global App Settings
+                </h3>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase">Language</label>
+                    <select
+                      value={lang}
+                      onChange={(e) => setLang(e.target.value)}
+                      className="bg-stone-50 border border-stone-100 rounded-xl p-2 font-bold text-sm outline-none"
+                    >
+                      <option value="en">English</option>
+                      <option value="es">Español</option>
+                      <option value="hi">हिंदी</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-stone-400 uppercase">{T('highContrast')}</label>
+                    <button
+                      onClick={() => setIsHighContrast(!isHighContrast)}
+                      className={`flex-1 rounded-xl font-bold text-sm transition-all border ${isHighContrast ? 'bg-stone-900 text-yellow-400 border-stone-900' : 'bg-stone-50 text-stone-600 border-stone-100'}`}
+                    >
+                      {isHighContrast ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button onClick={handleShareLink} className="w-full flex justify-between items-center p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-bold text-sm hover:bg-emerald-100 transition-all">
+                    <div className="flex items-center gap-2"><Lock size={16} /> {T('share')}</div>
+                    <ChevronRight size={16} />
+                  </button>
+                  <button onClick={generateCSV} className="w-full flex justify-between items-center p-4 bg-blue-50 text-blue-700 rounded-2xl font-bold text-sm hover:bg-blue-100 transition-all">
+                    <div className="flex items-center gap-2"><Download size={16} /> {T('export')} (CSV)</div>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Reminders Toggle */}
+                <div className="mt-4 pt-4 border-t border-stone-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-stone-400" />
+                      <span className="text-sm font-bold text-stone-700">{T('reminder')}</span>
+                    </div>
+                    <button
+                      onClick={requestNotificationPermission}
+                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${remindersEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-stone-100 text-stone-400'}`}
+                    >
+                      {remindersEnabled ? 'Enabled' : 'Enable'}
+                    </button>
+                  </div>
+                  {remindersEnabled && (
+                    <button onClick={scheduleDemoReminder} className="text-[10px] font-bold text-blue-500 hover:text-blue-600">
+                      Schedule 10s Test Reminder
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="flex justify-between items-center mb-4 mt-8">
                 <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12} /> Vital Trends</h3>
               </div>
@@ -1613,7 +1765,27 @@ export default function App() {
           {view === 'history' && (
             <div className="px-6 pb-32 animate-in slide-in-from-right">
               <div className="flex flex-col gap-4 mb-6">
-                <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">Logbook</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16} /> PDF</button></div>
+                <div className="flex justify-between items-center"><h2 className="text-2xl font-serif font-bold text-stone-800">{T('history')}</h2><button onClick={generatePDF} className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"><Download size={16} /> PDF</button></div>
+
+                {aiInsights.length > 0 && (
+                  <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100 mb-2">
+                    <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Zap size={14} /> {T('aiInsights')}
+                    </h3>
+                    <div className="space-y-3">
+                      {aiInsights.map((insight, idx) => (
+                        <div key={idx} className="flex gap-3 items-start">
+                          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${insight.type === 'warning' ? 'bg-orange-400' : 'bg-emerald-400'}`} />
+                          <div>
+                            <p className="text-xs font-bold text-stone-700 leading-normal">{insight.insight}</p>
+                            <p className="text-[10px] text-stone-400 font-medium mt-0.5">{insight.explanation}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
                 <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
               </div>
@@ -1666,6 +1838,6 @@ export default function App() {
           )}
         </div>
       </SecurityGuardian>
-    </GlobalRecoveryBoundary>
+    </GlobalRecoveryBoundary >
   );
 }
