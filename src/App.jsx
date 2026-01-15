@@ -538,9 +538,9 @@ export default function App() {
     const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: {} };
 
     // Most recent non-null records for each
-    const w = sorted.find(l => l.snapshot?.profile?.weight)?.snapshot.profile.weight;
-    const a = sorted.find(l => l.snapshot?.profile?.hba1c)?.snapshot.profile.hba1c;
-    const c = sorted.find(l => l.snapshot?.profile?.creatinine)?.snapshot.profile.creatinine;
+    const w = sorted.find(l => l.snapshot?.profile?.weight)?.snapshot?.profile?.weight;
+    const a = sorted.find(l => l.snapshot?.profile?.hba1c)?.snapshot?.profile?.hba1c;
+    const c = sorted.find(l => l.snapshot?.profile?.creatinine)?.snapshot?.profile?.creatinine;
 
     if (w) result.weight = w;
     if (a) result.hba1c = a;
@@ -757,7 +757,7 @@ export default function App() {
 
     // 2. All-Time Overall (Day 1 to Now)
     const earliestLog = logs[logs.length - 1];
-    const startTime = earliestLog.timestamp?.seconds * 1000 || earliestLog.timestamp;
+    const startTime = earliestLog?.timestamp?.seconds ? earliestLog.timestamp.seconds * 1000 : (earliestLog?.timestamp ? new Date(earliestLog.timestamp).getTime() : Date.now());
     const totalDays = Math.max(1, Math.ceil((Date.now() - startTime) / (24 * 60 * 60 * 1000)));
 
     let totalTaken = 0, totalPrescribed = 0;
