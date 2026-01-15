@@ -108,6 +108,12 @@ export const NORMAL_RANGES = {
     creatinine: { male: { min: 0.7, max: 1.3 }, female: { min: 0.6, max: 1.1 }, unit: "mg/dL" }
 };
 
+export const DANGER_THRESHOLDS = {
+    glucose: { low: 70, high: 250, criticalHigh: 400 },
+    hba1c: { high: 8.0, critical: 10.0 },
+    creatinine: { high: 1.4, critical: 2.5 }
+};
+
 // --- HELPER FUNCTIONS ---
 
 export const getMedDetails = (medName) => {
