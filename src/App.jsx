@@ -79,10 +79,6 @@ const SecurityGuardian = ({ children }) => {
 
   return (
     <div className="select-none h-full relative">
-      {/* Dynamic Watermark - IP Protection */}
-      <div className="fixed top-2 left-1/2 -translate-x-1/2 pointer-events-none z-[9999] opacity-[0.03] rotate-[-5deg]">
-        <div className="text-[120px] font-black leading-none whitespace-nowrap">D-KOTAK IP PROT</div>
-      </div>
       {children}
     </div>
   );
@@ -1082,20 +1078,6 @@ export default function App() {
   return (
     <SecurityGuardian>
       <div className="max-w-md mx-auto min-h-screen bg-[#fffbf5] pb-32 font-sans text-stone-800 relative select-none">
-        {/* MEDICAL WATERMARK (Subtle bottom layer) */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.015] flex flex-col items-center justify-center gap-48 -z-10 overflow-hidden rotate-[-15deg]">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="text-4xl font-black whitespace-nowrap uppercase tracking-[1em]">
-              ONETRUTH MEDICAL • PROTECTED SYSTEM • DO NOT COPY • ONETRUTH MEDICAL
-            </div>
-          ))}
-        </div>
-        {expandedGraphData && (
-          <>
-            <div className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" onClick={() => setExpandedGraphData(null)} />
-            <ExpandedGraphModal {...expandedGraphData} onClose={() => setExpandedGraphData(null)} />
-          </>
-        )}
 
         {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
 
