@@ -21,8 +21,8 @@ import { TERMS_AND_CONDITIONS } from './data/terms.js';
 
 
 // --- CONFIGURATION ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ?
-  JSON.parse(__firebase_config) : {
+const firebaseConfig = (typeof window !== 'undefined' && window.__firebase_config) ?
+  JSON.parse(window.__firebase_config) : {
     apiKey: "AIzaSyAAmGSRYXVfTL9iDNPPf7vtvGeIsna4MiI",
     authDomain: "sugerdiary.firebaseapp.com",
     projectId: "sugerdiary",
@@ -35,7 +35,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'sugar-diary-v1';
+const appId = (typeof window !== 'undefined' && window.__app_id) ? window.__app_id : 'sugar-diary-v1';
 
 // --- FALLBACK REMOVED: Using MEDICATION_DATABASE from imports ---
 
@@ -623,8 +623,8 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       await auth.authStateReady();
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        try { await signInWithCustomToken(auth, __initial_auth_token); } catch (err) { console.error(err); }
+      if (typeof window !== 'undefined' && window.__initial_auth_token) {
+        try { await signInWithCustomToken(auth, window.__initial_auth_token); } catch (err) { console.error(err); }
       }
     };
     initAuth();
