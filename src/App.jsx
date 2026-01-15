@@ -60,13 +60,14 @@ const calculateAge = (dob) => {
 };
 
 // --- COMPONENTS ---
-const StatBadge = ({ emoji, label, value, unit, color, onClick }) => (
-  <div onClick={onClick} className={`flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-sm border border-${color}-100 min-w-[90px] ${onClick ? 'cursor-pointer hover:bg-stone-50 active:scale-95 transition-all' : ''}`}>
-    <div className="text-2xl mb-1">{emoji}</div>
+const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
+  <button onClick={onClick} className={`flex-shrink-0 bg-white p-3 rounded-2xl border-2 flex flex-col items-center min-w-[80px] transition-all relative ${updated ? 'border-blue-400 shadow-md ring-2 ring-blue-50' : 'border-stone-100 hover:border-stone-200'}`}>
+    {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse" />}
+    <span className="text-xl mb-1">{emoji}</span>
     <div className="font-bold text-stone-800 text-lg leading-none">{value || '-'}</div>
     <div className="text-[10px] text-stone-400 font-bold uppercase mt-1">{label}</div>
     {unit && <div className="text-[9px] text-stone-300 font-bold">{unit}</div>}
-  </div>
+  </button>
 );
 
 const MealOption = ({ label, icon: Icon, selected, onClick }) => (
@@ -210,13 +211,8 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
             <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="6" points={polylinePoints} />
             {points.map((p, i) => (
               <g key={i} className="cursor-pointer" onClick={() => {
-                const action = confirm(`Vital: ${p.val} on ${new Date(p.date).toLocaleString()}\n\nClick OK to EDIT or Cancel to DELETE this record.`);
-                if (action) {
-                  const log = fullHistory.find(l => l.id === p.id);
-                  if (log) { onEdit(log, label.toLowerCase().replace(' trend', '')); onClose(); }
-                } else {
-                  if (confirm("Permanently delete this vital record?")) onDelete(p.id);
-                }
+                const log = fullHistory.find(l => l.id === p.id);
+                if (log) setVitalActionLog({ log, val: p.val, label, date: p.date });
               }}>
                 <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="3" />
                 <text x={p.x} y={p.y - 18} textAnchor="middle" fontSize="12" fontWeight="bold" fill="#374151">{p.val}</text>
@@ -226,6 +222,40 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
           </svg>
         </div>
       </div>
+
+      {vitalActionLog && (
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom pb-8">
+            <div className="p-6 border-b border-stone-50 flex justify-between items-center bg-stone-50/50">
+              <div>
+                <h4 className="font-black text-stone-800 tracking-tight">{label} Record</h4>
+                <p className="text-[10px] text-stone-400 font-bold uppercase">{new Date(vitalActionLog.date).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setVitalActionLog(null)} className="p-2 bg-white rounded-xl shadow-sm"><X size={16} /></button>
+            </div>
+
+            <div className="p-6 space-y-3">
+              <button onClick={() => { onEdit(vitalActionLog.log, label.toLowerCase().replace(' trend', '')); setVitalActionLog(null); onClose(); }} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all">
+                <Edit3 size={18} /> Edit Entry
+              </button>
+
+              <div className="relative">
+                {((Date.now() - (vitalActionLog.log.timestamp?.seconds * 1000 || new Date(vitalActionLog.log.timestamp))) / 1000 < 1800) ? (
+                  <button disabled className="w-full bg-stone-100 text-stone-300 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed opacity-50">
+                    <Trash2 size={18} /> Delete Locked (30m audit)
+                  </button>
+                ) : (
+                  <button onClick={() => { if (confirm("Permanently delete?")) { onDelete(vitalActionLog.log.id); setVitalActionLog(null); } }} className="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all border border-red-100">
+                    <Trash2 size={18} /> Delete Entry
+                  </button>
+                )}
+              </div>
+
+              <button onClick={() => setVitalActionLog(null)} className="w-full py-4 rounded-2xl font-bold text-stone-400 hover:bg-stone-50 transition-all">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -333,6 +363,7 @@ export default function App() {
   const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
   const [editingLog, setEditingLog] = useState(null);
 
+  const [vitalActionLog, setVitalActionLog] = useState(null);
   const [expandedGraphData, setExpandedGraphData] = useState(null);
   const [highlightField, setHighlightField] = useState(null);
   const [safetyAlerts, setSafetyAlerts] = useState([]);
@@ -341,6 +372,36 @@ export default function App() {
   const [showInsulinResults, setShowInsulinResults] = useState(false);
   const [showOralResults, setShowOralResults] = useState(false);
   const [showAlertDetails, setShowAlertDetails] = useState(false);
+
+  // Derive latest vitals dynamically from history for profile summary
+  const getLatestVitals = () => {
+    const sorted = [...fullHistory].sort((a, b) => {
+      const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
+      const tb = b.timestamp?.seconds || new Date(b.timestamp).getTime() / 1000 || 0;
+      return tb - ta;
+    });
+
+    const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: {} };
+
+    // Most recent non-null records for each
+    const w = sorted.find(l => l.snapshot?.profile?.weight)?.snapshot.profile.weight;
+    const a = sorted.find(l => l.snapshot?.profile?.hba1c)?.snapshot.profile.hba1c;
+    const c = sorted.find(l => l.snapshot?.profile?.creatinine)?.snapshot.profile.creatinine;
+
+    if (w) result.weight = w;
+    if (a) result.hba1c = a;
+    if (c) result.creatinine = c;
+
+    // Determine which were updated in the ABSOLUTE latest log for indicator
+    const latest = sorted.find(l => l.type === 'vital_update');
+    if (latest) {
+      result.lastUpdated = latest.updatedParams || [];
+    }
+
+    return result;
+  };
+
+  const latestVitals = getLatestVitals();
 
   useEffect(() => {
     // Re-calculate alerts whenever profile (comorbidities/age etc.) or prescription changes
@@ -553,40 +614,71 @@ export default function App() {
   };
 
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight (Max 1000kg)");
+    if (e) e.preventDefault();
+
+    // 1. Validation
+    if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight");
     if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
-    const updatedProfile = { ...profile };
-    if (vitalsForm.dob) updatedProfile.dob = vitalsForm.dob;
-    if (vitalsForm.gender) updatedProfile.gender = vitalsForm.gender;
-    if (vitalsForm.weight) updatedProfile.weight = vitalsForm.weight;
-    if (vitalsForm.hba1c) updatedProfile.hba1c = vitalsForm.hba1c;
-    if (vitalsForm.creatinine) updatedProfile.creatinine = vitalsForm.creatinine;
-    if (vitalsForm.instructions !== undefined) updatedProfile.instructions = vitalsForm.instructions;
-    if (updatedProfile.gender === 'Female') updatedProfile.pregnancyStatus = vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus; else updatedProfile.pregnancyStatus = false;
-    if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
+
     const timestamp = vitalsLogTime ? new Date(vitalsLogTime) : new Date();
+
+    // 2. Duplicate Check (1 Hour Rule)
+    if (!editingLog) {
+      const recent = fullHistory.find(l =>
+        l.type === 'vital_update' &&
+        Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+      );
+      if (recent && !confirm("An entry was recorded in the last hour. Are you sure you want to add another?")) return;
+    }
+
+    // 3. Prep Data
+    const updatedParams = Object.keys(vitalsForm).filter(k => vitalsForm[k] !== '' && vitalsForm[k] !== undefined);
+    if (updatedParams.length === 0 && !vitalsForm.instructions) return alert("No changes to save.");
+
+    const updatedProfile = { ...profile };
+    updatedParams.forEach(k => updatedProfile[k] = vitalsForm[k]);
+    if (vitalsForm.instructions !== undefined) updatedProfile.instructions = vitalsForm.instructions;
+    if (updatedProfile.dob) updatedProfile.age = calculateAge(updatedProfile.dob);
+
     try {
       if (editingLog && editingLog.type === 'vital_update') {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), {
           snapshot: { ...editingLog.snapshot, profile: updatedProfile },
+          updatedParams,
           timestamp
         });
-        alert("Vital Record Updated!");
+        alert("Entry Updated.");
       } else {
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, schemaVersion: 2, lastUpdated: new Date().toISOString() }, { merge: true });
-        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'vital_update', snapshot: { profile: updatedProfile, prescription }, timestamp, tags: ['Vital Update'] });
-        alert("Profile & Vitals Updated.");
+        // Only update profile doc if this is the newest entry (simplification: we let derived state handle summary)
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: new Date().toISOString() }, { merge: true });
+        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+          type: 'vital_update',
+          snapshot: { profile: updatedProfile, prescription },
+          updatedParams,
+          timestamp,
+          tags: ['Vital Update']
+        });
       }
-      setProfile(updatedProfile); setVitalsForm(prev => ({ ...prev, weight: '', hba1c: '', creatinine: '' })); setUnlockPersonal(false); setUnlockComorbidities(false);
+      setProfile(updatedProfile);
+      setVitalsForm({ weight: '', hba1c: '', creatinine: '' });
+      setUnlockPersonal(false);
+      setUnlockComorbidities(false);
       setVitalsLogTime(new Date().toISOString().slice(0, 16));
       setEditingLog(null);
-      if (!prescription.insulins.length) setView('prescription');
     } catch (err) { alert("Save failed: " + err.message); }
   };
 
   const handleDeleteEntry = async (id) => {
-    if (!confirm("Are you sure you want to delete this record?")) return;
+    const log = fullHistory.find(l => l.id === id);
+    if (!log) return;
+
+    // 30 Minute Lock Protection
+    const ageSeconds = (Date.now() - (log.timestamp?.seconds * 1000 || new Date(log.timestamp))) / 1000;
+    if (ageSeconds < 1800) {
+      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes for audit safety.`);
+    }
+
+    if (!confirm("Confirm permanent deletion of this record?")) return;
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
       setEditingLog(null);
@@ -603,9 +695,26 @@ export default function App() {
 
   const handleSaveEntry = async () => {
     const hasMeds = Object.keys(medsTaken).some(k => medsTaken[k]) || Object.keys(insulinDoses).length > 0;
+    const hasInsulin = Object.keys(insulinDoses).length > 0;
+
+    // Safety: Insulin requires Sugar
+    if (hasInsulin && !hgt) {
+      return alert("Safety Rule: Insulin cannot be logged without a corresponding Blood Glucose value.");
+    }
+
     if (!hgt && !hasMeds) return alert("Enter Glucose or Medication");
 
     const timestamp = logTime ? new Date(logTime) : new Date();
+
+    // Duplicate Check (1 Hour Rule)
+    if (!editingLog) {
+      const recent = fullHistory.find(l =>
+        !l.type &&
+        Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+      );
+      if (recent && !confirm("A log was recorded in the last hour. Continue anyway?")) return;
+    }
+
     const entryData = {
       hgt: hgt ? parseFloat(hgt) : null,
       mealStatus,
@@ -900,9 +1009,9 @@ export default function App() {
 
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           <StatBadge emoji="🧘‍♂️" label="Age" value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-          <StatBadge emoji="⚖️" label="Weight" value={profile.weight} unit="kg" color="orange" onClick={() => { setHighlightField('weight'); setView('profile'); }} />
-          <StatBadge emoji="🩸" label="HbA1c" value={profile.hba1c} unit="%" color="emerald" onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
-          <StatBadge emoji="🧪" label="Creat" value={profile.creatinine} unit="mg/dL" color="purple" onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
+          <StatBadge emoji="⚖️" label="Weight" value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
+          <StatBadge emoji="🩸" label="HbA1c" value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
+          <StatBadge emoji="🧪" label="Creat" value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
         </div>
       </div>
 
