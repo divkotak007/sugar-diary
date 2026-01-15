@@ -1,0 +1,20 @@
+{
+    "short_name": "SugarDiary",
+    "name": "OneTruth Sugar Diary",
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "type": "image/svg+xml",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/logo.svg",
+            "type": "image/svg+xml",
+            "sizes": "512x512"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#1c1917",
+    "background_color": "#fffbf5"
+}

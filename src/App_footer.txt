@@ -1,0 +1,21 @@
+          {/* NAV */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md p-2 flex justify-around border-t z-50">
+            <button onClick={() => setView('diary')} className={`p-3 rounded-2xl transition-all ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Edit3 /></button>
+            <button onClick={() => setView('prescription')} className={`p-3 rounded-2xl transition-all ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Stethoscope /></button>
+            <button onClick={() => setView('history')} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText /></button>
+            <button onClick={() => setView('profile')} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User /></button>
+          </nav>
+          {expandedGraphData && (
+            <ExpandedGraphModal
+              {...expandedGraphData}
+              fullHistory={fullHistory}
+              onEdit={handleStartEditVital}
+              onDelete={handleDeleteEntry}
+              onClose={() => setExpandedGraphData(null)}
+            />
+          )}
+        </div>
+      </SecurityGuardian>
+    </GlobalRecoveryBoundary>
+  );
+}
