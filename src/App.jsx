@@ -779,7 +779,7 @@ export default function App() {
     };
   };
 
-  const compliance = calculateCompliance();
+
 
   const handleSeedDatabase = async () => {
     if (!confirm("Initialize Medication Database?")) return;
@@ -1187,6 +1187,7 @@ export default function App() {
   };
 
   const T = (key) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en'][key] || key;
+  const compliance = calculateCompliance();
 
   if (loading) return <div className="p-10 text-center font-bold text-stone-400">{T('loading')}</div>;
   if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4" /><h1 className="text-2xl font-bold text-stone-800 mb-6">Sugar Diary</h1><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
@@ -1267,6 +1268,47 @@ export default function App() {
                 <div className="text-center">
                   <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Overall</div>
                   <div className="text-xs font-black text-emerald-600">{compliance.overall}%</div>
+                </div>
+              </div>
+
+              {/* HEALTH INTELLIGENCE SUMMARY (SURFACE AI INSIGHTS & QUICK ACTIONS) */}
+              <div className="mb-6 space-y-3">
+                {aiInsights.length > 0 && (
+                  <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[32px] text-white shadow-lg overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
+                      <Zap size={80} />
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2 opacity-90">
+                      <Activity size={14} /> {T('aiInsights')}
+                    </h3>
+                    <p className="text-sm font-bold leading-tight line-clamp-2 mb-2">
+                      {aiInsights[0].insight}
+                    </p>
+                    <button onClick={() => setView('history')} className="text-[10px] font-black uppercase bg-white/20 px-3 py-1.5 rounded-full hover:bg-white/30 transition-all">
+                      View All Reports
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleShareLink}
+                    className="flex flex-col items-center justify-center p-4 bg-white rounded-3xl border border-stone-100 shadow-sm active:scale-95 transition-all group"
+                  >
+                    <div className="p-3 bg-emerald-50 rounded-2xl mb-2 group-hover:bg-emerald-100 transition-colors">
+                      <Lock className="text-emerald-600" size={20} />
+                    </div>
+                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{T('share')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setView('profile'); setHighlightField('reminders'); }}
+                    className="flex flex-col items-center justify-center p-4 bg-white rounded-3xl border border-stone-100 shadow-sm active:scale-95 transition-all group"
+                  >
+                    <div className="p-3 bg-blue-50 rounded-2xl mb-2 group-hover:bg-blue-100 transition-colors">
+                      <Clock className="text-blue-600" size={20} />
+                    </div>
+                    <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{T('reminder')}</span>
+                  </button>
                 </div>
               </div>
 
