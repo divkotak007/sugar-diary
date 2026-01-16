@@ -138,7 +138,85 @@ const calculateAge = (dob) => {
 };
 
 // --- COMPONENTS ---
+const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-stone-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-stone-100 dark:border-stone-800 animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-stone-50 dark:border-stone-800 flex justify-between items-center bg-stone-50/50 dark:bg-stone-800/50">
+          <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2"><Settings size={22} className="text-stone-400" /> Settings</h2>
+          <button onClick={onClose} className="p-2 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-full transition-colors"><X size={20} className="text-stone-400" /></button>
+        </div>
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Compliance Stats */}
+          <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-2xl">
+            <h3 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">7-Day Compliance</h3>
+            <div className="flex justify-around items-center">
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-stone-400 uppercase mb-0.5">Oral</div>
+                <div className="text-sm font-black text-stone-600 dark:text-stone-300">{compliance.oral}%</div>
+              </div>
+              <div className="w-px h-6 bg-stone-200 dark:bg-stone-700" />
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-stone-400 uppercase mb-0.5">Insulin</div>
+                <div className="text-sm font-black text-stone-600 dark:text-stone-300">{compliance.insulin}%</div>
+              </div>
+              <div className="w-px h-6 bg-stone-200 dark:bg-stone-700" />
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-emerald-500 uppercase mb-0.5">Overall</div>
+                <div className="text-sm font-black text-emerald-600">{compliance.overall}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-1">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${darkMode ? 'bg-amber-100 text-amber-600' : 'bg-stone-100 text-stone-400'}`}>{darkMode ? <Sun size={18} /> : <Moon size={18} />}</div>
+                <span className="font-bold text-stone-700 dark:text-stone-300">Dark Mode</span>
+              </div>
+              <button onClick={() => setDarkMode(!darkMode)} className={`w-12 h-6 rounded-full transition-all relative ${darkMode ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${darkMode ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${isHighContrast ? 'bg-blue-100 text-blue-600' : 'bg-stone-100 text-stone-400'}`}><Zap size={18} /></div>
+                <span className="font-bold text-stone-700 dark:text-stone-300">High Contrast</span>
+              </div>
+              <button onClick={() => setIsHighContrast(!isHighContrast)} className={`w-12 h-6 rounded-full transition-all relative ${isHighContrast ? 'bg-blue-500' : 'bg-stone-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isHighContrast ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${hapticsEnabled ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}><Smartphone size={18} /></div>
+                <span className="font-bold text-stone-700 dark:text-stone-300">Haptics</span>
+              </div>
+              <button onClick={() => setHapticsEnabled(!hapticsEnabled)} className={`w-12 h-6 rounded-full transition-all relative ${hapticsEnabled ? 'bg-purple-500' : 'bg-stone-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hapticsEnabled ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-4 space-y-3">
+            <button onClick={onShare} className="w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-all">
+              <Lock size={18} /> Share Caregiver Link
+            </button>
+            <button onClick={onSoftDelete} className="w-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-100 transition-all text-sm">
+              <Trash2 size={16} /> Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
+
   <button onClick={onClick} className={`flex-shrink-0 bg-white p-3 rounded-2xl border-2 flex flex-col items-center min-w-[80px] transition-all relative ${updated ? 'border-blue-400 shadow-md ring-2 ring-blue-50' : 'border-stone-100 hover:border-stone-200'}`}>
     {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse" />}
     <span className="text-xl mb-1">{emoji}</span>
@@ -523,6 +601,56 @@ export default function App() {
   const [isCaregiverMode, setIsCaregiverMode] = useState(false);
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [accountPendingDeletion, setAccountPendingDeletion] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState(null);
+
+  // Background Reminder Logic
+  useEffect(() => {
+    if (!remindersEnabled || isCaregiverMode) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+
+      // Simple mapping of rough times to medication slots
+      const slots = {
+        8: 'Morning',
+        9: 'Breakfast',
+        13: 'Lunch',
+        16: 'Afternoon',
+        19: 'Evening',
+        20: 'Dinner',
+        22: 'Bedtime',
+      };
+
+      const currentSlot = slots[hour];
+      if (currentSlot && minute === 0) { // Only notify at the start of the hour
+        // Check if any med is due in this slot
+        const medsDue = [
+          ...prescription.oralMeds.filter(m => m.timings.includes(currentSlot)).map(m => m.name),
+          ...prescription.insulins.filter(i => {
+            const f = i.frequency;
+            if (f === 'Before Meals') return ['Breakfast', 'Lunch', 'Dinner'].includes(currentSlot);
+            if (f === 'Bedtime') return currentSlot === 'Bedtime';
+            if (f === 'Once Daily') return currentSlot === 'Morning';
+            return false;
+          }).map(i => i.name)
+        ];
+
+        if (medsDue.length > 0 && Notification.permission === 'granted') {
+          new Notification(`Medicine Due: ${currentSlot}`, {
+            body: `You have ${medsDue.length} meds scheduled: ${medsDue.slice(0, 2).join(', ')}${medsDue.length > 2 ? '...' : ''}`,
+            icon: '/favicon.ico'
+          });
+          triggerHaptic(hapticsEnabled);
+        }
+      }
+    };
+
+    const interval = setInterval(checkReminders, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [remindersEnabled, prescription, hapticsEnabled, isCaregiverMode]);
 
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
@@ -1324,7 +1452,22 @@ export default function App() {
   return (
     <GlobalRecoveryBoundary>
       <SecurityGuardian>
-        <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
+        <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark bg-stone-950 text-stone-300' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
+
+          <SettingsModal
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            compliance={compliance}
+            onShare={handleShareLink}
+            profile={profile}
+            onSoftDelete={handleSoftDelete}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+            isHighContrast={isHighContrast}
+            setIsHighContrast={setIsHighContrast}
+            hapticsEnabled={hapticsEnabled}
+            setHapticsEnabled={setHapticsEnabled}
+          />
 
           {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
 
@@ -1367,7 +1510,10 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowSettings(true)} className="p-2 bg-stone-100 text-stone-500 rounded-xl hover:bg-stone-200 transition-colors"><Settings size={20} /></button>
+                <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
+              </div>
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -1380,38 +1526,13 @@ export default function App() {
           </div>
 
           {view === 'diary' && (
-            <div className="px-6 animate-in fade-in">
-              {/* COMPLIANCE STATS - SUBTLE STYLE */}
-              <div className="bg-stone-50/50 p-3 rounded-2xl mb-4 flex justify-around items-center border border-stone-100">
-                <div className="text-center">
-                  <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Oral</div>
-                  <div className="text-xs font-black text-stone-600">{compliance.oral}%</div>
-                </div>
-                <div className="w-px h-4 bg-stone-200" />
-                <div className="text-center">
-                  <div className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mb-0.5">Insulin</div>
-                  <div className="text-xs font-black text-stone-600">{compliance.insulin}%</div>
-                </div>
-                <div className="w-px h-4 bg-stone-200" />
-                <div className="text-center">
-                  <div className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Overall</div>
-                  <div className="text-xs font-black text-emerald-600">{compliance.overall}%</div>
-                </div>
-              </div>
-
+            <div className="px-6 animate-in fade-in space-y-6">
               {/* HEALTH INTELLIGENCE SUMMARY (SURFACE AI INSIGHTS & QUICK ACTIONS) */}
-              <div className="mb-6 space-y-3">
+              <div className="space-y-3">
                 {/* AI REMOVED FROM HERE AS PER PHASE 1 REGULATIONS */}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={handleShareLink}
-                    className="flex flex-col items-center justify-center p-4 bg-white rounded-3xl border border-stone-100 shadow-sm active:scale-95 transition-all group"
-                  >
-                    <div className="p-3 bg-emerald-50 rounded-2xl mb-2 group-hover:bg-emerald-100 transition-colors">
-                      <Lock className="text-emerald-600" size={20} />
-                    </div>
-                  </button>
+                <div className="space-y-3">
+                  {/* Share button moved to settings */}
                   {/* DIARY QUICK ACTIONS removed - centralized in Profile Settings */}
 
                   {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
@@ -1420,18 +1541,18 @@ export default function App() {
                   {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> DANGER! CHECK KETONES</div>}
 
                   {isCaregiverMode ? (
-                    <div className="bg-stone-50 p-8 rounded-[32px] text-center mb-6 border border-dashed border-stone-200">
-                      <Eye size={48} className="mx-auto text-stone-300 mb-4" />
+                    <div className="bg-stone-50 dark:bg-stone-800 p-8 rounded-[32px] text-center mb-6 border border-dashed border-stone-200 dark:border-stone-700">
+                      <Eye size={48} className="mx-auto text-stone-300 dark:text-stone-600 mb-4" />
                       <h3 className="text-stone-500 font-bold mb-2">Read-Only Mode</h3>
                       <p className="text-xs text-stone-400 mb-6">Data entry is disabled for caregiver access.</p>
-                      <button onClick={() => setView('history')} className="bg-stone-800 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg">View Patient History</button>
+                      <button onClick={() => setView('history')} className="bg-stone-800 dark:bg-stone-700 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg">View Patient History</button>
                     </div>
                   ) : (
                     <>
-                      <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 mb-6">
+                      <div className="bg-white dark:bg-stone-800 p-6 rounded-[32px] shadow-sm border border-stone-100 dark:border-stone-700 mb-6">
                         <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
                         <div className="flex items-baseline gap-2 mb-4">
-                          <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900" placeholder="---" />
+                          <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900 dark:text-emerald-400 bg-transparent" placeholder="---" />
                           <span className="text-xl font-bold text-stone-400">mg/dL</span>
                         </div>
                         <div className="flex gap-2 mb-4">
@@ -1440,30 +1561,29 @@ export default function App() {
                       </div>
 
                       {prescription.insulins.map(insulin => (
-                        <div key={insulin.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center mb-2">
+                        <div key={insulin.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center mb-2">
                           <div>
-                            <span className="font-bold text-stone-700 block">{insulin.name}</span>
+                            <span className="font-bold text-stone-700 dark:text-stone-200 block">{insulin.name}</span>
                             <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSuggestion(insulin.id) && (
-                              <div className="bg-stone-100 border border-stone-200 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
+                              <div className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
                                 <div className="flex items-center gap-1"><Zap size={10} /> {getSuggestion(insulin.id)}u</div>
                                 <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
                               </div>
                             )}
-                            <input type="number" placeholder="0" className="w-16 bg-stone-50 p-2 rounded text-xl font-bold text-right" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
+                            <input type="number" placeholder="0" className="w-16 bg-stone-50 dark:bg-stone-900 p-2 rounded text-xl font-bold text-right dark:text-stone-200" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
                           </div>
                         </div>
                       ))}
 
-
                       {prescription.oralMeds.map(med => (
-                        <div key={med.id} className="bg-white p-4 rounded-2xl border border-stone-100 mb-2">
-                          <div className="font-bold text-sm mb-2">{med.name}</div>
+                        <div key={med.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 mb-2">
+                          <div className="font-bold text-sm mb-2 dark:text-stone-200">{med.name}</div>
                           <div className="flex gap-2 flex-wrap">
                             {med.timings.map(t => (
-                              <button key={t} onClick={() => setMedsTaken(p => ({ ...p, [`${med.id}_${t}`]: !p[`${med.id}_${t}`] }))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : 'bg-stone-50'}`}>{t}</button>
+                              <button key={t} onClick={() => setMedsTaken(p => ({ ...p, [`${med.id}_${t}`]: !p[`${med.id}_${t}`] }))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
                             ))}
                           </div>
                         </div>
@@ -1473,15 +1593,15 @@ export default function App() {
                         {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
                       </div>
 
-                      <div className="mb-6 bg-white p-4 rounded-2xl border border-stone-100">
+                      <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
                         <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
-                        <div className="flex items-center gap-2 bg-stone-50 p-3 rounded-xl border border-stone-100 focus-within:border-emerald-500 transition-all">
+                        <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-900 p-3 rounded-xl border border-stone-100 dark:border-stone-700 focus-within:border-emerald-500 transition-all">
                           <Calendar size={18} className="text-stone-400" />
                           <input
                             type="datetime-local"
                             value={logTime}
                             onChange={(e) => setLogTime(e.target.value)}
-                            className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                            className="bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm"
                           />
                         </div>
                       </div>
@@ -1489,10 +1609,10 @@ export default function App() {
                       {editingLog && !editingLog.type ? (
                         <div className="flex gap-2 mb-6">
                           <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
-                          <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-2xl font-bold">Cancel</button>
+                          <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 py-4 rounded-2xl font-bold">Cancel</button>
                         </div>
                       ) : (
-                        <button onClick={handleSaveEntry} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
+                        <button onClick={handleSaveEntry} className="w-full bg-stone-900 dark:bg-stone-700 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
                       )}
                     </>
                   )}
@@ -1978,45 +2098,60 @@ export default function App() {
                 <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
               </div>
               <div className="space-y-3">
-                {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => (
-                  <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-100 transition-all flex flex-col">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <span className="text-xl font-bold text-emerald-800">{item.hgt || '-'}</span>
-                        <span className="text-xs text-stone-400 ml-1">mg/dL</span>
-                      </div>
-                      {!isCaregiverMode && (
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleStartEdit(item)} className="p-2 bg-stone-50 text-stone-400 hover:text-emerald-600 rounded-lg transition-colors"><Edit3 size={14} /></button>
-                          {(() => {
-                            const isLocked = (Date.now() - (item.timestamp?.seconds * 1000 || new Date(item.timestamp))) / 1000 < 1800;
-                            return (
-                              <button
-                                onClick={() => handleDeleteEntry(item.id)}
-                                className={`p-2 rounded-lg transition-colors ${isLocked ? 'bg-stone-50 text-stone-300 cursor-not-allowed' : 'bg-red-50 text-red-300 hover:text-red-500'}`}
-                                title={isLocked ? "Deletion locked for 30 minutes" : "Delete Entry"}
-                              >
-                                {isLocked ? <Lock size={14} /> : <Trash2 size={14} />}
-                              </button>
-                            );
-                          })()}
+                {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => {
+                  const isExpanded = expandedLogId === item.id;
+                  return (
+                    <div key={item.id} className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-100 dark:border-stone-800 transition-all overflow-hidden">
+                      <button
+                        onClick={() => setExpandedLogId(isExpanded ? null : item.id)}
+                        className="w-full text-left p-4 flex justify-between items-center"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${item.hgt && item.hgt < 70 ? 'bg-red-100 text-red-600' : item.hgt && item.hgt > 250 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                            {item.hgt || '-'}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">{item.mealStatus}</div>
+                            <div className="text-[10px] text-stone-300">{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</div>
+                          </div>
+                        </div>
+                        {isExpanded ? <ChevronUp size={20} className="text-stone-300" /> : <ChevronDown size={20} className="text-stone-300" />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-200">
+                          <div className="pt-2 border-t border-stone-50 dark:border-stone-800">
+                            <div className="text-xs text-stone-500 dark:text-stone-400 mb-2 space-y-1">
+                              {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={12} className="text-purple-500" /> {name} ({time})</div> })}
+                              {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={12} className="text-gray-400" /> {m}</div>))}
+                              {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-500"><Syringe size={12} /> {insName}: {d}u</div> })}
+                            </div>
+
+                            {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-2 mb-3">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 rounded-full dark:text-stone-400">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
+
+                            {!isCaregiverMode && (
+                              <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-stone-50 dark:border-stone-800">
+                                <button onClick={() => handleStartEdit(item)} className="px-4 py-2 bg-stone-50 dark:bg-stone-800 text-stone-400 hover:text-emerald-600 rounded-xl transition-colors text-xs font-bold flex items-center gap-1"><Edit3 size={14} /> Edit</button>
+                                {(() => {
+                                  const isLocked = (Date.now() - (item.timestamp?.seconds * 1000 || new Date(item.timestamp))) / 1000 < 1800;
+                                  return (
+                                    <button
+                                      onClick={() => handleDeleteEntry(item.id)}
+                                      className={`px-4 py-2 rounded-xl transition-colors text-xs font-bold flex items-center gap-1 ${isLocked ? 'bg-stone-50 dark:bg-stone-800 text-stone-300 cursor-not-allowed' : 'bg-red-50 dark:bg-red-900/20 text-red-400 hover:text-red-500'}`}
+                                      disabled={isLocked}
+                                    >
+                                      {isLocked ? <Lock size={14} /> : <Trash2 size={14} />} Delete
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    <div className="text-xs text-stone-500 mb-2">
-                      <div className="font-bold text-[10px] text-stone-300 uppercase mb-1">{item.mealStatus}</div>
-                      {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={10} className="text-purple-500" /> {name} ({time})</div> })}
-                      {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={10} className="text-gray-400" /> {m}</div>))}
-                      {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700"><Syringe size={10} /> {insName}: {d}u</div> })}
-                    </div>
-
-                    {item.tags && item.tags.length > 0 && (<div className="flex flex-wrap gap-1 mt-1 mb-2">{item.tags.map(t => <span key={t} className="text-[10px] bg-stone-50 border border-stone-200 px-1 rounded">{t} {TAG_EMOJIS[t] || ''}</span>)}</div>)}
-                    <div className="text-[10px] text-stone-400 mt-2 border-t pt-2 flex justify-between">
-                      <span>{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -2044,7 +2179,7 @@ export default function App() {
             <p className="text-[9px] text-stone-300 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
           </div>
         </div>
-      </SecurityGuardian>
-    </GlobalRecoveryBoundary>
+      </SecurityGuardian >
+    </GlobalRecoveryBoundary >
   );
 }
