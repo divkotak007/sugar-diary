@@ -495,6 +495,7 @@ export default function App() {
   const [medsTaken, setMedsTaken] = useState({});
   const [contextTags, setContextTags] = useState([]);
   const [fullHistory, setFullHistory] = useState([]);
+  const [aiInsights, setAiInsights] = useState([]);
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
