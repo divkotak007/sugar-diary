@@ -2031,17 +2031,14 @@ export default function App() {
                     onClose={() => setExpandedGraphData(null)}
                   />
                 )}
-              </div>
-            )}
-            </div>
-          )}
 
-          <div className="absolute bottom-4 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity">
-            <p className="text-[10px] font-bold text-stone-400">© 2026 Sugar Diary • Secure Medical Logger</p>
-            <p className="text-[9px] text-stone-300 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
-          </div>
-        </div>
-      </SecurityGuardian>
+
+                <div className="absolute bottom-4 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity">
+                  <p className="text-[10px] font-bold text-stone-400">© 2026 Sugar Diary • Secure Medical Logger</p>
+                  <p className="text-[9px] text-stone-300 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
+                </div>
+              </div>
+            </SecurityGuardian>
     </GlobalRecoveryBoundary>
-  );
+        );
 }
