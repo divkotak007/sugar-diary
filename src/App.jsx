@@ -521,6 +521,7 @@ export default function App() {
   const [estimatedHbA1c, setEstimatedHbA1c] = useState(null);
   const [isCaregiverMode, setIsCaregiverMode] = useState(false);
   const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [accountPendingDeletion, setAccountPendingDeletion] = useState(null);
 
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
