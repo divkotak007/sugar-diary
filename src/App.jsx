@@ -371,7 +371,12 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
   // Filter history for this specific vital
   const vitalType = label.toLowerCase();
   const relevantLogs = [...fullHistory]
-    .filter(log => log.type === 'vital_update' && log.snapshot?.profile?.[vitalType] !== undefined && log.snapshot?.profile?.[vitalType] !== null)
+    .filter(log => {
+      if (log.type === 'vital_update') {
+        return log.updatedParams && log.updatedParams.includes(vitalType);
+      }
+      return log.snapshot?.profile?.[vitalType] !== undefined && log.snapshot?.profile?.[vitalType] !== null;
+    })
     .sort((a, b) => {
       const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
       const tb = b.timestamp?.seconds || new Date(b.timestamp).getTime() / 1000 || 0;
@@ -867,9 +872,16 @@ export default function App() {
   };
 
   const getTrendData = (metric) => {
-    // 1. Extract all valid entries for this metric
+    // 1. Extract all valid entries for this metric (Strict Independence Rule)
     const allEntries = fullHistory
-      .filter(log => log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric])))
+      .filter(log => {
+        // Only include if this specific vital was actually updated in this log
+        if (log.type === 'vital_update') {
+          return log.updatedParams && log.updatedParams.includes(metric);
+        }
+        // For older legacy logs or other types, check existence (graceful fallback)
+        return log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric]));
+      })
       .map(log => ({
         id: log.id,
         date: log.timestamp?.seconds * 1000 || (log.timestamp instanceof Date ? log.timestamp.getTime() : new Date(log.timestamp).getTime()),
@@ -959,7 +971,7 @@ export default function App() {
       );
       if (recent) {
         const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
-        if (!confirm(`Warning: ${pNames} was already recorded in the last hour. Are you sure this is a new measurement?`)) return;
+        return alert(`Action Blocked: ${pNames} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
       }
     }
 
@@ -1026,7 +1038,7 @@ export default function App() {
           await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
             type: 'vital_update',
             snapshot: { profile: updatedProfile, prescription },
-            updatedParams,
+            updatedParams, // STRICTLY USED for graph filtering
             timestamp,
             tags: ['Vital Update', ...updatedParams]
           });
@@ -1049,7 +1061,7 @@ export default function App() {
     // 30 Minute Lock Protection
     const ageSeconds = (Date.now() - (log.timestamp?.seconds * 1000 || new Date(log.timestamp))) / 1000;
     if (ageSeconds < 1800) {
-      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes for audit safety.`);
+      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes to prevent accidental deletions.`);
     }
 
     if (!confirm("Confirm permanent deletion of this record?")) return;
@@ -1104,7 +1116,7 @@ export default function App() {
         !l.type &&
         Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
       );
-      if (recent && !confirm("A log was recorded in the last hour. Continue anyway?")) return;
+      if (recent) return alert("Action Blocked: A log was recorded in the last hour. Duplicate entries are prevented for clinical safety.");
     }
 
     const entryData = {
@@ -1148,21 +1160,8 @@ export default function App() {
   };
 
   const handleStartEditVital = (log, activeField = 'weight') => {
-    setEditingLog(log);
-    const p = log.snapshot.profile || {};
-    setVitalsForm({
-      weight: p.weight || '',
-      hba1c: p.hba1c || '',
-      creatinine: p.creatinine || '',
-      instructions: p.instructions || '',
-      dob: p.dob || '',
-      gender: p.gender || '',
-      pregnancyStatus: p.pregnancyStatus || false
-    });
-    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
-    setVitalsLogTime(date.toISOString().slice(0, 16));
-    setView('profile');
-    setHighlightField(activeField);
+    alert("Editing vitals is disabled for clinical safety. If an entry is incorrect, please delete it (logs become delete-able after 30 minutes) and re-enter.");
+    return;
   };
 
   const handleSoftDelete = async () => {
@@ -2157,11 +2156,19 @@ export default function App() {
           )}
 
           {/* NAV */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md p-2 flex justify-around border-t z-50">
-            <button onClick={() => { triggerHaptic(); setView('diary'); }} className={`p-3 rounded-2xl transition-all ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Edit3 /></button>
-            <button onClick={() => { triggerHaptic(); setView('prescription'); }} className={`p-3 rounded-2xl transition-all ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><Stethoscope /></button>
-            <button onClick={() => { triggerHaptic(); setView('history'); }} className={`p-3 rounded-2xl transition-all ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><FileText /></button>
-            <button onClick={() => { triggerHaptic(); setView('profile'); }} className={`p-3 rounded-2xl transition-all ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-stone-100'}`}><User /></button>
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md pb-6 pt-2 px-6 flex justify-between items-center border-t border-stone-100 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <button onClick={() => { triggerHaptic(); setView('diary'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'diary' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
+              <Edit3 size={22} strokeWidth={view === 'diary' ? 2.5 : 2} />
+            </button>
+            <button onClick={() => { triggerHaptic(); setView('prescription'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'prescription' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
+              <Stethoscope size={22} strokeWidth={view === 'prescription' ? 2.5 : 2} />
+            </button>
+            <button onClick={() => { triggerHaptic(); setView('history'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'history' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
+              <FileText size={22} strokeWidth={view === 'history' ? 2.5 : 2} />
+            </button>
+            <button onClick={() => { triggerHaptic(); setView('profile'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'profile' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
+              <User size={22} strokeWidth={view === 'profile' ? 2.5 : 2} />
+            </button>
           </nav>
           {expandedGraphData && (
             <ExpandedGraphModal
@@ -2175,7 +2182,7 @@ export default function App() {
 
 
           <div className="absolute bottom-4 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity">
-            <p className="text-[10px] font-bold text-stone-400">© 2026 Sugar Diary • Secure Medical Logger</p>
+            <p className="text-[10px] font-bold text-stone-400">© Dr Divyansh Kotak</p>
             <p className="text-[9px] text-stone-300 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
           </div>
         </div>
