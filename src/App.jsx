@@ -1104,7 +1104,13 @@ export default function App() {
       return alert("Safety Block: Cannot log insulin without a valid blood sugar reading (> 20 mg/dL).");
     }
 
-    if (!hgt && !hasMeds) return alert("Enter Glucose or Medication");
+    // STRICT: Prevent Blank Entries
+    if (!hgt && !hasMeds && !hasInsulin && !mealStatus && Object.keys(contextTags).length === 0) {
+      return alert("Action Blocked: Cannot save an empty log. Please enter at least one health metric.");
+    }
+
+    // Legacy check wrapper 
+    if (!hgt && !hasMeds && !hasInsulin) return alert("Action Blocked: Enter Glucose, Medication, or Insulin.");
 
     const timestamp = logTime ? new Date(logTime) : new Date();
     if (isNaN(timestamp.getTime())) return alert("Invalid Log Time.");
@@ -1772,16 +1778,16 @@ export default function App() {
                     <div className="bg-stone-50 p-3 rounded-2xl">
                       <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Display</label>
                       <div className="space-y-2">
-                        <button onClick={() => setDarkMode(!darkMode)} className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all ${darkMode ? 'bg-stone-800 text-white' : 'bg-white text-stone-600 shadow-sm'}`}>
-                          <span className="flex items-center gap-1.5">{darkMode ? <Moon size={14} /> : <Sun size={14} />} Dark Mode</span>
-                          <div className={`w-8 h-4 rounded-full relative transition-colors ${darkMode ? 'bg-emerald-500' : 'bg-stone-200'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${darkMode ? 'left-4.5' : 'left-0.5'}`} style={{ left: darkMode ? '18px' : '2px' }} />
+                        <button onClick={() => { setDarkMode(!darkMode); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${darkMode ? 'bg-stone-800 text-white border border-stone-700' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
+                          <span className="flex items-center gap-2">{darkMode ? <Moon size={16} /> : <Sun size={16} />} Dark Mode</span>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${darkMode ? 'bg-emerald-500' : 'bg-stone-200'}`}>
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: darkMode ? '20px' : '4px' }} />
                           </div>
                         </button>
-                        <button onClick={() => setIsHighContrast(!isHighContrast)} className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all ${isHighContrast ? 'bg-stone-900 text-yellow-400' : 'bg-white text-stone-600 shadow-sm'}`}>
-                          <span className="flex items-center gap-1.5"><Eye size={14} /> Contrast</span>
-                          <div className={`w-8 h-4 rounded-full relative transition-colors ${isHighContrast ? 'bg-yellow-500' : 'bg-stone-200'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all`} style={{ left: isHighContrast ? '18px' : '2px' }} />
+                        <button onClick={() => { setIsHighContrast(!isHighContrast); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${isHighContrast ? 'bg-stone-900 text-yellow-400 border border-stone-800' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
+                          <span className="flex items-center gap-2"><Eye size={16} /> Contrast</span>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${isHighContrast ? 'bg-yellow-500' : 'bg-stone-200'}`}>
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: isHighContrast ? '20px' : '4px' }} />
                           </div>
                         </button>
                       </div>
@@ -1791,13 +1797,17 @@ export default function App() {
                     <div className="bg-stone-50 p-3 rounded-2xl">
                       <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">System</label>
                       <div className="space-y-2">
-                        <button onClick={() => { setHapticsEnabled(!hapticsEnabled); if (!hapticsEnabled) triggerHaptic(); }} className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all ${hapticsEnabled ? 'bg-white text-stone-800 shadow-sm' : 'bg-stone-100 text-stone-400'}`}>
-                          <span className="flex items-center gap-1.5"><Smartphone size={14} /> Haptics</span>
-                          <span className={`text-[10px] font-black ${hapticsEnabled ? 'text-emerald-500' : 'text-stone-300'}`}>{hapticsEnabled ? 'ON' : 'OFF'}</span>
+                        <button onClick={() => { setHapticsEnabled(!hapticsEnabled); if (!hapticsEnabled) triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${hapticsEnabled ? 'bg-white text-stone-800 shadow-sm border border-stone-200' : 'bg-stone-100 text-stone-400'}`}>
+                          <span className="flex items-center gap-2"><Smartphone size={16} /> Haptics</span>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: hapticsEnabled ? '20px' : '4px' }} />
+                          </div>
                         </button>
-                        <button onClick={() => setSoundEnabled(!soundEnabled)} className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all ${soundEnabled ? 'bg-white text-stone-800 shadow-sm' : 'bg-stone-100 text-stone-400'}`}>
-                          <span className="flex items-center gap-1.5">{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} Sound</span>
-                          <span className={`text-[10px] font-black ${soundEnabled ? 'text-emerald-500' : 'text-stone-300'}`}>{soundEnabled ? 'ON' : 'OFF'}</span>
+                        <button onClick={() => { setSoundEnabled(!soundEnabled); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${soundEnabled ? 'bg-white text-stone-800 shadow-sm border border-stone-200' : 'bg-stone-100 text-stone-400'}`}>
+                          <span className="flex items-center gap-2">{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />} Sound</span>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: soundEnabled ? '20px' : '4px' }} />
+                          </div>
                         </button>
                         <select value={lang} onChange={(e) => setLang(e.target.value)} className="w-full bg-white border border-stone-100 p-1.5 rounded-lg text-[10px] font-bold outline-none text-stone-600">
                           <option value="en">English</option>
@@ -2156,18 +2166,19 @@ export default function App() {
           )}
 
           {/* NAV */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md pb-6 pt-2 px-6 flex justify-between items-center border-t border-stone-100 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            <button onClick={() => { triggerHaptic(); setView('diary'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'diary' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
-              <Edit3 size={22} strokeWidth={view === 'diary' ? 2.5 : 2} />
+          {/* NAV - FLOATING FROSTED PILL */}
+          <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-white/80 backdrop-blur-xl p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-white/20 ring-1 ring-black/5">
+            <button onClick={() => { triggerHaptic(); setView('diary'); }} className={`p-4 rounded-full transition-all duration-300 flex flex-col items-center gap-1 ${view === 'diary' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-white/50 hover:text-stone-600'}`}>
+              <Edit3 size={20} strokeWidth={view === 'diary' ? 2.5 : 2} />
             </button>
-            <button onClick={() => { triggerHaptic(); setView('prescription'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'prescription' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
-              <Stethoscope size={22} strokeWidth={view === 'prescription' ? 2.5 : 2} />
+            <button onClick={() => { triggerHaptic(); setView('prescription'); }} className={`p-4 rounded-full transition-all duration-300 flex flex-col items-center gap-1 ${view === 'prescription' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-white/50 hover:text-stone-600'}`}>
+              <Stethoscope size={20} strokeWidth={view === 'prescription' ? 2.5 : 2} />
             </button>
-            <button onClick={() => { triggerHaptic(); setView('history'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'history' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
-              <FileText size={22} strokeWidth={view === 'history' ? 2.5 : 2} />
+            <button onClick={() => { triggerHaptic(); setView('history'); }} className={`p-4 rounded-full transition-all duration-300 flex flex-col items-center gap-1 ${view === 'history' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-white/50 hover:text-stone-600'}`}>
+              <FileText size={20} strokeWidth={view === 'history' ? 2.5 : 2} />
             </button>
-            <button onClick={() => { triggerHaptic(); setView('profile'); }} className={`p-4 rounded-[20px] transition-all duration-300 flex flex-col items-center gap-1 ${view === 'profile' ? 'bg-stone-900 text-white shadow-xl translate-y-[-4px]' : 'text-stone-400 hover:bg-stone-50 hover:text-stone-600'}`}>
-              <User size={22} strokeWidth={view === 'profile' ? 2.5 : 2} />
+            <button onClick={() => { triggerHaptic(); setView('profile'); }} className={`p-4 rounded-full transition-all duration-300 flex flex-col items-center gap-1 ${view === 'profile' ? 'bg-stone-900 text-white shadow-lg scale-105' : 'text-stone-400 hover:bg-white/50 hover:text-stone-600'}`}>
+              <User size={20} strokeWidth={view === 'profile' ? 2.5 : 2} />
             </button>
           </nav>
           {expandedGraphData && (

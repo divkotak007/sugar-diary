@@ -4,6 +4,9 @@
 
 /* --- CSS CUSTOM PROPERTIES --- */
 :root {
+  /* Force light mode color scheme to prevent browser auto-inversion */
+  color-scheme: light;
+
   /* Color Palette - Standard Theme */
   --bg-primary: #fffbf5;
   --bg-secondary: #ffffff;
