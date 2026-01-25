@@ -201,8 +201,8 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                 <div className={`p-2 rounded-lg ${hapticsEnabled ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}><Smartphone size={18} /></div>
                 <span className="font-bold text-stone-700 dark:text-stone-300">Haptics</span>
               </div>
-              <button onClick={() => setHapticsEnabled(!hapticsEnabled)} className={`w-12 h-6 rounded-full transition-all relative ${hapticsEnabled ? 'bg-purple-500' : 'bg-stone-300'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hapticsEnabled ? 'left-7' : 'left-1'}`} />
+              <button onClick={() => setHapticsEnabled(!hapticsEnabled)} className={`w-12 h-7 rounded-full transition-all relative shadow-inner ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-200'}`}>
+                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${hapticsEnabled ? 'left-6' : 'left-1'}`} />
               </button>
             </div>
           </div>
@@ -227,8 +227,8 @@ const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
     {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse" />}
     <span className="text-xl mb-1">{emoji}</span>
     <div className="font-bold text-stone-800 text-lg leading-none">{value || '-'}</div>
-    <div className="text-[10px] text-stone-400 font-bold uppercase mt-1">{label}</div>
-    {unit && <div className="text-[9px] text-stone-300 font-bold">{unit}</div>}
+    <div className="text-xs text-stone-400 font-bold uppercase mt-1">{label}</div>
+    {unit && <div className="text-[10px] text-stone-300 font-bold">{unit}</div>}
   </button>
 );
 
@@ -298,8 +298,7 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
 
         {/* Normal Range Band (Gray Dotted/Muted Background) */}
         {showNormalBand && (
-          <rect x={padding} y={normalCountY || 0} width={width - 2 * padding} height={50} fill="#f5f5f4" opacity="0.5" />
-          // Simplified band visualization for stability - rendering a subtle zone area
+          <rect x={padding} y={normalMinY} width={width - 2 * padding} height={Math.max(0, normalMaxY - normalMinY)} fill={color === 'orange' ? '#fff7ed' : '#ecfdf5'} opacity="0.8" />
         )}
 
         {label === "HbA1c" && (
@@ -1834,7 +1833,10 @@ export default function App() {
                   <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer mb-6 ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'border-red-200 bg-red-50' : 'border-stone-100'}`}>
                     <Baby className={vitalsForm.pregnancyStatus || profile.pregnancyStatus ? "text-red-500" : "text-stone-300"} />
                     <span className="font-bold text-sm text-stone-700">Patient is Pregnant</span>
-                    <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({ ...vitalsForm, pregnancyStatus: e.target.checked })} className="ml-auto w-5 h-5 accent-red-500" />
+                    <div className={`w-10 h-6 rounded-full transition-all relative ml-auto ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'bg-red-500' : 'bg-stone-200'}`}>
+                      <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({ ...vitalsForm, pregnancyStatus: e.target.checked })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'left-5' : 'left-1'}`} />
+                    </div>
                   </label>
                 )}
 
@@ -1908,17 +1910,17 @@ export default function App() {
 
                     {/* System Settings */}
                     <div className="bg-stone-50 p-3 rounded-2xl">
-                      <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">System</label>
+                      <label className="text-xs font-bold text-stone-400 uppercase block mb-2">System</label>
                       <div className="space-y-2">
                         <button onClick={() => { setHapticsEnabled(!hapticsEnabled); if (!hapticsEnabled) triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${hapticsEnabled ? 'bg-white text-stone-800 shadow-sm border border-stone-200' : 'bg-stone-100 text-stone-400'}`}>
                           <span className="flex items-center gap-2"><Smartphone size={16} /> Haptics</span>
-                          <div className={`w-10 h-6 rounded-full relative transition-colors ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-200'}`}>
                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: hapticsEnabled ? '20px' : '4px' }} />
                           </div>
                         </button>
                         <button onClick={() => { setSoundEnabled(!soundEnabled); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${soundEnabled ? 'bg-white text-stone-800 shadow-sm border border-stone-200' : 'bg-stone-100 text-stone-400'}`}>
                           <span className="flex items-center gap-2">{soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />} Sound</span>
-                          <div className={`w-10 h-6 rounded-full relative transition-colors ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full relative transition-colors ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-200'}`}>
                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: soundEnabled ? '20px' : '4px' }} />
                           </div>
                         </button>
