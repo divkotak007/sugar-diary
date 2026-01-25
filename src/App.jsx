@@ -665,7 +665,7 @@ export default function App() {
       return tb - ta;
     });
 
-    const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: {} };
+    const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: [] };
 
     // Most recent non-null records for each
     const w = sorted.find(l => l.snapshot?.profile?.weight)?.snapshot?.profile?.weight;
