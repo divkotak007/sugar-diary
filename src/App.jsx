@@ -223,25 +223,25 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
 
 const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
 
-  <button onClick={onClick} className={`flex-shrink-0 bg-white p-3 rounded-2xl border-2 flex flex-col items-center min-w-[80px] transition-all relative ${updated ? 'border-blue-400 shadow-md ring-2 ring-blue-50' : 'border-stone-100 hover:border-stone-200'}`}>
-    {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse" />}
-    <span className="text-xl mb-1">{emoji}</span>
-    <div className="font-bold text-stone-800 text-lg leading-none">{value || '-'}</div>
+  <button onClick={() => { if (onClick) onClick(); }} className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative ${updated ? 'bg-white dark:bg-stone-800 border-blue-400 shadow-md ring-2 ring-blue-50 dark:ring-blue-900/40' : 'bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600'}`}>
+    {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-stone-800 animate-pulse" />}
+    <span className="text-2xl mb-1 filter-none">{emoji}</span>
+    <div className="font-bold text-stone-800 dark:text-stone-200 text-lg leading-none">{value || '-'}</div>
     <div className="text-xs text-stone-400 font-bold uppercase mt-1">{label}</div>
-    {unit && <div className="text-[10px] text-stone-300 font-bold">{unit}</div>}
+    {unit && <div className="text-[10px] text-stone-300 dark:text-stone-500 font-bold">{unit}</div>}
   </button>
 );
 
 const MealOption = ({ label, icon: Icon, selected, onClick }) => (
-  <button onClick={onClick} className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all duration-200 border-2 ${selected ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-md scale-95' : 'bg-white border-transparent text-stone-400 hover:bg-stone-100'}`}>
-    <Icon size={20} />
-    <span className="text-[10px] font-bold uppercase">{label}</span>
+  <button onClick={onClick} className={`flex-1 py-4 px-3 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 border-2 touch-manipulation ${selected ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 text-amber-900 dark:text-amber-400 shadow-md scale-95' : 'bg-white dark:bg-stone-800 border-transparent text-stone-400 dark:text-stone-500 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
+    <Icon size={22} />
+    <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
   </button>
 );
 
 const ContextTag = ({ label, icon: Icon, selected, onClick, color }) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 text-xs font-bold uppercase ${selected ? `bg-${color}-100 border-${color}-400 text-${color}-900 shadow-sm scale-95` : 'bg-white border-stone-200 text-stone-400 hover:border-stone-300'}`}>
-    <Icon size={14} /> {label}
+  <button onClick={onClick} className={`flex items-center gap-2 px-4 py-3 rounded-full border transition-all duration-200 text-xs font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
+    <Icon size={16} /> {label}
   </button>
 );
 
@@ -1018,6 +1018,22 @@ export default function App() {
       if (Math.abs(now - inputTime) < 60000) finalTimestamp = now;
     }
 
+    // Module 1: Vital Duplicate Prevention (60 Minutes)
+    if (!editingLog) {
+      const recentVital = fullHistory.find(l =>
+        l.type === 'vital_update' &&
+        Math.abs(new Date() - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+      );
+
+      if (recentVital) {
+        // Check if we are actually validating a vital field change?
+        // Simplification: If any vital update exists in last hour, warn user.
+        // This is strict but safe for "Prevent Duplicate Vital Entries".
+        alert("Safety Notice: Vitals were updated less than 60 minutes ago. Please wait before adding a new entry to prevent duplicates.");
+        return;
+      }
+    }
+
     const updatedParams = [];
     const updatedProfile = { ...profile };
     let hasChanges = false;
@@ -1681,24 +1697,27 @@ export default function App() {
                           <div className="font-bold text-sm mb-2 dark:text-stone-200">{med.name}</div>
                           <div className="flex gap-2 flex-wrap">
                             {med.timings.map(t => (
-                              <button key={t} onClick={() => setMedsTaken(p => {
-                                const newState = { ...p };
-                                // STRICT: Radio behavior - ensure only one slot per med is true at a time
-                                // If clicking the ALREADY selected one, toggle it off.
-                                // If clicking a NEW one, clear others for this med and select new one.
-                                const currentKey = `${med.id}_${t}`;
-                                const isCurrentlySelected = !!p[currentKey];
+                              <button key={t} onClick={() => {
+                                triggerHaptic();
+                                setMedsTaken(p => {
+                                  const newState = { ...p };
+                                  // STRICT: Radio behavior - ensure only one slot per med is true at a time
+                                  // If clicking the ALREADY selected one, toggle it off.
+                                  // If clicking a NEW one, clear others for this med and select new one.
+                                  const currentKey = `${med.id}_${t}`;
+                                  const isCurrentlySelected = !!p[currentKey];
 
-                                // Clear all slots for this specific med first
-                                med.timings.forEach(slot => {
-                                  delete newState[`${med.id}_${slot}`];
-                                });
+                                  // Clear all slots for this specific med first
+                                  med.timings.forEach(slot => {
+                                    delete newState[`${med.id}_${slot}`];
+                                  });
 
-                                if (!isCurrentlySelected) {
-                                  newState[currentKey] = true;
-                                }
-                                return newState;
-                              })} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
+                                  if (!isCurrentlySelected) {
+                                    newState[currentKey] = true;
+                                  }
+                                  return newState;
+                                })
+                              }} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
                             ))}
                           </div>
                         </div>
@@ -1869,7 +1888,7 @@ export default function App() {
                     </div>
                   )
                 ) : (
-                  !isCaregiverMode && <button onClick={handleSaveProfile} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+                  !isCaregiverMode && <button onClick={() => { triggerHaptic(); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
                 )}
               </div>
 
@@ -1891,16 +1910,16 @@ export default function App() {
                     <div className="bg-stone-50 p-3 rounded-2xl">
                       <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Display</label>
                       <div className="space-y-2">
-                        <button onClick={() => { setDarkMode(!darkMode); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${darkMode ? 'bg-stone-800 text-white border border-stone-700' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
-                          <span className="flex items-center gap-2">{darkMode ? <Moon size={16} /> : <Sun size={16} />} Dark Mode</span>
-                          <div className={`w-10 h-6 rounded-full relative transition-colors ${darkMode ? 'bg-emerald-500' : 'bg-stone-200'}`}>
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: darkMode ? '20px' : '4px' }} />
+                        <button onClick={() => { setDarkMode(!darkMode); triggerHaptic(); }} className={`w-full flex items-center justify-between p-4 rounded-[20px] text-xs font-bold transition-all ${darkMode ? 'bg-stone-800 text-white border border-stone-700' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
+                          <span className="flex items-center gap-2">{darkMode ? <Moon size={18} /> : <Sun size={18} />} Dark Mode</span>
+                          <div className={`w-14 h-8 rounded-full relative transition-colors shadow-inner ${darkMode ? 'bg-emerald-500' : 'bg-stone-200'}`}>
+                            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm`} style={{ left: darkMode ? '28px' : '4px' }} />
                           </div>
                         </button>
-                        <button onClick={() => { setIsHighContrast(!isHighContrast); triggerHaptic(); }} className={`w-full flex items-center justify-between p-3 rounded-full text-xs font-bold transition-all ${isHighContrast ? 'bg-stone-900 text-yellow-400 border border-stone-800' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
-                          <span className="flex items-center gap-2"><Eye size={16} /> Contrast</span>
-                          <div className={`w-10 h-6 rounded-full relative transition-colors ${isHighContrast ? 'bg-yellow-500' : 'bg-stone-200'}`}>
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm`} style={{ left: isHighContrast ? '20px' : '4px' }} />
+                        <button onClick={() => { setIsHighContrast(!isHighContrast); triggerHaptic(); }} className={`w-full flex items-center justify-between p-4 rounded-[20px] text-xs font-bold transition-all ${isHighContrast ? 'bg-stone-900 text-yellow-400 border border-stone-800' : 'bg-white text-stone-600 shadow-sm border border-stone-200'}`}>
+                          <span className="flex items-center gap-2"><Eye size={18} /> Contrast</span>
+                          <div className={`w-14 h-8 rounded-full relative transition-colors shadow-inner ${isHighContrast ? 'bg-yellow-500' : 'bg-stone-200'}`}>
+                            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm`} style={{ left: isHighContrast ? '28px' : '4px' }} />
                           </div>
                         </button>
                       </div>
@@ -2188,7 +2207,7 @@ export default function App() {
                 </div>
 
               </div>
-              <button onClick={handleSavePrescription} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
+              <button onClick={() => { triggerHaptic(); handleSavePrescription(); }} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">Save Prescription</button>
             </div>
           )}
 

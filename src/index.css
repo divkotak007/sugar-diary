@@ -141,6 +141,14 @@
   /* Stone 700 */
 }
 
+/* Module 2: Explicit Dark Mode - No Auto Inversion */
+@media (prefers-color-scheme: dark) {
+  /* Ensure images/graphs didn't get inverted by generic rules */
+  img, svg, video, canvas, audio, iframe, embed, object {
+    filter: none !important;
+  }
+}
+
 /* --- BASE STYLES --- */
 body {
   background-color: var(--bg-primary);
