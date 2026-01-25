@@ -284,11 +284,11 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
     <div
       onClick={onClick}
       aria-label={`${label} progress trend chart`}
-      className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-all z-0"
+      className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-all z-0"
     >
       <div className="flex justify-between items-center mb-4">
-        <span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
-        <span className={`text-sm font-bold text-${color}-600`}>{data[data.length - 1].value} {unit}</span>
+        <span className="text-xs font-bold uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
+        <span className={`text-sm font-bold text-${color}-600 dark:text-${color}-400`}>{data[data.length - 1].value} {unit}</span>
       </div>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-hidden pointer-events-none">
         {/* Grid lines */}
@@ -298,7 +298,7 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
 
         {/* Normal Range Band (Gray Dotted/Muted Background) */}
         {showNormalBand && (
-          <rect x={padding} y={normalMinY} width={width - 2 * padding} height={Math.max(0, normalMaxY - normalMinY)} fill={color === 'orange' ? '#fff7ed' : '#ecfdf5'} opacity="0.8" />
+          <rect x={padding} y={normalMinY} width={width - 2 * padding} height={Math.max(0, normalMaxY - normalMinY)} fill={color === 'orange' ? '#fff7ed' : '#ecfdf5'} className="dark:fill-stone-700 dark:opacity-30" opacity="0.8" />
         )}
 
         {label === "HbA1c" && (
@@ -1132,7 +1132,7 @@ export default function App() {
   };
 
   const handleSaveEntry = async () => {
-    const hasMeds = Object.keys(medsTaken).some(k => medsTaken[k]) || Object.keys(insulinDoses).length > 0;
+    const hasOralMeds = Object.keys(medsTaken).some(k => medsTaken[k]);
     const hasInsulin = Object.keys(insulinDoses).length > 0;
 
     // Safety: Insulin requires Sugar
@@ -1140,14 +1140,7 @@ export default function App() {
       return alert("Safety Block: Cannot log insulin without a valid blood sugar reading (> 20 mg/dL).");
     }
 
-    // STRICT: Prevent Blank Entries
-    if (!hgt && !hasMeds && !hasInsulin && !mealStatus && Object.keys(contextTags).length === 0) {
-      return alert("Action Blocked: Cannot save an empty log. Please enter at least one health metric.");
-    }
-
-    // Legacy check wrapper 
-    if (!hgt && !hasMeds && !hasInsulin) return alert("Action Blocked: Enter Glucose, Medication, or Insulin.");
-
+    // Legacy duplicate checks removed to resolve ReferenceError
     const timestamp = logTime ? new Date(logTime) : new Date();
     if (isNaN(timestamp.getTime())) return alert("Invalid Log Time.");
     if (timestamp > new Date()) return alert("Cannot log entries in the future.");
@@ -1182,9 +1175,14 @@ export default function App() {
         }
       }
 
-      // 3. Insulin Check (Same Logic if needed, usually Insulin is more flexible but let's block exact same insulin type in 1 hour?)
-      // User requirement said "Same medicine + same day + same time slot". Insulin doesn't have slots unless frequency is fixed. 
-      // We will leave insulin flexible for now as it's often sliding scale correction.
+      // 3. Insulin Check (Same Logic if needed)
+    }
+
+    // STRICT: Prevent Empty regular logs
+    const hasContext = contextTags.length > 0;
+
+    if (!hgt && !hasOralMeds && !hasInsulin && !hasContext) {
+      return alert("Empty Log: Please enter a Blood Sugar value, Medication, or Context tag before saving.");
     }
 
     const entryData = {
@@ -2235,7 +2233,14 @@ export default function App() {
                 <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
               </div>
               <div className="space-y-3">
-                {fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update').map(item => {
+                {fullHistory.filter(item => {
+                  // Filter out administrative updates
+                  if (item.type === 'vital_update' || item.type === 'prescription_update') return false;
+
+                  // Filter out "Ghost" empty entries (no HGT, no meds, no tags)
+                  const hasData = item.hgt || (item.medsTaken && item.medsTaken.length > 0) || (item.insulinDoses && Object.keys(item.insulinDoses).length > 0) || (item.tags && item.tags.length > 0);
+                  return hasData;
+                }).map(item => {
                   const isExpanded = expandedLogId === item.id;
                   return (
                     <div key={item.id} className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-100 dark:border-stone-800 transition-all overflow-hidden">
