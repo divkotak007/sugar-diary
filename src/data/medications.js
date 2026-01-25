@@ -20,8 +20,13 @@ export const MEDICATION_DATABASE = [
     // ===== GLICLAZIDE =====
     { name: "Gliclazide 40mg", route: "oral", type: "mono", class: ["SU"], brands: ["Glizid 40", "Diamicron"], flags: { hypo: "moderate", weight: "gain", cv: false, ckd: "caution", hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
     { name: "Gliclazide 80mg", route: "oral", type: "mono", class: ["SU"], brands: ["Glizid 80", "Diamicron"], flags: { hypo: "moderate", weight: "gain", cv: false, ckd: "caution", hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
+    { name: "Gliclazide 30mg", route: "oral", type: "mono", class: ["SU"], brands: ["Reclide 30", "Diamicron MR 30"], flags: { hypo: "moderate", weight: "gain", cv: false, ckd: "caution", hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
     { name: "Gliclazide MR 30mg", route: "oral", type: "mono", class: ["SU"], brands: ["Diamicron MR 30", "Reclide MR"], flags: { hypo: "moderate", weight: "gain", cv: false, ckd: "caution", hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
     { name: "Gliclazide MR 60mg", route: "oral", type: "mono", class: ["SU"], brands: ["Diamicron MR 60", "Glycinorm MR"], flags: { hypo: "moderate", weight: "gain", cv: false, ckd: "caution", hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
+
+    // ===== GLIBENCLAMIDE (Legacy) =====
+    { name: "Glibenclamide 2.5mg", route: "oral", type: "mono", class: ["SU"], brands: ["Daonil 2.5", "Euglucon"], flags: { hypo: "severe", weight: "gain", cv: false, ckd: false, hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
+    { name: "Glibenclamide 5mg", route: "oral", type: "mono", class: ["SU"], brands: ["Daonil", "Semi-Daonil"], flags: { hypo: "severe", weight: "gain", cv: false, ckd: false, hf: false, elderly: true, liver: true, pregnancy: "avoid" } },
 
     // ===== PIOGLITAZONE =====
     { name: "Pioglitazone 7.5mg", route: "oral", type: "mono", class: ["TZD"], brands: ["Pioz 7.5", "Zactos", "Piotag"], flags: { hypo: "low", weight: "gain", cv: "neutral", ckd: true, hf: false, elderly: true, liver: true, pregnancy: "avoid" } },

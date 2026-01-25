@@ -53,6 +53,12 @@ const TAG_EMOJIS = {
 
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
+const isActionLocked = (timestamp) => {
+  if (!timestamp) return false;
+  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
+  return ageInMinutes > 30; // Locked if older than 30 mins
+};
 
 // --- SECURITY GUARDIAN (Firewall Layer) ---
 const SecurityGuardian = ({ children }) => {
@@ -248,7 +254,7 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
     </div>
   );
 
-  // CORRECTION: Keep small chart to 5 dots only
+  // CORRECTION: Keep small chart to MAX 5 dots only
   const visibleData = data.slice(-5);
 
   const padding = 10;
@@ -269,6 +275,10 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
 
   const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
   const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
+  // Normal Range Rectangle Calculation
+  const normalMinY = normalRange ? height - padding - ((normalRange * 1.1 - min) / range) * (height - 2 * padding) : 0;
+  const normalMaxY = normalRange ? height - padding - ((normalRange * 0.9 - min) / range) * (height - 2 * padding) : height;
+  const showNormalBand = normalRange && label !== "HbA1c";
 
   return (
     <div
@@ -285,6 +295,12 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
         {[0.2, 0.4, 0.6, 0.8].map(ratio => (
           <line key={ratio} x1={padding} y1={height * ratio} x2={width - 2 * padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
         ))}
+
+        {/* Normal Range Band (Gray Dotted/Muted Background) */}
+        {showNormalBand && (
+          <rect x={padding} y={normalCountY || 0} width={width - 2 * padding} height={50} fill="#f5f5f4" opacity="0.5" />
+          // Simplified band visualization for stability - rendering a subtle zone area
+        )}
 
         {label === "HbA1c" && (
           <g opacity="0.1">
@@ -900,6 +916,17 @@ export default function App() {
     return uniqueChanges;
   };
 
+  const getSugarTrend = () => {
+    return fullHistory
+      .filter(l => l.hgt && !isNaN(parseFloat(l.hgt)))
+      .map(l => ({
+        value: parseFloat(l.hgt),
+        date: l.timestamp?.seconds ? l.timestamp.seconds * 1000 : new Date(l.timestamp).getTime(),
+        id: l.id
+      }))
+      .sort((a, b) => a.date - b.date);
+  };
+
   // FIX: Calculate 7-day stats for breakdown, and all-time for Overall
   const calculateCompliance = () => {
     const logs = fullHistory.filter(l => !l.type); // only entry logs
@@ -981,6 +1008,17 @@ export default function App() {
     if (isNaN(timestamp.getTime())) return alert("Invalid Date/Time selected.");
     if (timestamp > new Date()) return alert("Cannot log vitals in the future.");
 
+    // STRICT: Real-time Default Rule
+    // If not editing, and user hasn't explicitly set a back-time (vitalsLogTime matches simple slice), force NOW
+    // to ensure seconds/ms integrity.
+    let finalTimestamp = timestamp;
+    if (!editingLog) {
+      const now = new Date();
+      const inputTime = new Date(vitalsLogTime);
+      // If input matches current minute (user didn't change it much) or is default, prefer high-precision NOW
+      if (Math.abs(now - inputTime) < 60000) finalTimestamp = now;
+    }
+
     const updatedParams = [];
     const updatedProfile = { ...profile };
     let hasChanges = false;
@@ -1039,7 +1077,7 @@ export default function App() {
             type: 'vital_update',
             snapshot: { profile: updatedProfile, prescription },
             updatedParams, // STRICTLY USED for graph filtering
-            timestamp,
+            timestamp: finalTimestamp, // Use high-precision timestamp
             tags: ['Vital Update', ...updatedParams]
           });
         }
@@ -1058,10 +1096,9 @@ export default function App() {
     const log = fullHistory.find(l => l.id === id);
     if (!log) return;
 
-    // 30 Minute Lock Protection
-    const ageSeconds = (Date.now() - (log.timestamp?.seconds * 1000 || new Date(log.timestamp))) / 1000;
-    if (ageSeconds < 1800) {
-      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes to prevent accidental deletions.`);
+    // 30 Minute Lock Protection using consolidated helper
+    if (isActionLocked(log.timestamp)) {
+      return alert("Action Locked: Entries are locked after 30 minutes to preserve medical history integrity.");
     }
 
     if (!confirm("Confirm permanent deletion of this record?")) return;
@@ -1116,13 +1153,39 @@ export default function App() {
     if (isNaN(timestamp.getTime())) return alert("Invalid Log Time.");
     if (timestamp > new Date()) return alert("Cannot log entries in the future.");
 
-    // Duplicate Check (1 Hour Rule)
+    // GRANULAR DUPLICATE CHECKS
     if (!editingLog) {
-      const recent = fullHistory.find(l =>
-        !l.type &&
-        Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
-      );
-      if (recent) return alert("Action Blocked: A log was recorded in the last hour. Duplicate entries are prevented for clinical safety.");
+      // 1. Glucose Check (1 Hour Block)
+      if (hgt) {
+        const recentSugar = fullHistory.find(l =>
+          !l.type && l.hgt &&
+          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+        );
+        if (recentSugar) return alert("Action Blocked: Glucose was already logged in the last hour. Please wait before re-checking.");
+      }
+
+      // 2. Medication Check (Same Day + Same Slot Block)
+      const medsToCheck = Object.keys(medsTaken).filter(k => medsTaken[k]);
+      if (medsToCheck.length > 0) {
+        const entryDateString = timestamp.toDateString();
+        const duplicateMed = medsToCheck.find(key => {
+          // Check if this specific med slot combination exists in history for TODAY
+          return fullHistory.some(l => {
+            const lDate = l.timestamp?.seconds ? new Date(l.timestamp.seconds * 1000) : new Date(l.timestamp);
+            return (!l.type) && lDate.toDateString() === entryDateString && (l.medsTaken || []).includes(key);
+          });
+        });
+
+        if (duplicateMed) {
+          const [id, slot] = duplicateMed.split('_');
+          const medName = prescription.oralMeds.find(m => m.id === id)?.name || "Medication";
+          return alert(`Action Blocked: '${medName}' has already been logged for the '${slot}' slot today. Duplicate doses are prevented for safety.`);
+        }
+      }
+
+      // 3. Insulin Check (Same Logic if needed, usually Insulin is more flexible but let's block exact same insulin type in 1 hour?)
+      // User requirement said "Same medicine + same day + same time slot". Insulin doesn't have slots unless frequency is fixed. 
+      // We will leave insulin flexible for now as it's often sliding scale correction.
     }
 
     const entryData = {
@@ -1165,9 +1228,42 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleStartEditVital = (log, activeField = 'weight') => {
-    alert("Editing vitals is disabled for clinical safety. If an entry is incorrect, please delete it (logs become delete-able after 30 minutes) and re-enter.");
-    return;
+  const handleStartEditVital = (log) => {
+    // 30-Minute Lock Check
+    if (isActionLocked(log.timestamp)) {
+      return alert("Editing Locked: Vitals logs become read-only after 30 minutes for clinical accuracy.");
+    }
+
+    setEditingLog(log);
+
+    // STRICT INDEPENDENCE: Only populate form with content from this specific log
+    // This prevents "ghost" data from current profile leaking into the edit
+    const formSnapshot = {};
+    if (log.updatedParams) {
+      log.updatedParams.forEach(param => {
+        if (log.snapshot?.profile?.[param] !== undefined) {
+          formSnapshot[param] = log.snapshot.profile[param];
+        }
+      });
+    } else {
+      // Fallback for legacy logs
+      formSnapshot.weight = log.snapshot?.profile?.weight || '';
+      formSnapshot.hba1c = log.snapshot?.profile?.hba1c || '';
+      formSnapshot.creatinine = log.snapshot?.profile?.creatinine || '';
+    }
+
+    setVitalsForm(formSnapshot);
+
+    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
+    setVitalsLogTime(date.toISOString().slice(0, 16));
+
+    // Focus on the first available field
+    if (formSnapshot.hba1c) setHighlightField('hba1c');
+    else if (formSnapshot.creatinine) setHighlightField('creatinine');
+    else setHighlightField('weight');
+
+    setView('profile'); // Switch to profile view where vital entry happens
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSoftDelete = async () => {
@@ -1588,7 +1684,24 @@ export default function App() {
                           <div className="font-bold text-sm mb-2 dark:text-stone-200">{med.name}</div>
                           <div className="flex gap-2 flex-wrap">
                             {med.timings.map(t => (
-                              <button key={t} onClick={() => setMedsTaken(p => ({ ...p, [`${med.id}_${t}`]: !p[`${med.id}_${t}`] }))} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
+                              <button key={t} onClick={() => setMedsTaken(p => {
+                                const newState = { ...p };
+                                // STRICT: Radio behavior - ensure only one slot per med is true at a time
+                                // If clicking the ALREADY selected one, toggle it off.
+                                // If clicking a NEW one, clear others for this med and select new one.
+                                const currentKey = `${med.id}_${t}`;
+                                const isCurrentlySelected = !!p[currentKey];
+
+                                // Clear all slots for this specific med first
+                                med.timings.forEach(slot => {
+                                  delete newState[`${med.id}_${slot}`];
+                                });
+
+                                if (!isCurrentlySelected) {
+                                  newState[currentKey] = true;
+                                }
+                                return newState;
+                              })} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
                             ))}
                           </div>
                         </div>
@@ -2104,6 +2217,19 @@ export default function App() {
                 )}
 
                 <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
+
+                {/* SUGAR TREND GRAPH IN LOGBOOK */}
+                <div className="mb-4">
+                  <SimpleTrendGraph
+                    data={getSugarTrend()}
+                    label="Glucose"
+                    unit="mg/dL"
+                    color="blue"
+                    normalRange={null}
+                    onClick={() => setExpandedGraphData({ data: getSugarTrend(), label: "Glucose History", unit: "mg/dL", color: "blue", normalRange: null })}
+                  />
+                </div>
+
                 <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
               </div>
               <div className="space-y-3">
