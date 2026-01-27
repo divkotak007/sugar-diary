@@ -2170,22 +2170,26 @@ export default function App() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div>
-                            <label className="text-[9px] font-bold text-stone-400 uppercase">Frequency</label>
-                            <select value={insulin.frequency} onChange={e => {
-                              const newInsulins = [...prescription.insulins];
-                              newInsulins[idx].frequency = e.target.value;
-                              setPrescription({ ...prescription, insulins: newInsulins });
-                            }} className="w-full bg-white p-2 rounded-lg text-xs font-bold border border-stone-200 outline-none">
-                              {INSULIN_FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
-                            </select>
+                          <div className="col-span-2">
+                            <label className="text-[9px] font-bold text-stone-400 uppercase mb-1 block">Fixed Dose (Units)</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 10"
+                              value={insulin.fixedDose || ''}
+                              onChange={e => {
+                                const newInsulins = [...prescription.insulins];
+                                newInsulins[idx].fixedDose = e.target.value;
+                                setPrescription({ ...prescription, insulins: newInsulins });
+                              }}
+                              className="w-full bg-white p-3 rounded-xl text-lg font-bold border border-stone-200 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
+                            />
+                            <p className="text-[9px] text-stone-400 mt-1 italic">Optional: Enter a fixed dose if not using a sliding scale.</p>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <label className="text-[9px] font-bold text-stone-400 uppercase">Dosing Strategy</label>
-                            {/* Simplified Dosing UI for Mobile - Just Sliding Scale Toggle */}
+                          <div className="flex justify-between items-center pt-2 border-t border-stone-100 mt-2">
+                            <label className="text-[9px] font-bold text-stone-400 uppercase">Sliding Scale (Auto-Calc)</label>
                           </div>
 
                           {/* Sliding Scale Builder */}
@@ -2248,13 +2252,17 @@ export default function App() {
                         <div>
                           <label className="text-[9px] font-bold text-stone-400 uppercase block mb-1">Schedule</label>
                           <div className="flex flex-wrap gap-2">
-                            {ALL_TIMINGS.map(t => (
+                            {['Once Daily', 'Twice Daily', 'Thrice Daily', 'Bedtime', 'SOS'].map(t => (
                               <button key={t} onClick={() => {
                                 const newMeds = [...prescription.oralMeds];
                                 if (newMeds[idx].timings.includes(t)) newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
-                                else newMeds[idx].timings.push(t);
+                                else {
+                                  // Single select behavior if strict surgical mode implies cleanup, 
+                                  // BUT user said "retain only... interaction_rules: single_selection_only"
+                                  newMeds[idx].timings = [t];
+                                }
                                 setPrescription({ ...prescription, oralMeds: newMeds });
-                              }} className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-blue-500 text-white border-blue-600 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
+                              }} className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-blue-500 text-white border-blue-600 shadow-md transform scale-105' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
                                 {t}
                               </button>
                             ))}
@@ -2434,12 +2442,12 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/90 backdrop-blur-xl p-2 rounded-full flex justify-between items-center z-50 shadow-2xl shadow-stone-300/40 border border-white/40 ring-1 ring-white/20">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-stone-50/90 dark:bg-stone-900/95 backdrop-blur-2xl px-6 py-4 rounded-[40px] flex justify-between items-center z-50 shadow-2xl shadow-stone-400/30 border border-white/60">
             {[
-              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-600' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-600' },
-              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-600' },
-              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-600' }
+              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-700', activeBg: 'bg-emerald-100' },
+              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-700', activeBg: 'bg-blue-100' },
+              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-700', activeBg: 'bg-amber-100' },
+              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-700', activeBg: 'bg-purple-100' }
             ].map(item => {
               const isActive = view === item.id;
               return (
@@ -2449,12 +2457,10 @@ export default function App() {
                     triggerHaptic(hapticsEnabled, 'light');
                     setView(item.id);
                   }}
-                  className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'bg-white shadow-sm scale-110' : 'hover:bg-stone-100/50'}`}
+                  className={`relative p-3 rounded-2xl transition-all duration-300 flex items-center justify-center group ${isActive ? `${item.activeBg} shadow-inner scale-110 ring-2 ring-white` : 'bg-transparent hover:bg-stone-200/50'}`}
                 >
-
-                  {/* Static State - No Pulsing */}
-                  <div className={`relative transition-all duration-300 ${isActive ? item.activeColor : 'text-stone-400 group-hover:text-stone-600'}`}>
-                    <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                  <div className={`relative transition-all duration-300 ${isActive ? item.activeColor : 'text-stone-400'}`}>
+                    <item.icon size={26} strokeWidth={isActive ? 2.5 : 2} />
                   </div>
                 </button>
               );
