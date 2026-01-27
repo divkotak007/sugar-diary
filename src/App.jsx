@@ -599,7 +599,10 @@ export default function App() {
     instructions: '', comorbidities: []
   });
   const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
-  const [medDatabase, setMedDatabase] = useState(MEDICATION_DATABASE);
+  const [medDatabase, setMedDatabase] = useState(() => ({
+    insulins: MEDICATION_DATABASE.filter(m => m.route === 'insulin'),
+    oralMeds: MEDICATION_DATABASE.filter(m => m.route === 'oral')
+  }));
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [vitalsForm, setVitalsForm] = useState({});
