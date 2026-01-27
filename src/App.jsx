@@ -2018,10 +2018,29 @@ export default function App() {
           {
             view === 'prescription' && (
               <div className="px-6 pb-32 animate-in slide-in-from-right">
-                <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800"><Stethoscope className="text-emerald-600" /> Prescription</h2>
+                <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800 dark:text-stone-100"><Stethoscope className="text-emerald-600" /> Prescription</h2>
+
+                {/* SAFETY ALERT ENGINE */}
+                {safetyAlerts.length > 0 && (
+                  <div className="mb-6 space-y-3">
+                    {safetyAlerts.map((alert, idx) => (
+                      <div key={idx} className={`p-4 rounded-xl border-l-4 shadow-sm flex items-start gap-3 animate-in slide-in-from-top-2 ${alert.type === 'danger' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:text-red-300' : 'bg-amber-50 border-amber-500 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300'}`}>
+                        {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-500" size={20} /> : <AlertTriangle className="flex-shrink-0 text-amber-500" size={20} />}
+                        <div>
+                          <p className="font-bold text-sm">{alert.message}</p>
+                          <p className="text-[10px] opacity-80 mt-1 font-semibold uppercase tracking-wide"> Clinical Advisory • Read Only</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="text-center text-[10px] text-stone-400 font-medium">
+                      * These alerts are based on your profile (Age, Kidney/Heart status) and are for informational purposes only.
+                    </div>
+                  </div>
+                )}
+
                 {/* UNIFIED PRESCRIPTION MANAGER */}
-                <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
-                  <h3 className="font-bold text-stone-700 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
+                <div className="bg-white dark:bg-stone-900 p-4 rounded-[24px] shadow-sm mb-6 border border-stone-100 dark:border-stone-800">
+                  <h3 className="font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
 
                   {/* SEPARATE SEARCH ADDITIONS */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -2042,7 +2061,7 @@ export default function App() {
 
                       {showInsulinResults && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
-                          {medDatabase.insulins.filter(i => i.name.toLowerCase().includes(insulinSearch.toLowerCase())).map(insulin => (
+                          {medDatabase.insulins.filter(i => i.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (i.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase()))).map(insulin => (
                             <button
                               key={insulin.name}
                               onClick={() => {
@@ -2089,7 +2108,7 @@ export default function App() {
 
                       {showOralResults && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
-                          {medDatabase.oralMeds.filter(m => m.name.toLowerCase().includes(oralSearch.toLowerCase())).map(med => (
+                          {medDatabase.oralMeds.filter(m => m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase()))).map(med => (
                             <button
                               key={med.name}
                               onClick={() => {
@@ -2130,7 +2149,7 @@ export default function App() {
                         }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
 
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-emerald-100 text-emerald-700 font-black px-2 py-1 rounded text-xs">INSULIN</div>
+                          <div className="bg-emerald-100 text-emerald-700 font-black px-2 py-1 rounded text-xs uppercase">{insulin.class?.[0] || insulin.type || 'INSULIN'}</div>
                           <span className="font-bold text-stone-800">{insulin.name}</span>
                         </div>
 
@@ -2205,7 +2224,7 @@ export default function App() {
                         }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
 
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-blue-100 text-blue-700 font-black px-2 py-1 rounded text-xs">PILL</div>
+                          <div className="bg-blue-100 text-blue-700 font-black px-2 py-1 rounded text-xs uppercase">{med.class?.[0] || 'PILL'}</div>
                           <span className="font-bold text-stone-800">{med.name}</span>
                           <span className="text-xs text-stone-400 bg-white px-2 py-1 rounded border border-stone-100">{med.dose || 'Standard Dose'}</span>
                         </div>
