@@ -1511,11 +1511,28 @@ export default function App() {
     // Page break safety for Logbook
     if (finalY > 260) { doc.addPage(); finalY = 20; }
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
-    const logRows = pdfFilteredHistory.map(l => [
-      new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(), l.hgt || '-', l.mealStatus,
-      Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}: ${d}u`).join(', '),
-      (l.tags || []).join(', ')
-    ]);
+    // FILTER: STRICT CLEANUP FOR PDF
+    // Exclude entries that have NO meaningful data (No sugar, no insulin, no meds, no context)
+    const logRows = pdfFilteredHistory
+      .filter(l => {
+        // Check for valid glucose (not null, not empty string, not NaN)
+        const hasSugar = l.hgt && !isNaN(parseFloat(l.hgt));
+        // Check for meds
+        const hasMeds = l.medsTaken && l.medsTaken.length > 0;
+        // Check for insulin
+        const hasInsulin = l.insulinDoses && Object.keys(l.insulinDoses).length > 0;
+        // Check for meaningful tags (optional, but good for context)
+        const hasTags = l.tags && l.tags.length > 0;
+
+        return hasSugar || hasMeds || hasInsulin || hasTags;
+      })
+      .map(l => [
+        new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(),
+        l.hgt || '-',
+        l.mealStatus,
+        Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}: ${d}u`).join(', '),
+        (l.tags || []).join(', ')
+      ]);
     runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
 
     // COMPLIANCE SECTION AT THE END
@@ -2041,8 +2058,8 @@ export default function App() {
                           type="text"
                           placeholder="Add Insulin..."
                           value={insulinSearch}
-                          onChange={e => { setInsulinSearch(e.target.value); setShowInsulinResults(true); }}
-                          onFocus={() => setShowInsulinResults(true)}
+                          onChange={e => { setInsulinSearch(e.target.value); setShowInsulinResults(true); setShowOralResults(false); }}
+                          onFocus={() => { setShowInsulinResults(true); setShowOralResults(false); }}
                           className="flex-1 bg-transparent outline-none font-bold text-stone-700 placeholder-stone-400 text-sm"
                         />
                         {insulinSearch && <button onClick={() => { setInsulinSearch(''); setShowInsulinResults(false); }}><X size={16} className="text-stone-400" /></button>}
@@ -2093,8 +2110,8 @@ export default function App() {
                           type="text"
                           placeholder="Add Medication..."
                           value={oralSearch}
-                          onChange={e => { setOralSearch(e.target.value); setShowOralResults(true); }}
-                          onFocus={() => setShowOralResults(true)}
+                          onChange={e => { setOralSearch(e.target.value); setShowOralResults(true); setShowInsulinResults(false); }}
+                          onFocus={() => { setShowOralResults(true); setShowInsulinResults(false); }}
                           className="flex-1 bg-transparent outline-none font-bold text-stone-700 placeholder-stone-400 text-sm"
                         />
                         {oralSearch && <button onClick={() => { setOralSearch(''); setShowOralResults(false); }}><X size={16} className="text-stone-400" /></button>}
@@ -2329,7 +2346,7 @@ export default function App() {
                         const isExpanded = expandedLogId === log.id;
 
                         return (
-                          <div key={log.id} onClick={() => setExpandedLogId(isExpanded ? null : log.id)} className={`bg-stone-50 rounded-[20px] border border-stone-100 relative group animate-in slide-in-from-bottom-2 transition-all cursor-pointer ${isExpanded ? 'p-5 ring-2 ring-emerald-500/20 bg-white shadow-md' : 'p-4 hover:bg-stone-100'}`}>
+                          <div key={log.id} onClick={() => setExpandedLogId(isExpanded ? null : log.id)} className={`bg-stone-50 rounded-[32px] border border-stone-100 relative group animate-in slide-in-from-bottom-2 transition-all cursor-pointer ${isExpanded ? 'p-5 ring-2 ring-emerald-500/20 bg-white shadow-md' : 'p-4 hover:bg-stone-100'}`}>
 
                             {/* SUMMARY VIEW (Always Visible) */}
                             <div className="flex justify-between items-center">
@@ -2426,12 +2443,12 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-stone-900/80 dark:bg-black/80 backdrop-blur-xl p-2 rounded-full flex justify-between items-center z-50 shadow-2xl shadow-stone-900/20 border border-white/10 ring-1 ring-white/10 overflow-hidden">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/90 backdrop-blur-xl p-2 rounded-full flex justify-between items-center z-50 shadow-2xl shadow-stone-300/40 border border-white/40 ring-1 ring-white/20">
             {[
-              { id: 'diary', icon: Edit3, label: 'Diary', color: 'bg-emerald-500' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx', color: 'bg-blue-500' },
-              { id: 'history', icon: FileText, label: 'Log', color: 'bg-amber-500' },
-              { id: 'profile', icon: User, label: 'Profile', color: 'bg-purple-500' }
+              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-600' },
+              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-600' },
+              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-600' },
+              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-600' }
             ].map(item => {
               const isActive = view === item.id;
               return (
@@ -2441,23 +2458,13 @@ export default function App() {
                     triggerHaptic(hapticsEnabled, 'light');
                     setView(item.id);
                   }}
-                  className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'scale-110' : 'hover:bg-white/5'}`}
+                  className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'bg-white shadow-sm scale-110' : 'hover:bg-stone-100/50'}`}
                 >
-                  {isActive && (
-                    <div className={`absolute inset-0 ${item.color} opacity-20 blur-xl rounded-full`} />
-                  )}
-                  {isActive && (
-                    <div className={`absolute inset-0 ${item.color} opacity-10 rounded-full animate-pulse`} />
-                  )}
 
-                  <div className={`relative transition-all duration-300 ${isActive ? 'text-white scale-110 drop-shadow-md' : 'text-stone-400 group-hover:text-stone-200'}`}>
-                    <item.icon size={24} strokeWidth={isActive ? 3 : 2} />
+                  {/* Static State - No Pulsing */}
+                  <div className={`relative transition-all duration-300 ${isActive ? item.activeColor : 'text-stone-400 group-hover:text-stone-600'}`}>
+                    <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
                   </div>
-                  {isActive && (
-                    <span className="absolute -bottom-8 bg-black/80 text-white text-[9px] px-2 py-0.5 rounded-full opacity-0 animate-[fade-in_0.2s_ease-out_forwards]">
-                      {item.label}
-                    </span>
-                  )}
                 </button>
               );
             })}
