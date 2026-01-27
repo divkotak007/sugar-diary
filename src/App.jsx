@@ -247,7 +247,7 @@ const MealOption = ({ label, icon: Icon, selected, onClick }) => (
   </button>
 );
 
-const ContextTag = ({ label, icon: Icon, selected, onClick, color }) => (
+const ContextTag = ({ label, icon: Icon, selected, onClick, color = 'stone' }) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-3 rounded-full border transition-all duration-200 text-xs font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
     <Icon size={16} /> {label}
   </button>
@@ -311,7 +311,7 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
             y={normalMinY}
             width={width - 2 * padding}
             height={Math.max(0, normalMaxY - normalMinY)}
-            className={`opacity-80 ${color === 'orange' ? 'fill-orange-50 dark:fill-stone-700' : 'fill-emerald-50 dark:fill-stone-700'}`}
+            className={`opacity-80 fill-current ${color === 'orange' ? 'text-orange-50 dark:text-stone-700' : 'text-emerald-50 dark:text-stone-700'}`}
           />
         )}
 
@@ -1742,7 +1742,7 @@ export default function App() {
                       ))}
 
                       <div className="flex flex-wrap gap-2 mt-4 mb-4">
-                        {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
+                        {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} color="stone" selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
                       </div>
 
                       <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
