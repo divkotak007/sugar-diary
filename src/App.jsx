@@ -12,7 +12,7 @@ import {
   PieChart, Pill, PlusCircle, Settings, Smartphone, Stethoscope, Sun, Moon,
   Thermometer, TrendingUp, User, Video, Zap, Database, Download,
   AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX, LayoutList,
-  Save, Syringe, ScrollText, ShieldAlert, RefreshCw
+  Save, Syringe, ScrollText, ShieldAlert, RefreshCw, WifiOff
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
 import { generateAllInsights } from './services/aiInsights.js';
@@ -248,8 +248,8 @@ const MealOption = ({ label, icon: Icon, selected, onClick }) => (
 );
 
 const ContextTag = ({ label, icon: Icon, selected, onClick, color = 'stone' }) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-4 py-3 rounded-full border transition-all duration-200 text-xs font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
-    <Icon size={16} /> {label}
+  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-200 text-[10px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
+    <Icon size={14} /> {label}
   </button>
 );
 
@@ -600,6 +600,7 @@ export default function App() {
   });
   const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
   const [medDatabase, setMedDatabase] = useState(MEDICATION_DATABASE);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [vitalsForm, setVitalsForm] = useState({});
   const [hgt, setHgt] = useState('');
@@ -1168,8 +1169,20 @@ export default function App() {
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: new Date().toISOString() }, { merge: true });
       await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
       alert("Prescription Saved."); setView('diary');
-    } catch (err) { alert("Save failed."); }
+    } catch (err) { alert("Save failed: " + err.message); }
   };
+
+  // Offline Status Listener
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleSaveEntry = async () => {
     const hasOralMeds = Object.keys(medsTaken).some(k => medsTaken[k]);
@@ -1650,7 +1663,12 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {!isOnline && (
+                  <div className="bg-stone-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 animate-pulse">
+                    <WifiOff size={10} /> Offline
+                  </div>
+                )}
                 <button onClick={() => setShowSettings(true)} className="p-2 bg-stone-100 text-stone-500 rounded-xl hover:bg-stone-200 transition-colors"><Settings size={20} /></button>
                 <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
               </div>
@@ -1689,14 +1707,14 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      <div className="bg-white dark:bg-stone-800 p-6 rounded-[32px] shadow-sm border border-stone-100 dark:border-stone-700 mb-6">
+                      <div className="bg-white dark:bg-stone-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-700 mb-6">
                         <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
                         <div className="flex items-baseline gap-2 mb-4">
                           <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900 dark:text-emerald-400 bg-transparent" placeholder="---" />
                           <span className="text-xl font-bold text-stone-400">mg/dL</span>
                         </div>
                         <div className="flex gap-2 mb-4">
-                          {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => setMealStatus(m)} />)}
+                          {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setMealStatus(m); }} />)}
                         </div>
                       </div>
 
@@ -1704,7 +1722,7 @@ export default function App() {
                         <div key={insulin.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center mb-2">
                           <div>
                             <span className="font-bold text-stone-700 dark:text-stone-200 block">{insulin.name}</span>
-                            <span className="text-xs text-stone-400">{insulin.frequency || 'Manual'}</span>
+                            {/* Frequency Hidden per Design Request */}
                           </div>
                           <div className="flex items-center gap-2">
                             {getSuggestion(insulin.id) && (
@@ -1743,7 +1761,7 @@ export default function App() {
                                   }
                                   return newState;
                                 })
-                              }} className={`px-3 py-1 rounded-lg border text-xs font-bold ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
+                              }} className={`px-4 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
                             ))}
                           </div>
                         </div>
@@ -2396,7 +2414,7 @@ export default function App() {
             )
           }
 
-          <div className="absolute bottom-4 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24">
+          <div className="absolute bottom-1 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24 pointer-events-none">
             <p className="text-[10px] font-bold text-stone-400 dark:text-stone-600">© Dr Divyansh Kotak</p>
             <p className="text-[9px] text-stone-300 dark:text-stone-700 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
           </div>
