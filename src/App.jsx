@@ -189,8 +189,8 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                 <div className={`p-2 rounded-lg ${darkMode ? 'bg-amber-100 text-amber-600' : 'bg-stone-100 text-stone-400'}`}>{darkMode ? <Sun size={18} /> : <Moon size={18} />}</div>
                 <span className="font-bold text-stone-700 dark:text-stone-300">Dark Mode</span>
               </div>
-              <button onClick={() => setDarkMode(!darkMode)} className={`w-12 h-6 rounded-full transition-all relative ${darkMode ? 'bg-emerald-500' : 'bg-stone-300'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${darkMode ? 'left-7' : 'left-1'}`} />
+              <button onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setDarkMode(!darkMode); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${darkMode ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${darkMode ? 'translate-x-[24px]' : 'translate-x-0'}`} />
               </button>
             </div>
 
@@ -199,8 +199,8 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                 <div className={`p-2 rounded-lg ${isHighContrast ? 'bg-blue-100 text-blue-600' : 'bg-stone-100 text-stone-400'}`}><Zap size={18} /></div>
                 <span className="font-bold text-stone-700 dark:text-stone-300">High Contrast</span>
               </div>
-              <button onClick={() => setIsHighContrast(!isHighContrast)} className={`w-12 h-6 rounded-full transition-all relative ${isHighContrast ? 'bg-blue-500' : 'bg-stone-300'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isHighContrast ? 'left-7' : 'left-1'}`} />
+              <button onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setIsHighContrast(!isHighContrast); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${isHighContrast ? 'bg-blue-500' : 'bg-stone-300'}`}>
+                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${isHighContrast ? 'translate-x-[24px]' : 'translate-x-0'}`} />
               </button>
             </div>
 
@@ -209,8 +209,8 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                 <div className={`p-2 rounded-lg ${hapticsEnabled ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}><Smartphone size={18} /></div>
                 <span className="font-bold text-stone-700 dark:text-stone-300">Haptics</span>
               </div>
-              <button onClick={() => setHapticsEnabled(!hapticsEnabled)} className={`w-12 h-7 rounded-full transition-all relative shadow-inner ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-200'}`}>
-                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${hapticsEnabled ? 'left-6' : 'left-1'}`} />
+              <button onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setHapticsEnabled(!hapticsEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${hapticsEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
               </button>
             </div>
           </div>
@@ -306,7 +306,13 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
 
         {/* Normal Range Band (Gray Dotted/Muted Background) */}
         {showNormalBand && (
-          <rect x={padding} y={normalMinY} width={width - 2 * padding} height={Math.max(0, normalMaxY - normalMinY)} fill={color === 'orange' ? '#fff7ed' : '#ecfdf5'} className="dark:fill-stone-700 dark:opacity-30" opacity="0.8" />
+          <rect
+            x={padding}
+            y={normalMinY}
+            width={width - 2 * padding}
+            height={Math.max(0, normalMaxY - normalMinY)}
+            className={`opacity-80 ${color === 'orange' ? 'fill-orange-50 dark:fill-stone-700' : 'fill-emerald-50 dark:fill-stone-700'}`}
+          />
         )}
 
         {label === "HbA1c" && (
