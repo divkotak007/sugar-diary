@@ -12,7 +12,7 @@ import {
   PieChart, Pill, PlusCircle, Settings, Smartphone, Stethoscope, Sun, Moon,
   Thermometer, TrendingUp, User, Video, Zap, Database, Download,
   AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX, LayoutList,
-  Save, Syringe, ScrollText, ShieldAlert, RefreshCw, WifiOff
+  Save, Syringe, ScrollText, ShieldAlert, RefreshCw, WifiOff, Tag
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
 import { generateAllInsights } from './services/aiInsights.js';
