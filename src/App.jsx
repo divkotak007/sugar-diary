@@ -612,7 +612,8 @@ export default function App() {
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
-  const [logTime, setLogTime] = useState(new Date().toISOString().slice(0, 16));
+  const [logTime, setLogTime] = useState(''); // Default to REAL-TIME (Empty string = Now)
+  const [expandedLogId, setExpandedLogId] = useState(null); // For Logbook Accordion
   const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
   const [editingLog, setEditingLog] = useState(null);
 
@@ -636,7 +637,7 @@ export default function App() {
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [accountPendingDeletion, setAccountPendingDeletion] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [expandedLogId, setExpandedLogId] = useState(null);
+
 
   // Background Reminder Logic
   useEffect(() => {
@@ -1008,14 +1009,19 @@ export default function App() {
     // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
     if (!editingLog) {
       const updatedParams = Object.keys(vitalsForm).filter(k => vitalsForm[k] !== '' && vitalsForm[k] !== undefined);
-      const recent = fullHistory.find(l =>
-        l.type === 'vital_update' &&
-        l.updatedParams?.some(p => updatedParams.includes(p)) &&
-        Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
-      );
-      if (recent) {
-        const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
-        return alert(`Action Blocked: ${pNames} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
+
+      if (updatedParams.length > 0) {
+        const recent = fullHistory.find(l =>
+          l.type === 'vital_update' &&
+          l.updatedParams &&
+          l.updatedParams.some(p => updatedParams.includes(p)) &&
+          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+        );
+
+        if (recent) {
+          const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
+          return alert(`Action Blocked: ${pNames.toUpperCase()} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
+        }
       }
     }
 
@@ -1239,7 +1245,7 @@ export default function App() {
         setTimeout(() => setShowSuccess(false), 2000);
       }
       setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-      setLogTime(new Date().toISOString().slice(0, 16));
+      setLogTime(''); // Reset to real-time mode
       setEditingLog(null);
     } catch (err) { alert("Save failed: " + err.message); }
   };
@@ -1366,6 +1372,8 @@ export default function App() {
       const gX = startX; const gY = startY + 6;
       doc.setFontSize(9); doc.setTextColor(60); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
 
+      // Filter out technical updates (Rx/Vital changes) from the PDF report
+      const reportData = fullHistory.filter(l => !['prescription_update', 'vital_update'].includes(l.type));
       const vals = data.map(d => d.value);
       const dataMin = Math.min(...vals);
       const dataMax = Math.max(...vals);
@@ -2234,88 +2242,104 @@ export default function App() {
                 <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
                   <h3 className="font-bold text-stone-700 mb-4 text-sm uppercase tracking-widest flex items-center gap-2"><LayoutList size={16} /> Logbook History</h3>
 
-                  {fullHistory.filter(l => !l.type).length === 0 ? (
+                  {fullHistory.filter(l => !l.type || !['prescription_update', 'vital_update'].includes(l.type)).length === 0 ? (
                     <div className="text-center py-10">
                       <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4"><BookOpen className="text-stone-200" /></div>
                       <p className="text-stone-400 font-bold">No entries found.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {fullHistory.map(log => {
+                    <div className="space-y-3">
+                      {fullHistory.filter(l => !l.type || !['prescription_update', 'vital_update'].includes(l.type)).map(log => {
                         const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
                         const isLocked = isActionLocked(log.timestamp);
+                        const isExpanded = expandedLogId === log.id;
 
                         return (
-                          <div key={log.id} className="bg-stone-50 p-5 rounded-[24px] border border-stone-100 relative group animate-in slide-in-from-bottom-2">
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="bg-white p-2 rounded-2xl text-center min-w-[50px] shadow-sm">
-                                  <div className="text-[10px] font-black text-stone-400 uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
-                                  <div className="text-xl font-black text-stone-800 leading-none">{dateObj.getDate()}</div>
+                          <div key={log.id} onClick={() => setExpandedLogId(isExpanded ? null : log.id)} className={`bg-stone-50 rounded-[20px] border border-stone-100 relative group animate-in slide-in-from-bottom-2 transition-all cursor-pointer ${isExpanded ? 'p-5 ring-2 ring-emerald-500/20 bg-white shadow-md' : 'p-4 hover:bg-stone-100'}`}>
+
+                            {/* SUMMARY VIEW (Always Visible) */}
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-4">
+                                {/* Date Box */}
+                                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl ${isExpanded ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-stone-500'} transition-colors`}>
+                                  <span className="text-[10px] font-black uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</span>
+                                  <span className="text-lg font-black leading-none">{dateObj.getDate()}</span>
                                 </div>
+
+                                {/* Main Value (Sugar) */}
                                 <div>
-                                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                  <div className="font-bold text-stone-600 text-sm">Entry Log</div>
+                                  <div className="flex items-center gap-2">
+                                    {log.hgt ? (
+                                      <span className="text-xl font-black text-stone-800">{log.hgt} <span className="text-xs font-bold text-stone-400">mg/dL</span></span>
+                                    ) : (
+                                      <span className="text-sm font-bold text-stone-400 italic">No glucose logged</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest flex items-center gap-2">
+                                    {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {log.mealStatus && <span>• {log.mealStatus}</span>}
+                                  </div>
                                 </div>
                               </div>
-                              {!isCaregiverMode && (
-                                <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleStartEdit(log)} className="p-2 bg-white rounded-xl text-stone-400 hover:text-blue-500 shadow-sm transition-colors"><Edit3 size={16} /></button>
-                                  <button onClick={() => handleDeleteEntry(log.id)} disabled={isLocked} className={`p-2 bg-white rounded-xl shadow-sm transition-colors ${isLocked ? 'text-stone-200 cursor-not-allowed' : 'text-stone-400 hover:text-red-500'}`}>{isLocked ? <Lock size={16} /> : <Trash2 size={16} />}</button>
-                                </div>
-                              )}
+
+                              {/* Expansion Indicator */}
+                              <div className={`text-stone-300 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-emerald-500' : ''}`}>
+                                <ChevronDown size={20} />
+                              </div>
                             </div>
 
-                            <div className="space-y-3">
-                              {log.hgt && (
-                                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-stone-100">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${log.hgt < 70 ? 'bg-red-500' : log.hgt > 180 ? 'bg-orange-500' : 'bg-emerald-500'}`} />
-                                    <span className="font-bold text-stone-700 text-lg">{log.hgt} <span className="text-xs text-stone-400">mg/dL</span></span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-stone-400 uppercase bg-stone-50 px-2 py-1 rounded">{log.mealStatus}</span>
-                                </div>
-                              )}
+                            {/* EXPANDED DETAILS (Hidden by default) */}
+                            {isExpanded && (
+                              <div className="mt-4 pt-4 border-t border-stone-100 space-y-3 animate-in fade-in slide-in-from-top-1">
 
-                              {log.medsTaken && log.medsTaken.length > 0 && (
-                                <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
-                                  <div className="text-[9px] font-bold text-blue-400 uppercase mb-2 flex items-center gap-1"><Pill size={10} /> Meds Taken</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {log.medsTaken.map(k => {
-                                      const [id, time] = k.split('_');
-                                      const med = prescription.oralMeds.find(m => m.id === id);
-                                      return med ? (
-                                        <span key={k} className="text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-lg border border-blue-100 shadow-sm">
-                                          {med.name} <span className="text-blue-300">•</span> {time}
-                                        </span>
-                                      ) : null;
-                                    })}
+                                {/* Edit/Delete Controls */}
+                                {!isCaregiverMode && (
+                                  <div className="flex gap-2 justify-end mb-2">
+                                    <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 bg-stone-100 rounded-lg text-stone-500 text-xs font-bold hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} disabled={isLocked} className={`px-3 py-1.5 bg-stone-100 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${isLocked ? 'text-stone-300' : 'text-stone-500 hover:bg-red-100 hover:text-red-600'}`}>{isLocked ? <Lock size={12} /> : <Trash2 size={12} />} {isLocked ? 'Locked' : 'Delete'}</button>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
-                              {log.insulinDoses && Object.keys(log.insulinDoses).length > 0 && (
-                                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                                  <div className="text-[9px] font-bold text-emerald-500 uppercase mb-2 flex items-center gap-1"><Syringe size={10} /> Insulin</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {Object.entries(log.insulinDoses).map(([id, dose]) => {
-                                      const ins = prescription.insulins.find(i => i.id === id);
-                                      return ins ? (
-                                        <span key={id} className="text-xs font-bold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
-                                          {ins.name} <span className="text-emerald-300">•</span> {dose}u
-                                        </span>
-                                      ) : null;
-                                    })}
+                                {log.medsTaken && log.medsTaken.length > 0 && (
+                                  <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                                    <div className="text-[9px] font-bold text-blue-400 uppercase mb-2 flex items-center gap-1"><Pill size={10} /> Meds Taken</div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {log.medsTaken.map(k => {
+                                        const [id, time] = k.split('_');
+                                        const med = prescription.oralMeds.find(m => m.id === id);
+                                        return med ? (
+                                          <span key={k} className="text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-lg border border-blue-100 shadow-sm">
+                                            {med.name} <span className="text-blue-300">•</span> {time}
+                                          </span>
+                                        ) : null;
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
-                              {log.tags && log.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1 pt-1">
-                                  {log.tags.map(t => <span key={t} className="text-[10px] font-bold text-stone-500 bg-stone-200 px-2 py-0.5 rounded-full">{TAG_EMOJIS[t] || ''} {t}</span>)}
-                                </div>
-                              )}
-                            </div>
+                                {log.insulinDoses && Object.keys(log.insulinDoses).length > 0 && (
+                                  <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                                    <div className="text-[9px] font-bold text-emerald-500 uppercase mb-2 flex items-center gap-1"><Syringe size={10} /> Insulin</div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {Object.entries(log.insulinDoses).map(([id, dose]) => {
+                                        const ins = prescription.insulins.find(i => i.id === id);
+                                        return ins ? (
+                                          <span key={id} className="text-xs font-bold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
+                                            {ins.name} <span className="text-emerald-300">•</span> {dose}u
+                                          </span>
+                                        ) : null;
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {log.tags && log.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 pt-1">
+                                    {log.tags.map(t => <span key={t} className="text-[10px] font-bold text-stone-500 bg-stone-200 px-2 py-0.5 rounded-full">{TAG_EMOJIS[t] || ''} {t}</span>)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -2328,7 +2352,7 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-stone-200 dark:border-white/10 ring-1 ring-stone-100 dark:ring-white/10">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-stone-900/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-white/10 ring-1 ring-white/10">
             {[
               { id: 'diary', icon: Edit3, label: 'Diary' },
               { id: 'prescription', icon: Stethoscope, label: 'Rx' },
@@ -2346,9 +2370,9 @@ export default function App() {
                   className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'scale-110' : 'hover:bg-white/10'}`}
                 >
                   {isActive && (
-                    <div className="absolute inset-0 bg-stone-200/50 dark:bg-emerald-500/20 rounded-full blur-md animate-pulse" />
+                    <div className="absolute inset-0 bg-white/20 dark:bg-emerald-500/20 rounded-full blur-md animate-pulse" />
                   )}
-                  <div className={`relative transition-all duration-300 ${isActive ? 'text-stone-800 dark:text-white scale-110 drop-shadow-md' : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-200'}`}>
+                  <div className={`relative transition-all duration-300 ${isActive ? 'text-white scale-110 drop-shadow-md' : 'text-stone-400 group-hover:text-stone-200'}`}>
                     <item.icon size={24} strokeWidth={isActive ? 3 : 2} />
                   </div>
                   {isActive && (
