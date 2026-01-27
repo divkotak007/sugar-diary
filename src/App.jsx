@@ -2252,20 +2252,23 @@ export default function App() {
                         <div>
                           <label className="text-[9px] font-bold text-stone-400 uppercase block mb-1">Schedule</label>
                           <div className="flex flex-wrap gap-2">
-                            {['Once Daily', 'Twice Daily', 'Thrice Daily', 'Bedtime', 'SOS'].map(t => (
+                            {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
                               <button key={t} onClick={() => {
                                 const newMeds = [...prescription.oralMeds];
-                                if (newMeds[idx].timings.includes(t)) newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
-                                else {
-                                  // Single select behavior if strict surgical mode implies cleanup, 
-                                  // BUT user said "retain only... interaction_rules: single_selection_only"
-                                  newMeds[idx].timings = [t];
-                                }
+                                // Single selection only per dose as requested
+                                newMeds[idx].timings = [t];
                                 setPrescription({ ...prescription, oralMeds: newMeds });
-                              }} className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-blue-500 text-white border-blue-600 shadow-md transform scale-105' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
+                              }} className={`flex-1 min-w-[70px] py-2 rounded-full text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
                                 {t}
                               </button>
                             ))}
+                          </div>
+                          <div className="mt-2 text-[10px] text-stone-400 font-medium italic text-center">
+                            {/* Heuristic for Food Timing */}
+                            {med.name.toLowerCase().includes('metformin') ? 'Recommended: After Food Preffered' :
+                              med.name.toLowerCase().includes('acarbose') ? 'Recommended: With First Bite' :
+                                med.name.toLowerCase().includes('glimepiride') ? 'Recommended: Before Food' :
+                                  med.name.toLowerCase().includes('pantoprazole') ? 'Recommended: Before Food' : ''}
                           </div>
                         </div>
                       </div>
@@ -2442,7 +2445,7 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-stone-50/90 dark:bg-stone-900/95 backdrop-blur-2xl px-6 py-4 rounded-[40px] flex justify-between items-center z-50 shadow-2xl shadow-stone-400/30 border border-white/60">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/95 dark:bg-stone-900/95 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/50 ring-1 ring-white/40">
             {[
               { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-700', activeBg: 'bg-emerald-100' },
               { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-700', activeBg: 'bg-blue-100' },
