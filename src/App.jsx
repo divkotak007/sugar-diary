@@ -2328,7 +2328,7 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-stone-900/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-white/10 ring-1 ring-white/10">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-stone-200 dark:border-white/10 ring-1 ring-stone-100 dark:ring-white/10">
             {[
               { id: 'diary', icon: Edit3, label: 'Diary' },
               { id: 'prescription', icon: Stethoscope, label: 'Rx' },
@@ -2346,9 +2346,9 @@ export default function App() {
                   className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'scale-110' : 'hover:bg-white/10'}`}
                 >
                   {isActive && (
-                    <div className="absolute inset-0 bg-white/20 dark:bg-emerald-500/20 rounded-full blur-md animate-pulse" />
+                    <div className="absolute inset-0 bg-stone-200/50 dark:bg-emerald-500/20 rounded-full blur-md animate-pulse" />
                   )}
-                  <div className={`relative transition-all duration-300 ${isActive ? 'text-white scale-110 drop-shadow-md' : 'text-stone-400 group-hover:text-stone-200'}`}>
+                  <div className={`relative transition-all duration-300 ${isActive ? 'text-stone-800 dark:text-white scale-110 drop-shadow-md' : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-200'}`}>
                     <item.icon size={24} strokeWidth={isActive ? 3 : 2} />
                   </div>
                   {isActive && (
