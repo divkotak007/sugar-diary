@@ -2270,7 +2270,7 @@ export default function App() {
                 {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
                 {safetyAlerts.length > 0 && (
                   <div className="mt-8 mb-4">
-                    <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex items-center justify-between p-4 bg-stone-100 dark:bg-stone-900/50 rounded-2xl text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors group">
+                    <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex items-center justify-between p-4 bg-stone-50/80 dark:bg-stone-900/40 rounded-2xl text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group border border-stone-100/50">
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <ShieldAlert className="text-stone-400 group-hover:text-amber-500 transition-colors" size={20} />
@@ -2287,16 +2287,13 @@ export default function App() {
                     {showAlertDetails && (
                       <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
                         {safetyAlerts.map((alert, idx) => (
-                          <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 backdrop-blur-sm ${alert.type === 'danger' ? 'bg-red-50/50 border-red-100 text-red-800 dark:bg-red-900/10 dark:border-red-900/30 dark:text-red-300' : 'bg-amber-50/50 border-amber-100 text-amber-800 dark:bg-amber-900/10 dark:border-amber-900/30 dark:text-amber-300'}`}>
+                          <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.type === 'danger' ? 'bg-red-50/30 border-red-100 text-red-800' : 'bg-amber-50/30 border-amber-100 text-amber-800'}`}>
                             {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-400" size={16} /> : <AlertTriangle className="flex-shrink-0 text-amber-400" size={16} />}
                             <div>
                               <p className="font-bold text-xs">{alert.message}</p>
                             </div>
                           </div>
                         ))}
-                        <p className="text-center text-[9px] text-stone-400 py-2">
-                          Automated safety checks based on your profile. Consult your doctor for advice.
-                        </p>
                       </div>
                     )}
                   </div>
@@ -2381,52 +2378,46 @@ export default function App() {
 
                             {/* EXPANDED DETAILS (Hidden by default) */}
                             {isExpanded && (
-                              <div className="mt-4 pt-4 border-t border-stone-100 space-y-3 animate-in fade-in slide-in-from-top-1">
+                              <div className="mt-4 pt-4 border-t border-stone-100 space-y-2 animate-in fade-in slide-in-from-top-1">
 
-                                {/* Edit/Delete Controls */}
-                                {!isCaregiverMode && (
-                                  <div className="flex gap-2 justify-end mb-2">
-                                    <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 bg-stone-100 rounded-lg text-stone-500 text-xs font-bold hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} disabled={isLocked} className={`px-3 py-1.5 bg-stone-100 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${isLocked ? 'text-stone-300' : 'text-stone-500 hover:bg-red-100 hover:text-red-600'}`}>{isLocked ? <Lock size={12} /> : <Trash2 size={12} />} {isLocked ? 'Locked' : 'Delete'}</button>
-                                  </div>
-                                )}
-
-                                {log.medsTaken && log.medsTaken.length > 0 && (
-                                  <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
-                                    <div className="text-[9px] font-bold text-blue-400 uppercase mb-2 flex items-center gap-1"><Pill size={10} /> Meds Taken</div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {log.medsTaken.map(k => {
-                                        const [id, time] = k.split('_');
-                                        const med = prescription.oralMeds.find(m => m.id === id);
-                                        return med ? (
-                                          <span key={k} className="text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-lg border border-blue-100 shadow-sm">
-                                            {med.name} <span className="text-blue-300">•</span> {time}
-                                          </span>
-                                        ) : null;
-                                      })}
+                                {/* Meds List */}
+                                {log.medsTaken && log.medsTaken.map(k => {
+                                  const [id, time] = k.split('_');
+                                  const med = prescription.oralMeds.find(m => m.id === id);
+                                  return med ? (
+                                    <div key={k} className="flex items-center gap-3 text-xs text-stone-600 py-1">
+                                      <div className="w-6 flex justify-center"><Pill size={14} className="text-blue-400" /></div>
+                                      <span className="font-bold text-stone-700">{med.name}</span>
+                                      <span className="text-stone-400 text-[10px]">• {time}</span>
                                     </div>
-                                  </div>
-                                )}
+                                  ) : null;
+                                })}
 
-                                {log.insulinDoses && Object.keys(log.insulinDoses).length > 0 && (
-                                  <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
-                                    <div className="text-[9px] font-bold text-emerald-500 uppercase mb-2 flex items-center gap-1"><Syringe size={10} /> Insulin</div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {Object.entries(log.insulinDoses).map(([id, dose]) => {
-                                        const ins = prescription.insulins.find(i => i.id === id);
-                                        return ins ? (
-                                          <span key={id} className="text-xs font-bold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-100 shadow-sm">
-                                            {ins.name} <span className="text-emerald-300">•</span> {dose}u
-                                          </span>
-                                        ) : null;
-                                      })}
+                                {/* Insulin List */}
+                                {log.insulinDoses && Object.entries(log.insulinDoses).map(([id, dose]) => {
+                                  const ins = prescription.insulins.find(i => i.id === id);
+                                  return ins ? (
+                                    <div key={id} className="flex items-center gap-3 text-xs text-stone-600 py-1">
+                                      <div className="w-6 flex justify-center"><Syringe size={14} className="text-emerald-500" /></div>
+                                      <span className="font-bold text-stone-700">{ins.name}</span>
+                                      <span className="bg-emerald-100 text-emerald-700 px-1.5 rounded text-[10px] font-black">{dose}u</span>
                                     </div>
-                                  </div>
-                                )}
+                                  ) : null;
+                                })}
 
+                                {/* Tags List - Concatenated */}
                                 {log.tags && log.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 pt-1">
-                                    {log.tags.map(t => <span key={t} className="text-[10px] font-bold text-stone-500 bg-stone-200 px-2 py-0.5 rounded-full">{TAG_EMOJIS[t] || ''} {t}</span>)}
+                                  <div className="flex items-center gap-3 text-xs text-stone-500 py-1">
+                                    <div className="w-6 flex justify-center"><Tag size={14} className="text-stone-300" /></div>
+                                    <span>{log.tags.map(t => `${TAG_EMOJIS[t] || ''} ${t}`).join(', ')}</span>
+                                  </div>
+                                )}
+
+                                {/* Edit/Delete Controls (Bottom Row) */}
+                                {!isCaregiverMode && (
+                                  <div className="flex gap-3 justify-end mt-2 pt-2">
+                                    <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 text-stone-400 text-xs font-bold hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} disabled={isLocked} className={`px-3 py-1.5 text-stone-400 text-xs font-bold transition-colors flex items-center gap-1 ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-600'}`}>{isLocked ? <Lock size={12} /> : <Trash2 size={12} />} {isLocked ? 'Locked' : 'Delete'}</button>
                                   </div>
                                 )}
                               </div>
