@@ -2020,24 +2020,6 @@ export default function App() {
               <div className="px-6 pb-32 animate-in slide-in-from-right">
                 <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800 dark:text-stone-100"><Stethoscope className="text-emerald-600" /> Prescription</h2>
 
-                {/* SAFETY ALERT ENGINE */}
-                {safetyAlerts.length > 0 && (
-                  <div className="mb-6 space-y-3">
-                    {safetyAlerts.map((alert, idx) => (
-                      <div key={idx} className={`p-4 rounded-xl border-l-4 shadow-sm flex items-start gap-3 animate-in slide-in-from-top-2 ${alert.type === 'danger' ? 'bg-red-50 border-red-500 text-red-800 dark:bg-red-900/20 dark:text-red-300' : 'bg-amber-50 border-amber-500 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300'}`}>
-                        {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-500" size={20} /> : <AlertTriangle className="flex-shrink-0 text-amber-500" size={20} />}
-                        <div>
-                          <p className="font-bold text-sm">{alert.message}</p>
-                          <p className="text-[10px] opacity-80 mt-1 font-semibold uppercase tracking-wide"> Clinical Advisory • Read Only</p>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="text-center text-[10px] text-stone-400 font-medium">
-                      * These alerts are based on your profile (Age, Kidney/Heart status) and are for informational purposes only.
-                    </div>
-                  </div>
-                )}
-
                 {/* UNIFIED PRESCRIPTION MANAGER */}
                 <div className="bg-white dark:bg-stone-900 p-4 rounded-[24px] shadow-sm mb-6 border border-stone-100 dark:border-stone-800">
                   <h3 className="font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
@@ -2250,6 +2232,41 @@ export default function App() {
 
                   {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg mt-6 flex justify-center gap-2"><Save size={18} /> Save Prescription</button>}
                 </div>
+
+                {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
+                {safetyAlerts.length > 0 && (
+                  <div className="mt-8 mb-4">
+                    <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex items-center justify-between p-4 bg-stone-100 dark:bg-stone-900/50 rounded-2xl text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <ShieldAlert className="text-stone-400 group-hover:text-amber-500 transition-colors" size={20} />
+                          {safetyAlerts.some(a => a.type === 'danger') && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse ring-2 ring-stone-100" />}
+                        </div>
+                        <span className="font-bold text-sm uppercase tracking-wide">Clinical Safety Checks</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-stone-200 dark:bg-stone-800 text-stone-500 text-[10px] font-black px-2 py-0.5 rounded-full">{safetyAlerts.length} Alerts</span>
+                        {showAlertDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </div>
+                    </button>
+
+                    {showAlertDetails && (
+                      <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
+                        {safetyAlerts.map((alert, idx) => (
+                          <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 backdrop-blur-sm ${alert.type === 'danger' ? 'bg-red-50/50 border-red-100 text-red-800 dark:bg-red-900/10 dark:border-red-900/30 dark:text-red-300' : 'bg-amber-50/50 border-amber-100 text-amber-800 dark:bg-amber-900/10 dark:border-amber-900/30 dark:text-amber-300'}`}>
+                            {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-400" size={16} /> : <AlertTriangle className="flex-shrink-0 text-amber-400" size={16} />}
+                            <div>
+                              <p className="font-bold text-xs">{alert.message}</p>
+                            </div>
+                          </div>
+                        ))}
+                        <p className="text-center text-[9px] text-stone-400 py-2">
+                          Automated safety checks based on your profile. Consult your doctor for advice.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           }
