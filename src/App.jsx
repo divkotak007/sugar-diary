@@ -11,7 +11,7 @@ import {
   FileText, Home, LineChart, Lock, LogOut, Menu, MoreHorizontal,
   PieChart, Pill, PlusCircle, Settings, Smartphone, Stethoscope, Sun, Moon,
   Thermometer, TrendingUp, User, Video, Zap, Database, Download,
-  AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX,
+  AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX, LayoutList,
   Save, Syringe, ScrollText, ShieldAlert, RefreshCw
 } from 'lucide-react';
 import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
