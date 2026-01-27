@@ -1,0 +1,41 @@
+▲ [WARNING] The character "}" is not valid inside a JSX element
+
+    src/App.jsx:1758:8:
+      1758 │         }
+           │         ^
+           ╵         {'}'}
+
+  Did you mean to escape it as "{'}'}" instead?
+
+X [ERROR] Expected ")" but found "className"
+
+    src/App.jsx:1943:15:
+      1943 │           <div className="flex justify-between items-center mb-4...
+           │                ~~~~~~~~~
+           ╵                )
+
+1 warning and 1 error
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\mohit\sugar-diary\node_modules\@esbuild\win32-x64\esbuild.exe src/App.jsx --loader:.jsx=jsx
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execFileSync (node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\mohit\sugar-diary\node_modules\esbuild\bin\esbuild:219:28)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 10912,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.13.0
