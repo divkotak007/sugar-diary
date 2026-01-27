@@ -1231,7 +1231,14 @@ export default function App() {
         }
       }
 
-      // 3. Insulin Check (Same Logic if needed)
+      // 3. Insulin Check (60 Minute Block)
+      if (Object.keys(insulinDoses).length > 0) {
+        const recentInsulin = fullHistory.find(l =>
+          !l.type && l.insulinDoses && Object.keys(l.insulinDoses).length > 0 &&
+          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+        );
+        if (recentInsulin) return alert("Action Blocked: Insulin was already logged in the last hour. Please ensure at least 60 minutes between doses.");
+      }
     }
 
     // STRICT: Prevent Empty regular logs
@@ -2055,7 +2062,12 @@ export default function App() {
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
-                              <span className="font-bold text-stone-700">{insulin.name}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-stone-700 text-sm">{insulin.name}</span>
+                                <span className="text-[10px] text-stone-400 font-medium truncate max-w-[200px]">
+                                  {(insulin.brands || []).join(', ')}
+                                </span>
+                              </div>
                               <PlusCircle size={18} className="text-stone-300 group-hover:text-emerald-500 transition-colors" />
                             </button>
                           ))}
@@ -2103,7 +2115,12 @@ export default function App() {
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
-                              <span className="font-bold text-stone-700">{med.name}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-stone-700 text-sm">{med.name}</span>
+                                <span className="text-[10px] text-stone-400 font-medium truncate max-w-[200px]">
+                                  {(med.brands || []).join(', ')}
+                                </span>
+                              </div>
                               <PlusCircle size={18} className="text-stone-300 group-hover:text-blue-500 transition-colors" />
                             </button>
                           ))}
@@ -2299,14 +2316,14 @@ export default function App() {
                 <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
                   <h3 className="font-bold text-stone-700 mb-4 text-sm uppercase tracking-widest flex items-center gap-2"><LayoutList size={16} /> Logbook History</h3>
 
-                  {fullHistory.filter(l => !l.type || !['prescription_update', 'vital_update'].includes(l.type)).length === 0 ? (
+                  {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).length === 0 ? (
                     <div className="text-center py-10">
                       <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4"><BookOpen className="text-stone-200" /></div>
                       <p className="text-stone-400 font-bold">No entries found.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {fullHistory.filter(l => !l.type || !['prescription_update', 'vital_update'].includes(l.type)).map(log => {
+                      {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).map(log => {
                         const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
                         const isLocked = isActionLocked(log.timestamp);
                         const isExpanded = expandedLogId === log.id;
@@ -2409,12 +2426,12 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-stone-900/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full flex justify-between items-center z-50 shadow-2xl border border-white/10 ring-1 ring-white/10">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-stone-900/80 dark:bg-black/80 backdrop-blur-xl p-2 rounded-full flex justify-between items-center z-50 shadow-2xl shadow-stone-900/20 border border-white/10 ring-1 ring-white/10 overflow-hidden">
             {[
-              { id: 'diary', icon: Edit3, label: 'Diary' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx' },
-              { id: 'history', icon: FileText, label: 'Log' },
-              { id: 'profile', icon: User, label: 'Profile' }
+              { id: 'diary', icon: Edit3, label: 'Diary', color: 'bg-emerald-500' },
+              { id: 'prescription', icon: Stethoscope, label: 'Rx', color: 'bg-blue-500' },
+              { id: 'history', icon: FileText, label: 'Log', color: 'bg-amber-500' },
+              { id: 'profile', icon: User, label: 'Profile', color: 'bg-purple-500' }
             ].map(item => {
               const isActive = view === item.id;
               return (
@@ -2424,11 +2441,15 @@ export default function App() {
                     triggerHaptic(hapticsEnabled, 'light');
                     setView(item.id);
                   }}
-                  className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'scale-110' : 'hover:bg-white/10'}`}
+                  className={`relative p-4 rounded-full transition-all duration-300 flex items-center justify-center group ${isActive ? 'scale-110' : 'hover:bg-white/5'}`}
                 >
                   {isActive && (
-                    <div className="absolute inset-0 bg-white/20 dark:bg-emerald-500/20 rounded-full blur-md animate-pulse" />
+                    <div className={`absolute inset-0 ${item.color} opacity-20 blur-xl rounded-full`} />
                   )}
+                  {isActive && (
+                    <div className={`absolute inset-0 ${item.color} opacity-10 rounded-full animate-pulse`} />
+                  )}
+
                   <div className={`relative transition-all duration-300 ${isActive ? 'text-white scale-110 drop-shadow-md' : 'text-stone-400 group-hover:text-stone-200'}`}>
                     <item.icon size={24} strokeWidth={isActive ? 3 : 2} />
                   </div>
