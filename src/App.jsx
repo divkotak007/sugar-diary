@@ -399,12 +399,22 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
 
   // Filter history for this specific vital
   const vitalType = label.toLowerCase();
+
+  // 1. Get the exact data points used in the graph (already filtered/deduplicated)
+  const graphPointIds = new Set(data.map(d => d.id));
+
   const relevantLogs = [...fullHistory]
     .filter(log => {
+      // PRIMARY RULE: Only show logs that are actual data points in the graph
+      if (graphPointIds.has(log.id)) return true;
+
+      // SECONDARY RULE: For recent 'vital_update' logs that might not be in graph yet (edge case)
       if (log.type === 'vital_update') {
         return log.updatedParams && log.updatedParams.includes(vitalType);
       }
-      return log.snapshot?.profile?.[vitalType] !== undefined && log.snapshot?.profile?.[vitalType] !== null;
+
+      // Strict Fallback: Do not show generic logs unless they are graph points
+      return false;
     })
     .sort((a, b) => {
       const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
