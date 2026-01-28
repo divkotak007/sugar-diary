@@ -807,6 +807,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem('sugar_sound', soundEnabled); }, [soundEnabled]);
   useEffect(() => { localStorage.setItem('sugar_lang', lang); }, [lang]);
 
+  // PERSIENCE LAYER: Save Profile & Prescription to LocalStorage
+  useEffect(() => {
+    if (user?.uid && !loading) {
+      localStorage.setItem(`sugar_data_${user.uid}`, JSON.stringify({ profile, prescription }));
+    }
+  }, [user, profile, prescription, loading]);
+
   useEffect(() => {
     const initAuth = async () => {
       await auth.authStateReady();
@@ -825,6 +832,16 @@ export default function App() {
       setUser(u);
       if (u) {
         try {
+          // HYDRATION: Load from LocalStorage if available (Offline First)
+          const cached = localStorage.getItem(`sugar_data_${u.uid}`);
+          if (cached) {
+            try {
+              const { profile: cProfile, prescription: cPrescription } = JSON.parse(cached);
+              if (cProfile) setProfile(cProfile);
+              if (cPrescription) setPrescription(cPrescription);
+            } catch (e) { console.error("Cache Parse Error", e); }
+          }
+
           const medListRef = doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list');
           getDoc(medListRef).then(snap => { if (snap.exists()) setMedDatabase(snap.data()); }).catch(err => console.log("Using default meds"));
           fetch('https://raw.githubusercontent.com/sugar-diary/main/diabtes_medication_library.json')
