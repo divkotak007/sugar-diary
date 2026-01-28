@@ -924,7 +924,8 @@ export default function App() {
   }, [user]);
 
   const checkContraindication = (medName) => {
-    const med = MEDICATION_DATABASE.find(m => m.name.toLowerCase().includes(medName.toLowerCase()));
+    if (!medName || typeof medName !== 'string') return false;
+    const med = MEDICATION_DATABASE.find(m => m.name && m.name.toLowerCase().includes(medName.toLowerCase()));
     return profile.pregnancyStatus && med?.flags?.pregnancy === 'avoid';
   };
 
@@ -1443,7 +1444,7 @@ export default function App() {
       doc.setFontSize(9); doc.setTextColor(60); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
 
       // Filter out technical updates (Rx/Vital changes) from the PDF report
-      const reportData = fullHistory.filter(l => !['prescription_update', 'vital_update'].includes(l.type));
+      const reportData = (fullHistory || []).filter(l => !['prescription_update', 'vital_update'].includes(l.type));
       const vals = data.map(d => d.value);
       const dataMin = Math.min(...vals);
       const dataMax = Math.max(...vals);
@@ -1539,7 +1540,7 @@ export default function App() {
     // Page break safety for Instructions
     if (finalY > 260 && profile.instructions) { doc.addPage(); finalY = 20; }
 
-    const pdfFilteredHistory = fullHistory.filter(l => {
+    const pdfFilteredHistory = (fullHistory || []).filter(l => {
       if (l.type === 'vital_update' || l.type === 'prescription_update') return false;
       const d = new Date(l.timestamp?.seconds * 1000 || l.timestamp);
       if (pdfStartDate && d < new Date(pdfStartDate)) return false;
