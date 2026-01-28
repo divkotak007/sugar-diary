@@ -1,83 +1,169 @@
 {
-    "last_updated": "2026-01-29",
-    "version": "2.0.0",
+    "last_updated": "2024-05",
+    "version": "4.0.1-FLATTENED",
     "oralMeds": [
         {
+            "name": "Metformin 500mg",
+            "dose": "500mg",
             "generic_name": "Metformin",
             "drug_class": "Biguanide",
-            "dose_variants": [
-                "500mg",
-                "850mg",
-                "1000mg",
-                "500mg SR",
-                "1000mg SR"
-            ],
             "brand_names": [
-                "Glycomet",
-                "Glyciphage",
-                "Obimet",
-                "Gluconorm",
-                "Okamet"
+                "Glycomet 500",
+                "Cetapin 500",
+                "Obimet 500",
+                "Bigomet 500",
+                "Riomet 500"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "safe",
-                "hypo_risk": "low",
-                "weight_impact": "neutral/loss"
-            },
             "tags": [
                 "FIRST_LINE",
                 "WEIGHT_NEUTRAL",
-                "SAFE_PREGNANCY",
-                "LOW_HYPO_RISK"
+                "CV_BENEFIT",
+                "CKD_AVOID_IF_LOW_GFR"
             ]
         },
         {
+            "name": "Metformin 850mg",
+            "dose": "850mg",
+            "generic_name": "Metformin",
+            "drug_class": "Biguanide",
+            "brand_names": [
+                "Glycomet 850",
+                "Cetapin 850",
+                "Obimet 850"
+            ],
+            "tags": [
+                "FIRST_LINE",
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT",
+                "CKD_AVOID_IF_LOW_GFR"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg",
+            "dose": "1000mg",
+            "generic_name": "Metformin",
+            "drug_class": "Biguanide",
+            "brand_names": [
+                "Glycomet 1g",
+                "Cetapin 1g",
+                "Obimet 1g",
+                "Gluconorm 1g"
+            ],
+            "tags": [
+                "FIRST_LINE",
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT",
+                "CKD_AVOID_IF_LOW_GFR"
+            ]
+        },
+        {
+            "name": "Metformin 500mg SR",
+            "dose": "500mg SR",
+            "generic_name": "Metformin",
+            "drug_class": "Biguanide SR",
+            "brand_names": [
+                "Glycomet SR 500",
+                "Cetapin XR 500"
+            ],
+            "tags": [
+                "FIRST_LINE",
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg SR",
+            "dose": "1000mg SR",
+            "generic_name": "Metformin",
+            "drug_class": "Biguanide SR",
+            "brand_names": [
+                "Glycomet SR 1g",
+                "Cetapin XR 1g"
+            ],
+            "tags": [
+                "FIRST_LINE",
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Glimepiride 1mg",
+            "dose": "1mg",
             "generic_name": "Glimepiride",
             "drug_class": "Sulfonylurea",
-            "dose_variants": [
-                "1mg",
-                "2mg",
-                "3mg",
-                "4mg"
-            ],
             "brand_names": [
-                "Amaryl",
-                "Glimestar",
-                "Zoryl"
+                "Amaryl 1",
+                "Zoryl 1",
+                "Glimestar 1",
+                "Jubiglim 1",
+                "Euglim 1"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high",
-                "weight_impact": "gain"
-            },
             "tags": [
                 "HIGH_HYPO_RISK",
                 "WEIGHT_GAIN",
                 "ELDERLY_CAUTION",
-                "RENAL_CAUTION"
+                "CKD_CAUTION"
             ]
         },
         {
+            "name": "Glimepiride 2mg",
+            "dose": "2mg",
+            "generic_name": "Glimepiride",
+            "drug_class": "Sulfonylurea",
+            "brand_names": [
+                "Amaryl 2",
+                "Zoryl 2",
+                "Glimestar 2",
+                "Jubiglim 2"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "ELDERLY_CAUTION"
+            ]
+        },
+        {
+            "name": "Glimepiride 3mg",
+            "dose": "3mg",
+            "generic_name": "Glimepiride",
+            "drug_class": "Sulfonylurea",
+            "brand_names": [
+                "Amaryl 3",
+                "Zoryl 3",
+                "Glimestar 3"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "ELDERLY_CAUTION"
+            ]
+        },
+        {
+            "name": "Glimepiride 4mg",
+            "dose": "4mg",
+            "generic_name": "Glimepiride",
+            "drug_class": "Sulfonylurea",
+            "brand_names": [
+                "Amaryl 4",
+                "Zoryl 4"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "ELDERLY_CAUTION"
+            ]
+        },
+        {
+            "name": "Gliclazide MR 30mg",
+            "dose": "30mg MR",
             "generic_name": "Gliclazide",
             "drug_class": "Sulfonylurea",
-            "dose_variants": [
-                "30mg MR",
-                "60mg MR",
-                "80mg"
-            ],
             "brand_names": [
-                "Diamicron MR",
-                "Reclide",
-                "Glizid"
+                "Diamicron MR 30",
+                "Reclide MR 30",
+                "Glizid MR 30",
+                "Cyblex 30"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "moderate",
-                "weight_impact": "gain"
-            },
             "tags": [
                 "MODERATE_HYPO_RISK",
                 "WEIGHT_GAIN",
@@ -85,214 +171,323 @@
             ]
         },
         {
-            "generic_name": "Pioglitazone",
-            "drug_class": "TZD",
-            "dose_variants": [
-                "15mg",
-                "30mg"
-            ],
+            "name": "Gliclazide MR 60mg",
+            "dose": "60mg MR",
+            "generic_name": "Gliclazide",
+            "drug_class": "Sulfonylurea",
             "brand_names": [
-                "Pioz",
-                "Actos",
-                "Pioglit"
+                "Diamicron MR 60",
+                "Reclide MR 60",
+                "Glizid MR 60",
+                "Glycinorm 60"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "gain"
-            },
             "tags": [
+                "MODERATE_HYPO_RISK",
                 "WEIGHT_GAIN",
-                "EDEMA",
-                "HF_CAUTION",
-                "BONE_FRACTURE_RISK"
+                "RENAL_SAFE_MILD"
             ]
         },
         {
+            "name": "Glibenclamide 2.5mg",
+            "dose": "2.5mg",
+            "generic_name": "Glibenclamide",
+            "drug_class": "Sulfonylurea",
+            "brand_names": [
+                "Daonil 2.5",
+                "Euglucon"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "ELDERLY_AVOID",
+                "CKD_AVOID"
+            ]
+        },
+        {
+            "name": "Glibenclamide 5mg",
+            "dose": "5mg",
+            "generic_name": "Glibenclamide",
+            "drug_class": "Sulfonylurea",
+            "brand_names": [
+                "Daonil 5"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "ELDERLY_AVOID",
+                "CKD_AVOID"
+            ]
+        },
+        {
+            "name": "Repaglinide 0.5mg",
+            "dose": "0.5mg",
+            "generic_name": "Repaglinide",
+            "drug_class": "Meglitinide",
+            "brand_names": [
+                "Prandin 0.5",
+                "Eurepa 0.5",
+                "Rapilin 0.5"
+            ],
+            "tags": [
+                "SHORT_ACTING",
+                "MEALTIME",
+                "RENAL_SAFE_MILD"
+            ]
+        },
+        {
+            "name": "Repaglinide 1mg",
+            "dose": "1mg",
+            "generic_name": "Repaglinide",
+            "drug_class": "Meglitinide",
+            "brand_names": [
+                "Prandin 1",
+                "Eurepa 1"
+            ],
+            "tags": [
+                "SHORT_ACTING",
+                "MEALTIME"
+            ]
+        },
+        {
+            "name": "Repaglinide 2mg",
+            "dose": "2mg",
+            "generic_name": "Repaglinide",
+            "drug_class": "Meglitinide",
+            "brand_names": [
+                "Prandin 2"
+            ],
+            "tags": [
+                "SHORT_ACTING",
+                "MEALTIME"
+            ]
+        },
+        {
+            "name": "Pioglitazone 15mg",
+            "dose": "15mg",
+            "generic_name": "Pioglitazone",
+            "drug_class": "TZD",
+            "brand_names": [
+                "Pioz 15",
+                "Zactos 15",
+                "Pioglit 15",
+                "Actos 15"
+            ],
+            "tags": [
+                "WEIGHT_GAIN",
+                "HF_AVOID",
+                "CV_BENEFIT",
+                "EDEMA"
+            ]
+        },
+        {
+            "name": "Pioglitazone 30mg",
+            "dose": "30mg",
+            "generic_name": "Pioglitazone",
+            "drug_class": "TZD",
+            "brand_names": [
+                "Pioz 30",
+                "Zactos 30",
+                "Pioglit 30",
+                "Actos 30"
+            ],
+            "tags": [
+                "WEIGHT_GAIN",
+                "HF_AVOID",
+                "CV_BENEFIT",
+                "EDEMA"
+            ]
+        },
+        {
+            "name": "Lobeglitazone 0.5mg",
+            "dose": "0.5mg",
+            "generic_name": "Lobeglitazone",
+            "drug_class": "TZD",
+            "brand_names": [
+                "LOBG",
+                "Lobe"
+            ],
+            "tags": [
+                "WEIGHT_GAIN",
+                "HF_AVOID",
+                "EDEMA"
+            ]
+        },
+        {
+            "name": "Sitagliptin 25mg",
+            "dose": "25mg",
             "generic_name": "Sitagliptin",
             "drug_class": "DPP4 Inhibitor",
-            "dose_variants": [
-                "25mg",
-                "50mg",
-                "100mg"
-            ],
             "brand_names": [
-                "Januvia",
-                "Istavel",
-                "Sitara"
+                "Januvia 25",
+                "Istavel 25",
+                "Sitara 25"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
                 "WEIGHT_NEUTRAL",
-                "LOW_HYPO_RISK",
                 "RENAL_DOSE_ADJUST"
             ]
         },
         {
-            "generic_name": "Vildagliptin",
+            "name": "Sitagliptin 50mg",
+            "dose": "50mg",
+            "generic_name": "Sitagliptin",
             "drug_class": "DPP4 Inhibitor",
-            "dose_variants": [
-                "50mg",
-                "100mg"
-            ],
             "brand_names": [
-                "Galvus",
-                "Jalra",
-                "Zomelis",
-                "Vinglyn"
+                "Januvia 50",
+                "Istavel 50",
+                "Sitara 50"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
                 "WEIGHT_NEUTRAL",
-                "LOW_HYPO_RISK",
+                "RENAL_DOSE_ADJUST"
+            ]
+        },
+        {
+            "name": "Sitagliptin 100mg",
+            "dose": "100mg",
+            "generic_name": "Sitagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "brand_names": [
+                "Januvia 100",
+                "Istavel 100"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "RENAL_DOSE_ADJUST"
+            ]
+        },
+        {
+            "name": "Vildagliptin 50mg",
+            "dose": "50mg",
+            "generic_name": "Vildagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "brand_names": [
+                "Galvus 50",
+                "Jalra 50",
+                "Zomelis 50",
+                "Vinglyn 50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "RENAL_DOSE_REDUCE"
+            ]
+        },
+        {
+            "name": "Vildagliptin 100mg",
+            "dose": "100mg",
+            "generic_name": "Vildagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "brand_names": [
+                "Galvus 100"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "RENAL_DOSE_REDUCE"
+            ]
+        },
+        {
+            "name": "Teneligliptin 20mg",
+            "dose": "20mg",
+            "generic_name": "Teneligliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "brand_names": [
+                "Tenet",
+                "Tenglyn",
+                "Zita Plus",
+                "Tenel",
+                "Dynaglipt"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
                 "RENAL_SAFE"
             ]
         },
         {
+            "name": "Linagliptin 5mg",
+            "dose": "5mg",
             "generic_name": "Linagliptin",
             "drug_class": "DPP4 Inhibitor",
-            "dose_variants": [
-                "5mg"
-            ],
             "brand_names": [
                 "Trajenta",
                 "Ondero"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
                 "WEIGHT_NEUTRAL",
-                "RENAL_SAFE_ANY_GFR",
-                "LOW_HYPO_RISK"
+                "RENAL_SAFE_ANY_GFR"
             ]
         },
         {
-            "generic_name": "Teneligliptin",
-            "drug_class": "DPP4 Inhibitor",
-            "dose_variants": [
-                "20mg"
-            ],
-            "brand_names": [
-                "Tenel",
-                "Dynaglipt",
-                "Teneza",
-                "Tenelia"
-            ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "WEIGHT_NEUTRAL",
-                "RENAL_SAFE",
-                "LOW_HYPO_RISK"
-            ]
-        },
-        {
-            "generic_name": "Alogliptin",
-            "drug_class": "DPP4 Inhibitor",
-            "dose_variants": [
-                "12.5mg",
-                "25mg"
-            ],
-            "brand_names": [
-                "Nesina"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "RENAL_DOSE_ADJUST",
-                "WEIGHT_NEUTRAL"
-            ]
-        },
-        {
+            "name": "Dapagliflozin 5mg",
+            "dose": "5mg",
             "generic_name": "Dapagliflozin",
             "drug_class": "SGLT2 Inhibitor",
-            "dose_variants": [
-                "5mg",
-                "10mg"
-            ],
             "brand_names": [
-                "Forxiga",
-                "Oxra",
-                "Dapayne"
+                "Forxiga 5",
+                "Oxra 5",
+                "Dapayne 5"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
             "tags": [
                 "WEIGHT_LOSS",
                 "HF_BENEFIT",
                 "CKD_BENEFIT",
-                "EUGLYCEMIC_DKA_RISK",
                 "GENITAL_HYGIENE"
             ]
         },
         {
-            "generic_name": "Empagliflozin",
+            "name": "Dapagliflozin 10mg",
+            "dose": "10mg",
+            "generic_name": "Dapagliflozin",
             "drug_class": "SGLT2 Inhibitor",
-            "dose_variants": [
-                "10mg",
-                "25mg"
-            ],
             "brand_names": [
-                "Jardiance",
-                "Gibtulio"
+                "Forxiga 10",
+                "Oxra 10"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
             "tags": [
                 "WEIGHT_LOSS",
                 "HF_BENEFIT",
                 "CKD_BENEFIT",
-                "EUGLYCEMIC_DKA_RISK"
+                "GENITAL_HYGIENE"
             ]
         },
         {
+            "name": "Empagliflozin 10mg",
+            "dose": "10mg",
+            "generic_name": "Empagliflozin",
+            "drug_class": "SGLT2 Inhibitor",
+            "brand_names": [
+                "Jardiance 10",
+                "Gibtulio 10"
+            ],
+            "tags": [
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "CKD_BENEFIT"
+            ]
+        },
+        {
+            "name": "Empagliflozin 25mg",
+            "dose": "25mg",
+            "generic_name": "Empagliflozin",
+            "drug_class": "SGLT2 Inhibitor",
+            "brand_names": [
+                "Jardiance 25",
+                "Gibtulio 25"
+            ],
+            "tags": [
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "CKD_BENEFIT"
+            ]
+        },
+        {
+            "name": "Canagliflozin 100mg",
+            "dose": "100mg",
             "generic_name": "Canagliflozin",
             "drug_class": "SGLT2 Inhibitor",
-            "dose_variants": [
-                "100mg",
-                "300mg"
-            ],
             "brand_names": [
-                "Invokana",
-                "Sulisent"
+                "Invokana 100",
+                "Sulisent 100"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
             "tags": [
                 "WEIGHT_LOSS",
                 "HF_BENEFIT",
@@ -301,333 +496,332 @@
             ]
         },
         {
-            "generic_name": "Ertugliflozin",
+            "name": "Canagliflozin 300mg",
+            "dose": "300mg",
+            "generic_name": "Canagliflozin",
             "drug_class": "SGLT2 Inhibitor",
-            "dose_variants": [
-                "5mg",
-                "15mg"
-            ],
             "brand_names": [
-                "Steglatro"
+                "Invokana 300",
+                "Sulisent 300"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
-            "tags": [
-                "WEIGHT_LOSS",
-                "GENITAL_INFECTION_RISK"
-            ]
-        },
-        {
-            "generic_name": "Voglibose",
-            "drug_class": "Alpha-Glucosidase Inhibitor",
-            "dose_variants": [
-                "0.2mg",
-                "0.3mg"
-            ],
-            "brand_names": [
-                "Volibo",
-                "Voglistar",
-                "Vobose",
-                "PPG"
-            ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "WEIGHT_NEUTRAL",
-                "FLATULENCE",
-                "PP_GLUCOSE_CONTROL"
-            ]
-        },
-        {
-            "generic_name": "Acarbose",
-            "drug_class": "Alpha-Glucosidase Inhibitor",
-            "dose_variants": [
-                "25mg",
-                "50mg",
-                "100mg"
-            ],
-            "brand_names": [
-                "Glucobay",
-                "Acarboz",
-                "Precose"
-            ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "WEIGHT_NEUTRAL",
-                "FLATULENCE",
-                "PP_GLUCOSE_CONTROL"
-            ]
-        },
-        {
-            "generic_name": "Repaglinide",
-            "drug_class": "Meglitinide",
-            "dose_variants": [
-                "0.5mg",
-                "1mg",
-                "2mg"
-            ],
-            "brand_names": [
-                "Eurepa",
-                "Rapilin",
-                "Prandin"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "moderate",
-                "weight_impact": "gain"
-            },
-            "tags": [
-                "SHORT_ACTING",
-                "MEALTIME",
-                "RENAL_SAFE_MILD"
-            ]
-        },
-        {
-            "generic_name": "Nateglinide",
-            "drug_class": "Meglitinide",
-            "dose_variants": [
-                "60mg",
-                "120mg"
-            ],
-            "brand_names": [
-                "Starlix"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "moderate"
-            },
-            "tags": [
-                "SHORT_ACTING",
-                "MEALTIME"
-            ]
-        },
-        {
-            "generic_name": "Liraglutide",
-            "drug_class": "GLP-1 Agonist",
-            "dose_variants": [
-                "0.6mg",
-                "1.2mg",
-                "1.8mg"
-            ],
-            "brand_names": [
-                "Victoza",
-                "Saxenda"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
-            "tags": [
-                "WEIGHT_LOSS",
-                "CV_BENEFIT",
-                "LOW_HYPO_RISK",
-                "INJECTABLE"
-            ]
-        },
-        {
-            "generic_name": "Semaglutide",
-            "drug_class": "GLP-1 Agonist",
-            "dose_variants": [
-                "0.25mg",
-                "0.5mg",
-                "1mg",
-                "3mg",
-                "7mg",
-                "14mg"
-            ],
-            "brand_names": [
-                "Ozempic",
-                "Rybelsus"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
-            "tags": [
-                "WEIGHT_LOSS",
-                "CV_BENEFIT",
-                "WEEKLY_INJECTION",
-                "ORAL_OPTION"
-            ]
-        },
-        {
-            "generic_name": "Dulaglutide",
-            "drug_class": "GLP-1 Agonist",
-            "dose_variants": [
-                "0.75mg",
-                "1.5mg"
-            ],
-            "brand_names": [
-                "Trulicity"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
-            "tags": [
-                "WEIGHT_LOSS",
-                "CV_BENEFIT",
-                "WEEKLY_INJECTION"
-            ]
-        },
-        {
-            "generic_name": "Exenatide",
-            "drug_class": "GLP-1 Agonist",
-            "dose_variants": [
-                "5mcg",
-                "10mcg"
-            ],
-            "brand_names": [
-                "Byetta",
-                "Bydureon"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
-            "tags": [
-                "WEIGHT_LOSS",
-                "TWICE_DAILY"
-            ]
-        },
-        {
-            "generic_name": "Metformin + Glimepiride",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/1mg",
-                "500/2mg",
-                "1000/2mg"
-            ],
-            "brand_names": [
-                "Glycomet-GP",
-                "Amaryl M",
-                "Glimestar-M"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high",
-                "weight_impact": "gain"
-            },
-            "tags": [
-                "HIGH_HYPO_RISK",
-                "WEIGHT_GAIN"
-            ]
-        },
-        {
-            "generic_name": "Metformin + Sitagliptin",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/50mg",
-                "850/50mg",
-                "1000/50mg",
-                "1000/100mg"
-            ],
-            "brand_names": [
-                "Janumet",
-                "Istamet",
-                "Zita-Met"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "WEIGHT_NEUTRAL",
-                "RENAL_DOSE_ADJUST"
-            ]
-        },
-        {
-            "generic_name": "Metformin + Vildagliptin",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/50mg",
-                "850/50mg",
-                "1000/50mg"
-            ],
-            "brand_names": [
-                "Galvus Met",
-                "Jalra-M",
-                "Zomelis-Met"
-            ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
-            "tags": [
-                "WEIGHT_NEUTRAL",
-                "LOW_HYPO_RISK"
-            ]
-        },
-        {
-            "generic_name": "Metformin + Dapagliflozin",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/10mg",
-                "1000/10mg"
-            ],
-            "brand_names": [
-                "Xigduo",
-                "Dapa-M",
-                "Oxra-Met"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
             "tags": [
                 "WEIGHT_LOSS",
                 "HF_BENEFIT",
                 "CKD_BENEFIT",
-                "EUGLYCEMIC_DKA_RISK"
+                "AMPUTATION_RISK"
             ]
         },
         {
-            "generic_name": "Metformin + Empagliflozin",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/12.5mg",
-                "1000/12.5mg",
-                "1000/25mg"
-            ],
+            "name": "Remogliflozin 100mg",
+            "dose": "100mg",
+            "generic_name": "Remogliflozin",
+            "drug_class": "SGLT2 Inhibitor",
             "brand_names": [
-                "Jardiance Met",
-                "Synjardy",
-                "Glyxambi"
+                "Remoglif",
+                "Remo"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
+            "tags": [
+                "WEIGHT_LOSS",
+                "CKD_AVOID"
+            ]
+        },
+        {
+            "name": "Imeglimin 500mg",
+            "dose": "500mg",
+            "generic_name": "Imeglimin",
+            "drug_class": "Glimin",
+            "brand_names": [
+                "Imeglim 500",
+                "Glimy 500",
+                "Zimeg 500",
+                "Gemimy 500"
+            ],
+            "tags": [
+                "NOVEL_MECHANISM",
+                "RENAL_DOSE_REDUCE"
+            ]
+        },
+        {
+            "name": "Imeglimin 1000mg",
+            "dose": "1000mg",
+            "generic_name": "Imeglimin",
+            "drug_class": "Glimin",
+            "brand_names": [
+                "Imeglim 1000",
+                "Glimy 1000"
+            ],
+            "tags": [
+                "NOVEL_MECHANISM",
+                "RENAL_DOSE_REDUCE"
+            ]
+        },
+        {
+            "name": "Saroglitazar 4mg",
+            "dose": "4mg",
+            "generic_name": "Saroglitazar",
+            "drug_class": "Glitazar",
+            "brand_names": [
+                "Lipaglyn",
+                "Bilypsa"
+            ],
+            "tags": [
+                "TRIGLYCERIDE_LOWERING",
+                "LIVER_SAFE"
+            ]
+        },
+        {
+            "name": "Voglibose 0.2mg",
+            "dose": "0.2mg",
+            "generic_name": "Voglibose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "brand_names": [
+                "Volibo 0.2",
+                "Voglistar 0.2",
+                "Basen 0.2",
+                "PPG 0.2"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "FLATULENCE",
+                "PP_GLUCOSE_CONTROL"
+            ]
+        },
+        {
+            "name": "Voglibose 0.3mg",
+            "dose": "0.3mg",
+            "generic_name": "Voglibose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "brand_names": [
+                "Volibo 0.3",
+                "Voglistar 0.3"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "FLATULENCE",
+                "PP_GLUCOSE_CONTROL"
+            ]
+        },
+        {
+            "name": "Acarbose 25mg",
+            "dose": "25mg",
+            "generic_name": "Acarbose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "brand_names": [
+                "Glucobay 25",
+                "Acarboz 25",
+                "Precose 25"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "FLATULENCE",
+                "PP_GLUCOSE_CONTROL"
+            ]
+        },
+        {
+            "name": "Acarbose 50mg",
+            "dose": "50mg",
+            "generic_name": "Acarbose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "brand_names": [
+                "Glucobay 50",
+                "Acarboz 50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "FLATULENCE",
+                "PP_GLUCOSE_CONTROL"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Glimepiride 1mg",
+            "dose": "500/1mg",
+            "generic_name": "Metformin + Glimepiride",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Jubiglim M 500/1",
+                "Glimestar M 1",
+                "Zoryl M 1",
+                "Glycomet-GP 1",
+                "Amaryl M 1"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Glimepiride 2mg",
+            "dose": "500/2mg",
+            "generic_name": "Metformin + Glimepiride",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Jubiglim M 500/2",
+                "Glimestar M 2",
+                "Zoryl M 2",
+                "Glycomet-GP 2"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg + Glimepiride 2mg",
+            "dose": "1000/2mg",
+            "generic_name": "Metformin + Glimepiride",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Glycomet-GP 2 Forte",
+                "Amaryl M 1000/2"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Gliclazide 30mg",
+            "dose": "500/30mg",
+            "generic_name": "Metformin + Gliclazide",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Cyblex M 500/30",
+                "Reclide M",
+                "Glizid M"
+            ],
+            "tags": [
+                "MODERATE_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Gliclazide 60mg",
+            "dose": "500/60mg",
+            "generic_name": "Metformin + Gliclazide",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Diamicron XR Mex"
+            ],
+            "tags": [
+                "MODERATE_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Sitagliptin 50mg",
+            "dose": "500/50mg",
+            "generic_name": "Metformin + Sitagliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Janumet 500/50",
+                "Istamet 500/50",
+                "Zita-Met 500/50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg + Sitagliptin 50mg",
+            "dose": "1000/50mg",
+            "generic_name": "Metformin + Sitagliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Janumet 1000/50",
+                "Istamet 1000/50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Vildagliptin 50mg",
+            "dose": "500/50mg",
+            "generic_name": "Metformin + Vildagliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Galvus Met 500/50",
+                "Jalra-M 500/50",
+                "Jubiglim V 500/50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 850mg + Vildagliptin 50mg",
+            "dose": "850/50mg",
+            "generic_name": "Metformin + Vildagliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Galvus Met 850/50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg + Vildagliptin 50mg",
+            "dose": "1000/50mg",
+            "generic_name": "Metformin + Vildagliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Galvus Met 1000/50",
+                "Jalra-M 1000/50"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "CV_BENEFIT"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Teneligliptin 20mg",
+            "dose": "500/20mg",
+            "generic_name": "Metformin + Teneligliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Teneza-M 500/20",
+                "Tenelim-M 500/20",
+                "Zita-Met Plus"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "RENAL_SAFE"
+            ]
+        },
+        {
+            "name": "Metformin 1000mg + Teneligliptin 20mg",
+            "dose": "1000/20mg",
+            "generic_name": "Metformin + Teneligliptin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Teneza-M 1000/20",
+                "Tenelim-M 1000/20"
+            ],
+            "tags": [
+                "WEIGHT_NEUTRAL",
+                "RENAL_SAFE"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Dapagliflozin 10mg",
+            "dose": "500/10mg",
+            "generic_name": "Metformin + Dapagliflozin",
+            "drug_class": "Dual Combination",
+            "brand_names": [
+                "Xigduo 500/10",
+                "Oxra-M 500/10",
+                "Dapa-M"
+            ],
             "tags": [
                 "WEIGHT_LOSS",
                 "HF_BENEFIT",
@@ -635,379 +829,250 @@
             ]
         },
         {
-            "generic_name": "Metformin + Canagliflozin",
+            "name": "Metformin 1000mg + Dapagliflozin 10mg",
+            "dose": "1000/10mg",
+            "generic_name": "Metformin + Dapagliflozin",
             "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/100mg",
-                "1000/300mg"
-            ],
             "brand_names": [
-                "Invokamet"
+                "Xigduo 1000/10",
+                "Oxra-M 1000/10"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "loss"
-            },
             "tags": [
                 "WEIGHT_LOSS",
-                "CKD_CAUTION",
-                "EUGLYCEMIC_DKA_RISK"
+                "HF_BENEFIT",
+                "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Metformin + Linagliptin",
+            "name": "Metformin 500mg + Empagliflozin 12.5mg",
+            "dose": "500/12.5mg",
+            "generic_name": "Metformin + Empagliflozin",
             "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/2.5mg",
-                "1000/2.5mg"
-            ],
             "brand_names": [
-                "Jentadueto",
-                "Trajenta Duo"
+                "Jardiance Met 500/12.5",
+                "Synjardy",
+                "Gibtulio Met"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
-                "RENAL_SAFE",
-                "WEIGHT_NEUTRAL"
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Metformin + Teneligliptin",
+            "name": "Metformin 1000mg + Empagliflozin 12.5mg",
+            "dose": "1000/12.5mg",
+            "generic_name": "Metformin + Empagliflozin",
             "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/20mg",
-                "1000/20mg"
-            ],
             "brand_names": [
-                "Tenelim-M",
-                "Teneza-M"
+                "Jardiance Met 1000/12.5",
+                "Synjardy 1000/12.5"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
-                "RENAL_SAFE",
-                "WEIGHT_NEUTRAL"
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Metformin + Pioglitazone",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/15mg",
-                "1000/15mg",
-                "500/30mg"
-            ],
+            "name": "Vildagliptin 50mg + Dapagliflozin 10mg",
+            "dose": "50/10mg",
+            "generic_name": "Vildagliptin + Dapagliflozin",
+            "drug_class": "Dual Combination (No Metformin)",
             "brand_names": [
-                "Pio-M",
-                "Glycomet P",
-                "Piomet",
-                "Glyco-P"
+                "Jalra DP",
+                "Glyduo",
+                "Vildamac D"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "gain"
-            },
             "tags": [
-                "WEIGHT_GAIN",
-                "EDEMA",
-                "HF_CAUTION"
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "RENAL_DOSE_REDUCE"
             ]
         },
         {
-            "generic_name": "Metformin + Voglibose",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/0.2mg",
-                "500/0.3mg"
-            ],
+            "name": "Sitagliptin 50mg + Dapagliflozin 10mg",
+            "dose": "50/10mg",
+            "generic_name": "Sitagliptin + Dapagliflozin",
+            "drug_class": "Dual Combination (No Metformin)",
             "brand_names": [
-                "Voglimet",
-                "Voglibose-M"
+                "Sitamer D",
+                "Sidacor"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
-                "GI_SIDE_EFFECTS",
-                "PP_CONTROL"
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "RENAL_DOSE_REDUCE"
             ]
         },
         {
-            "generic_name": "Metformin + Acarbose",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "500/50mg"
-            ],
+            "name": "Sitagliptin 100mg + Dapagliflozin 10mg",
+            "dose": "100/10mg",
+            "generic_name": "Sitagliptin + Dapagliflozin",
+            "drug_class": "Dual Combination (No Metformin)",
             "brand_names": [
-                "Glucomet-A"
+                "Sitamer D 100/10"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low",
-                "weight_impact": "neutral"
-            },
             "tags": [
-                "FLATULENCE",
-                "DIARRHEA"
+                "WEIGHT_LOSS",
+                "HF_BENEFIT",
+                "RENAL_DOSE_REDUCE"
             ]
         },
         {
-            "generic_name": "Sitagliptin + Pioglitazone",
-            "drug_class": "Dual Combination",
-            "dose_variants": [
-                "50/15mg"
-            ],
-            "brand_names": [
-                "Sitaglit P"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
-            "tags": [
-                "WEIGHT_GAIN",
-                "HF_CAUTION",
-                "RENAL_DOSE_ADJUST"
-            ]
-        },
-        {
-            "generic_name": "Glimepiride + Metformin + Pioglitazone",
+            "name": "Metformin 500mg + Glimepiride 0.2mg + Voglibose",
+            "dose": "500/0.2/1mg",
+            "generic_name": "Metformin + Glimepiride + Voglibose",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1/500/15mg",
-                "2/500/15mg"
-            ],
             "brand_names": [
-                "Glimy-MP",
-                "Tripride"
+                "Jubiglim MV",
+                "Glycomet Trio",
+                "Volix Trio",
+                "Gluconorm-VG"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high",
-                "weight_impact": "gain"
-            },
             "tags": [
                 "HIGH_HYPO_RISK",
                 "WEIGHT_GAIN",
-                "EDEMA"
+                "ELDERLY_AVOID"
             ]
         },
         {
-            "generic_name": "Glimepiride + Metformin + Voglibose",
+            "name": "Metformin 500mg + Glimepiride 0.3mg + Voglibose",
+            "dose": "500/0.3/1mg",
+            "generic_name": "Metformin + Glimepiride + Voglibose",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "0.2/500/1mg",
-                "0.3/500/1mg"
-            ],
             "brand_names": [
                 "Voglimet-GM",
                 "Glimestar PM"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high",
-                "weight_impact": "gain"
-            },
             "tags": [
                 "HIGH_HYPO_RISK",
                 "FLATULENCE"
             ]
         },
         {
-            "generic_name": "Glimepiride + Metformin + Teneligliptin",
+            "name": "Metformin 500mg + Glimepiride 1mg + Pioglitazone 15mg",
+            "dose": "500/1/15mg",
+            "generic_name": "Metformin + Glimepiride + Pioglitazone",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1/500/20mg",
-                "2/500/20mg"
-            ],
             "brand_names": [
-                "Teneliglu-MG"
+                "Jubiglim Trio",
+                "Tribet P",
+                "Accuglim MP",
+                "Zoryl MP",
+                "Glimy-MP",
+                "Tripride"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high"
-            },
             "tags": [
                 "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "HF_AVOID",
+                "ELDERLY_AVOID"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Glimepiride 2mg + Pioglitazone 15mg",
+            "dose": "500/2/15mg",
+            "generic_name": "Metformin + Glimepiride + Pioglitazone",
+            "drug_class": "Triple Combination",
+            "brand_names": [
+                "Tripride 2",
+                "Glimy-MP 2"
+            ],
+            "tags": [
+                "HIGH_HYPO_RISK",
+                "WEIGHT_GAIN",
+                "HF_AVOID"
+            ]
+        },
+        {
+            "name": "Metformin 500mg + Gliclazide 60mg + Voglibose 0.2mg",
+            "dose": "500/60/0.2mg",
+            "generic_name": "Metformin + Gliclazide + Voglibose",
+            "drug_class": "Triple Combination",
+            "brand_names": [
+                "Cyblex MV",
+                "Gliclaglaze Trio"
+            ],
+            "tags": [
+                "MODERATE_HYPO_RISK",
                 "WEIGHT_GAIN"
             ]
         },
         {
-            "generic_name": "Glimepiride + Metformin + Dapagliflozin",
+            "name": "Metformin 500mg + Vildagliptin 50mg + Dapagliflozin 10mg",
+            "dose": "500/50/10mg",
+            "generic_name": "Metformin + Vildagliptin + Dapagliflozin",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1/500/10mg"
-            ],
             "brand_names": [
-                "Glimy-DM"
+                "Javild Trio",
+                "Vildamac D Met",
+                "Sugaflo MV"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high"
-            },
             "tags": [
-                "HYPO_RISK",
-                "EUGLYCEMIC_DKA_RISK",
-                "WEIGHT_NEUTRAL"
-            ]
-        },
-        {
-            "generic_name": "Glimepiride + Metformin + Empagliflozin",
-            "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1/500/10mg"
-            ],
-            "brand_names": [
-                "Glyxambi-G"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high"
-            },
-            "tags": [
-                "HYPO_RISK",
+                "WEIGHT_LOSS",
                 "HF_BENEFIT",
                 "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Glimepiride + Metformin + Sitagliptin",
-            "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1/500/50mg",
-                "2/500/50mg"
-            ],
-            "brand_names": [
-                "Istavel GM",
-                "Janumet-G"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "high"
-            },
-            "tags": [
-                "HYPO_RISK",
-                "WEIGHT_GAIN"
-            ]
-        },
-        {
+            "name": "Metformin 1000mg + Sitagliptin 50mg + Dapagliflozin 10mg",
+            "dose": "1000/50/10mg",
             "generic_name": "Metformin + Sitagliptin + Dapagliflozin",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1000/50/10mg"
-            ],
             "brand_names": [
-                "Qternmet XR",
-                "Qtrilmet"
+                "Sitamer D Met",
+                "Sidacor M",
+                "Qtrilmet",
+                "Qternmet XR"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
             "tags": [
-                "HF_BENEFIT",
                 "WEIGHT_LOSS",
+                "HF_BENEFIT",
                 "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Metformin + Linagliptin + Empagliflozin",
+            "name": "Metformin 500mg + Teneligliptin 20mg + Dapagliflozin 10mg",
+            "dose": "500/20/10mg",
+            "generic_name": "Metformin + Teneligliptin + Dapagliflozin",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "1000/5/10mg",
-                "1000/5/25mg"
-            ],
             "brand_names": [
-                "Trijardy XR"
+                "Zita-DM",
+                "Teneza-DM"
             ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
             "tags": [
+                "WEIGHT_LOSS",
                 "HF_BENEFIT",
-                "CKD_BENEFIT",
-                "WEIGHT_LOSS"
+                "CKD_BENEFIT"
             ]
         },
         {
-            "generic_name": "Metformin + Vildagliptin + Pioglitazone",
+            "name": "Metformin 500mg + Vildagliptin 50mg + Remogliflozin 100mg",
+            "dose": "500/50/100mg",
+            "generic_name": "Metformin + Vildagliptin + Remogliflozin",
             "drug_class": "Triple Combination",
-            "dose_variants": [
-                "500/50/15mg"
-            ],
             "brand_names": [
-                "Eucomet-VP",
-                "Galvus Met Plus"
+                "Remo MV",
+                "Remozen MV"
             ],
-            "safety_flags": {
-                "renal_check": false,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
             "tags": [
-                "WEIGHT_GAIN",
-                "EDEMA",
-                "HF_CAUTION"
-            ]
-        },
-        {
-            "generic_name": "Metformin + Sitagliptin + Pioglitazone",
-            "drug_class": "Triple Combination",
-            "dose_variants": [
-                "500/50/15mg"
-            ],
-            "brand_names": [
-                "Trijecta",
-                "Glycomet Sitazone"
-            ],
-            "safety_flags": {
-                "renal_check": true,
-                "pregnancy": "avoid",
-                "hypo_risk": "low"
-            },
-            "tags": [
-                "WEIGHT_GAIN",
-                "EDEMA",
-                "HF_CAUTION"
+                "WEIGHT_LOSS",
+                "CKD_AVOID"
             ]
         }
     ],
     "insulins": [
         {
-            "generic_name": "Human Regular",
+            "name": "Regular Insulin (Actrapid)",
+            "generic_name": "Regular Soluble Insulin",
             "type": "Short Acting",
             "brand_names": [
                 "Actrapid",
                 "Huminsulin R",
                 "Insugen R",
-                "Wosulin R"
+                "Wosulin R",
+                "Lupisulin R"
             ],
             "onset": "30-60 min",
             "peak": "2-4 hrs",
@@ -1021,16 +1086,18 @@
             ]
         },
         {
-            "generic_name": "Human NPH",
-            "type": "Intermediate Acting",
+            "name": "NPH Insulin (Insulatard)",
+            "generic_name": "Isophane Insulin (NPH)",
+            "type": "Intermediate",
             "brand_names": [
                 "Insulatard",
                 "Huminsulin N",
                 "Insugen N",
-                "Wosulin N"
+                "Wosulin N",
+                "Lupisulin N"
             ],
             "onset": "1-2 hrs",
-            "peak": "4-12 hrs",
+            "peak": "4-10 hrs",
             "duration": "12-18 hrs",
             "timing": "Bedtime or Twice daily",
             "tags": [
@@ -1041,41 +1108,28 @@
             ]
         },
         {
-            "generic_name": "Human Premix 30/70",
-            "type": "Premix",
+            "name": "Insulin Aspart (NovoRapid)",
+            "generic_name": "Insulin Aspart",
+            "type": "Rapid Analog",
             "brand_names": [
-                "Mixtard 30",
-                "Huminsulin 30/70",
-                "Insugen 30/70"
+                "NovoRapid",
+                "Fiasp",
+                "I-Aspart"
             ],
-            "onset": "30 min",
-            "peak": "Dual",
-            "duration": "10-16 hrs",
-            "timing": "30 mins before breakfast/dinner",
+            "onset": "10-20 min",
+            "peak": "1-3 hrs",
+            "duration": "3-5 hrs",
+            "timing": "Just before meal",
             "tags": [
-                "PREMIX",
-                "FIXED_RATIO",
-                "HIGH_HYPO_RISK"
+                "RAPID_ACTING",
+                "FLEXIBLE_TIMING",
+                "SAFE_PREGNANCY",
+                "LESS_HYPO"
             ]
         },
         {
-            "generic_name": "Human Premix 50/50",
-            "type": "Premix",
-            "brand_names": [
-                "Mixtard 50",
-                "Huminsulin 50/50",
-                "Insugen 50/50"
-            ],
-            "onset": "30 min",
-            "peak": "Dual",
-            "duration": "10-16 hrs",
-            "tags": [
-                "PREMIX",
-                "POSTPRANDIAL_FOCUS"
-            ]
-        },
-        {
-            "generic_name": "Lispro",
+            "name": "Insulin Lispro (Humalog)",
+            "generic_name": "Insulin Lispro",
             "type": "Rapid Analog",
             "brand_names": [
                 "Humalog",
@@ -1093,42 +1147,29 @@
             ]
         },
         {
-            "generic_name": "Aspart",
-            "type": "Rapid Analog",
-            "brand_names": [
-                "NovoRapid",
-                "Fiasp"
-            ],
-            "onset": "10-20 min",
-            "peak": "1-3 hrs",
-            "duration": "3-5 hrs",
-            "timing": "Just before meal",
-            "tags": [
-                "RAPID_ACTING",
-                "FLEXIBLE_TIMING",
-                "LESS_HYPO"
-            ]
-        },
-        {
-            "generic_name": "Glulisine",
+            "name": "Insulin Glulisine (Apidra)",
+            "generic_name": "Insulin Glulisine",
             "type": "Rapid Analog",
             "brand_names": [
                 "Apidra"
             ],
-            "onset": "15 min",
+            "onset": "10-15 min",
             "peak": "1 hr",
             "duration": "3-5 hrs",
             "tags": [
-                "RAPID_ACTING"
+                "RAPID_ACTING",
+                "SAFE_PREGNANCY"
             ]
         },
         {
-            "generic_name": "Glargine U-100",
+            "name": "Insulin Glargine U-100 (Lantus)",
+            "generic_name": "Insulin Glargine (U-100)",
             "type": "Basal Analog",
             "brand_names": [
                 "Lantus",
                 "Basalog",
-                "Glaritus"
+                "Glaritus",
+                "Basugine"
             ],
             "onset": "1-2 hrs",
             "peak": "None (Flat)",
@@ -1142,7 +1183,8 @@
             ]
         },
         {
-            "generic_name": "Glargine U-300",
+            "name": "Insulin Glargine U-300 (Toujeo)",
+            "generic_name": "Insulin Glargine (U-300)",
             "type": "Basal Analog",
             "brand_names": [
                 "Toujeo"
@@ -1157,7 +1199,8 @@
             ]
         },
         {
-            "generic_name": "Detemir",
+            "name": "Insulin Detemir (Levemir)",
+            "generic_name": "Insulin Detemir",
             "type": "Basal Analog",
             "brand_names": [
                 "Levemir"
@@ -1171,7 +1214,8 @@
             ]
         },
         {
-            "generic_name": "Degludec",
+            "name": "Insulin Degludec (Tresiba)",
+            "generic_name": "Insulin Degludec",
             "type": "Basal Analog",
             "brand_names": [
                 "Tresiba"
@@ -1187,12 +1231,33 @@
             ]
         },
         {
-            "generic_name": "Aspart Premix 30",
+            "name": "Premix 30/70 (Mixtard)",
+            "generic_name": "Biphasic Isophane Insulin (30/70)",
+            "type": "Premix",
+            "brand_names": [
+                "Mixtard 30",
+                "Huminsulin 30/70",
+                "Insugen 30/70",
+                "Wosulin 30/70"
+            ],
+            "onset": "30 min",
+            "peak": "Dual",
+            "duration": "10-16 hrs",
+            "timing": "30 mins before breakfast/dinner",
+            "tags": [
+                "PREMIX",
+                "FIXED_RATIO",
+                "HIGH_HYPO_RISK"
+            ]
+        },
+        {
+            "name": "Aspart Premix 30 (NovoMix)",
+            "generic_name": "Biphasic Aspart (30/70)",
             "type": "Analog Premix",
             "brand_names": [
                 "NovoMix 30"
             ],
-            "onset": "15 min",
+            "onset": "10-20 min",
             "peak": "Dual",
             "duration": "14-24 hrs",
             "tags": [
@@ -1202,27 +1267,30 @@
             ]
         },
         {
-            "generic_name": "Lispro Premix 25",
+            "name": "Lispro Premix 25 (Humalog Mix)",
+            "generic_name": "Biphasic Lispro (25/75)",
             "type": "Analog Premix",
             "brand_names": [
-                "Humalog Mix 25"
+                "Humalog Mix 25",
+                "Eglucent Mix 25"
             ],
-            "onset": "15 min",
+            "onset": "10-15 min",
             "peak": "Dual",
             "duration": "14-24 hrs",
             "tags": [
                 "PREMIX",
-                "RAPID_ONSET",
-                "MODERATE_HYPO"
+                "RAPID_ONSET"
             ]
         },
         {
-            "generic_name": "Lispro Premix 50",
+            "name": "Lispro Premix 50 (Humalog Mix)",
+            "generic_name": "Biphasic Lispro (50/50)",
             "type": "Analog Premix",
             "brand_names": [
-                "Humalog Mix 50"
+                "Humalog Mix 50",
+                "Eglucent Mix 50"
             ],
-            "onset": "15 min",
+            "onset": "10-15 min",
             "peak": "Dual",
             "duration": "14-24 hrs",
             "tags": [
@@ -1232,12 +1300,13 @@
             ]
         },
         {
-            "generic_name": "Ryzodeg (Degludec+Aspart)",
+            "name": "Ryzodeg (Degludec+Aspart)",
+            "generic_name": "Insulin Degludec + Aspart",
             "type": "Co-formulation",
             "brand_names": [
                 "Ryzodeg"
             ],
-            "onset": "15 min",
+            "onset": "10-20 min",
             "peak": "Dual",
             "duration": ">24 hrs",
             "tags": [
@@ -1245,21 +1314,6 @@
                 "BASAL_PLUS",
                 "LOW_HYPO_RISK",
                 "FLEXIBLE_DOSING"
-            ]
-        },
-        {
-            "generic_name": "U-500 Regular",
-            "type": "Concentrated",
-            "brand_names": [
-                "Humulin R U-500"
-            ],
-            "onset": "30 min",
-            "peak": "2-4 hrs",
-            "duration": "8-24 hrs",
-            "tags": [
-                "CONCENTRATED",
-                "SEVERE_RESISTANCE",
-                "DOSING_ERROR_RISK"
             ]
         }
     ]
