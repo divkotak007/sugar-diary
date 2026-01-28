@@ -2045,28 +2045,28 @@ export default function App() {
                 <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800 dark:text-stone-100"><Stethoscope className="text-emerald-600" /> Prescription</h2>
 
                 {/* UNIFIED PRESCRIPTION MANAGER */}
-                <div className="bg-white dark:bg-stone-900 p-4 rounded-[24px] shadow-sm mb-6 border border-stone-100 dark:border-stone-800">
-                  <h3 className="font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2"><Pill size={18} /> Medications & Insulins</h3>
+                <div className="bg-stone-50/50 dark:bg-stone-900 p-6 rounded-[24px] shadow-sm mb-6">
+                  <h3 className="font-medium text-stone-400 dark:text-stone-500 text-sm uppercase tracking-widest mb-4 flex items-center gap-2">Prescription</h3>
 
-                  {/* SEPARATE SEARCH ADDITIONS */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {/* MINIMALIST ADD BUTTONS */}
+                  <div className="flex flex-col gap-3 mb-6">
                     {/* INSULIN SEARCH */}
-                    <div className="relative search-container">
-                      <div className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${showInsulinResults ? 'border-emerald-500 ring-4 ring-emerald-50 bg-white' : 'border-stone-100 bg-stone-50 hover:border-stone-200'}`}>
-                        <div className="bg-emerald-100 p-2 rounded-lg"><Syringe size={18} className="text-emerald-600" /></div>
+                    <div className="relative search-container group">
+                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showInsulinResults ? 'bg-white border-emerald-500 ring-2 ring-emerald-50 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
+                        <Syringe size={18} className={`transition-colors ${showInsulinResults ? 'text-emerald-500' : 'text-stone-400'}`} />
                         <input
                           type="text"
-                          placeholder="Add Insulin..."
+                          placeholder="Add Insulin"
                           value={insulinSearch}
                           onChange={e => { setInsulinSearch(e.target.value); setShowInsulinResults(true); setShowOralResults(false); }}
                           onFocus={() => { setShowInsulinResults(true); setShowOralResults(false); }}
-                          className="flex-1 bg-transparent outline-none font-bold text-stone-700 placeholder-stone-400 text-sm"
+                          className="flex-1 bg-transparent outline-none font-medium text-stone-800 placeholder-stone-400 text-sm"
                         />
-                        {insulinSearch && <button onClick={() => { setInsulinSearch(''); setShowInsulinResults(false); }}><X size={16} className="text-stone-400" /></button>}
+                        {insulinSearch && <button onClick={() => { setInsulinSearch(''); setShowInsulinResults(false); }}><X size={16} className="text-stone-400 hover:text-stone-600" /></button>}
                       </div>
 
                       {showInsulinResults && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
                           {medDatabase.insulins.filter(i => i.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (i.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase()))).map(insulin => (
                             <button
                               key={insulin.name}
@@ -2075,211 +2075,170 @@ export default function App() {
                                 const newInsulin = { ...insulin, id: generateId(), type: 'insulin', frequency: 'Before Meals' };
                                 setPrescription(p => ({ ...p, insulins: [...p.insulins, newInsulin] }));
                                 setInsulinSearch(''); setShowInsulinResults(false);
-                                alert(`${insulin.name} added!`);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
-                              <div className="flex flex-col">
-                                <span className="font-bold text-stone-700 text-sm">{insulin.name}</span>
-                                <span className="text-[10px] text-stone-400 font-medium truncate max-w-[200px]">
-                                  {(insulin.brands || []).join(', ')}
-                                </span>
-                              </div>
-                              <PlusCircle size={18} className="text-stone-300 group-hover:text-emerald-500 transition-colors" />
+                              <span className="font-bold text-stone-700 text-sm">{insulin.name}</span>
+                              <PlusCircle size={16} className="text-stone-300 group-hover:text-emerald-500" />
                             </button>
                           ))}
-                          <button onClick={() => {
-                            const name = prompt("Enter Custom Insulin Name:");
-                            if (name) {
-                              const newInsulin = { name, id: generateId(), type: 'insulin', frequency: 'Before Meals', isCustom: true };
-                              setPrescription(p => ({ ...p, insulins: [...p.insulins, newInsulin] }));
-                              setInsulinSearch(''); setShowInsulinResults(false);
-                            }
-                          }} className="w-full text-left p-3 hover:bg-emerald-50 text-emerald-600 font-bold text-xs flex items-center gap-2 border-t border-stone-50">
-                            <Plus size={14} /> Add Custom "{insulinSearch}"
-                          </button>
                         </div>
                       )}
                     </div>
 
                     {/* ORAL MEDICATION SEARCH */}
-                    <div className="relative search-container">
-                      <div className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${showOralResults ? 'border-blue-500 ring-4 ring-blue-50 bg-white' : 'border-stone-100 bg-stone-50 hover:border-stone-200'}`}>
-                        <div className="bg-blue-100 p-2 rounded-lg"><Pill size={18} className="text-blue-600" /></div>
+                    <div className="relative search-container group">
+                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showOralResults ? 'bg-white border-blue-500 ring-2 ring-blue-50 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
+                        <Pill size={18} className={`transition-colors ${showOralResults ? 'text-blue-500' : 'text-stone-400'}`} />
                         <input
                           type="text"
-                          placeholder="Add Medication..."
+                          placeholder="Add Medicine"
                           value={oralSearch}
                           onChange={e => { setOralSearch(e.target.value); setShowOralResults(true); setShowInsulinResults(false); }}
                           onFocus={() => { setShowOralResults(true); setShowInsulinResults(false); }}
-                          className="flex-1 bg-transparent outline-none font-bold text-stone-700 placeholder-stone-400 text-sm"
+                          className="flex-1 bg-transparent outline-none font-medium text-stone-800 placeholder-stone-400 text-sm"
                         />
-                        {oralSearch && <button onClick={() => { setOralSearch(''); setShowOralResults(false); }}><X size={16} className="text-stone-400" /></button>}
+                        {oralSearch && <button onClick={() => { setOralSearch(''); setShowOralResults(false); }}><X size={16} className="text-stone-400 hover:text-stone-600" /></button>}
                       </div>
 
                       {showOralResults && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
                           {medDatabase.oralMeds.filter(m => m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase()))).map(med => (
                             <button
                               key={med.name}
                               onClick={() => {
                                 if (prescription.oralMeds.find(m => m.name === med.name)) return alert("Already added!");
-                                if (checkContraindication(med.name)) alert("WARNING: Potential Contradiction Detected (Pregnancy). Please verify with doctor.");
                                 const newMed = { ...med, id: generateId(), type: 'oral', frequency: 'Twice Daily', timings: ['Morning', 'Evening'] };
                                 setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, newMed] }));
                                 setOralSearch(''); setShowOralResults(false);
-                                alert(`${med.name} added!`);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
                               <div className="flex flex-col">
                                 <span className="font-bold text-stone-700 text-sm">{med.name}</span>
-                                <span className="text-[10px] text-stone-400 font-medium truncate max-w-[200px]">
-                                  {(med.brands || []).join(', ')}
-                                </span>
+                                <span className="text-[10px] text-stone-400">{med.dose || 'Standard Dose'}</span>
                               </div>
-                              <PlusCircle size={18} className="text-stone-300 group-hover:text-blue-500 transition-colors" />
+                              <PlusCircle size={16} className="text-stone-300 group-hover:text-blue-500" />
                             </button>
                           ))}
-                          <button onClick={() => {
-                            const name = prompt("Enter Custom Medication Name:");
-                            if (name) {
-                              const newMed = { name, id: generateId(), type: 'oral', frequency: 'Once Daily', timings: ['Morning'], isCustom: true };
-                              setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, newMed] }));
-                              setOralSearch(''); setShowOralResults(false);
-                            }
-                          }} className="w-full text-left p-3 hover:bg-blue-50 text-blue-600 font-bold text-xs flex items-center gap-2 border-t border-stone-50">
-                            <Plus size={14} /> Add Custom "{oralSearch}"
-                          </button>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* ACTIVE LIST */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-stone-50 p-3 rounded-xl border border-stone-100 relative group">
-                        <button onClick={() => {
-                          if (confirm(`Remove ${insulin.name}?`)) setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== insulin.id) }));
-                        }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
-
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-emerald-100 text-emerald-700 font-black px-2 py-1 rounded text-xs uppercase">{insulin.class?.[0] || insulin.type || 'INSULIN'}</div>
-                          <span className="font-bold text-stone-800">{insulin.name}</span>
+                      <div key={insulin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 relative group transition-all hover:shadow-md">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
+                              <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[10px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => {
+                            if (confirm(`Remove ${insulin.name}?`)) setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== insulin.id) }));
+                          }} className="text-stone-300 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16} /></button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className="col-span-2">
-                            <label className="text-[9px] font-bold text-stone-400 uppercase mb-1 block">Fixed Dose (Units)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 10"
-                              value={insulin.fixedDose || ''}
-                              onChange={e => {
-                                const newInsulins = [...prescription.insulins];
-                                newInsulins[idx].fixedDose = e.target.value;
-                                setPrescription({ ...prescription, insulins: newInsulins });
-                              }}
-                              className="w-full bg-white p-3 rounded-xl text-lg font-bold border border-stone-200 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 transition-all"
-                            />
-                            <p className="text-[9px] text-stone-400 mt-1 italic">Optional: Enter a fixed dose if not using a sliding scale.</p>
-                          </div>
+                        <div className="mb-3">
+                          <input
+                            type="number"
+                            placeholder="Fixed Dose (Units)"
+                            value={insulin.fixedDose || ''}
+                            onChange={e => {
+                              const newInsulins = [...prescription.insulins];
+                              newInsulins[idx].fixedDose = e.target.value;
+                              setPrescription({ ...prescription, insulins: newInsulins });
+                            }}
+                            className="w-full bg-stone-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50 rounded-xl p-3 text-sm font-bold placeholder-stone-400 transition-all outline-none"
+                          />
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center pt-2 border-t border-stone-100 mt-2">
-                            <label className="text-[9px] font-bold text-stone-400 uppercase">Sliding Scale (Auto-Calc)</label>
-                          </div>
-
-                          {/* Sliding Scale Builder */}
-                          <div className="bg-white p-3 rounded-xl border border-stone-200">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-xs font-bold text-stone-600">Sliding Scale Rules</span>
+                        {/* Sliding Scale Accordion */}
+                        <div>
+                          {(insulin.slidingScale && insulin.slidingScale.length > 0) ? (
+                            <div className="bg-stone-50 rounded-xl p-3 animate-in slide-in-from-top-2">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Sliding Scale Active</span>
+                                <button onClick={() => {
+                                  if (confirm("Disable sliding scale?")) {
+                                    const newInsulins = [...prescription.insulins];
+                                    newInsulins[idx].slidingScale = [];
+                                    setPrescription({ ...prescription, insulins: newInsulins });
+                                  }
+                                }} className="text-[10px] text-red-500 font-bold hover:underline">Disable</button>
+                              </div>
+                              {insulin.slidingScale.map((rule, rIdx) => (
+                                <div key={rIdx} className="flex items-center gap-2 mb-2 text-xs">
+                                  <span className="font-bold text-stone-500">{rule.min}-{rule.max}</span>
+                                  <span className="text-stone-300">→</span>
+                                  <span className="font-bold text-stone-800">{rule.dose}u</span>
+                                  <button onClick={() => {
+                                    const newInsulins = [...prescription.insulins];
+                                    newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx);
+                                    setPrescription({ ...prescription, insulins: newInsulins });
+                                  }} className="ml-auto text-stone-300 hover:text-red-400"><X size={12} /></button>
+                                </div>
+                              ))}
                               <button onClick={() => {
                                 const newInsulins = [...prescription.insulins];
                                 newInsulins[idx].slidingScale = [...(newInsulins[idx].slidingScale || []), { min: 150, max: 200, dose: 2 }];
                                 setPrescription({ ...prescription, insulins: newInsulins });
-                              }} className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+ Add Rule</button>
+                              }} className="w-full py-2 text-[10px] font-bold text-stone-400 hover:text-emerald-600 border border-dashed border-stone-200 rounded-lg bg-white">+ Add Level</button>
                             </div>
-                            {(insulin.slidingScale || []).map((rule, rIdx) => (
-                              <div key={rIdx} className="flex items-center gap-2 mb-2 text-xs">
-                                <span className="text-stone-400 font-bold">If</span>
-                                <input type="number" className="w-12 bg-stone-50 border p-1 rounded font-bold text-center" value={rule.min} onChange={e => {
-                                  const newInsulins = [...prescription.insulins];
-                                  newInsulins[idx].slidingScale[rIdx].min = e.target.value;
-                                  setPrescription({ ...prescription, insulins: newInsulins });
-                                }} />
-                                <span className="text-stone-300">-</span>
-                                <input type="number" className="w-12 bg-stone-50 border p-1 rounded font-bold text-center" value={rule.max} onChange={e => {
-                                  const newInsulins = [...prescription.insulins];
-                                  newInsulins[idx].slidingScale[rIdx].max = e.target.value;
-                                  setPrescription({ ...prescription, insulins: newInsulins });
-                                }} />
-                                <span className="text-stone-400 font-bold">mg/dL</span>
-                                <span className="text-stone-300">→</span>
-                                <input type="number" className="w-10 bg-emerald-50 border border-emerald-100 p-1 rounded font-bold text-emerald-700 text-center" value={rule.dose} onChange={e => {
-                                  const newInsulins = [...prescription.insulins];
-                                  newInsulins[idx].slidingScale[rIdx].dose = e.target.value;
-                                  setPrescription({ ...prescription, insulins: newInsulins });
-                                }} />
-                                <span className="text-stone-400 font-bold">u</span>
-                                <button onClick={() => {
-                                  const newInsulins = [...prescription.insulins];
-                                  newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx);
-                                  setPrescription({ ...prescription, insulins: newInsulins });
-                                }} className="ml-auto text-stone-300 hover:text-red-400"><X size={12} /></button>
-                              </div>
-                            ))}
-                            {(insulin.slidingScale || []).length === 0 && <div className="text-center text-[10px] text-stone-400 italic py-2">No active rules. Regular fixed dose or manual entry will apply.</div>}
-                          </div>
+                          ) : (
+                            <button onClick={() => {
+                              const newInsulins = [...prescription.insulins];
+                              newInsulins[idx].slidingScale = [{ min: 150, max: 200, dose: 2 }];
+                              setPrescription({ ...prescription, insulins: newInsulins });
+                            }} className="text-xs font-bold text-stone-400 hover:text-emerald-600 flex items-center gap-1 transition-colors">
+                              <PlusCircle size={14} /> Enable Sliding Scale (Optional)
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
 
                     {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-stone-50 p-3 rounded-xl border border-stone-100 relative group">
-                        <button onClick={() => {
-                          if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
-                        }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
-
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="bg-blue-100 text-blue-700 font-black px-2 py-1 rounded text-xs uppercase">{med.class?.[0] || 'PILL'}</div>
-                          <span className="font-bold text-stone-800">{med.name}</span>
-                          <span className="text-xs text-stone-400 bg-white px-2 py-1 rounded border border-stone-100">{med.dose || 'Standard Dose'}</span>
+                      <div key={med.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 relative group hover:shadow-md transition-all">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <span className="font-bold text-stone-800 text-base">{med.name}</span>
+                            <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
+                          </div>
+                          <button onClick={() => {
+                            if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
+                          }} className="text-stone-300 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16} /></button>
                         </div>
 
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-400 uppercase block mb-1">Schedule</label>
-                          <div className="flex flex-wrap gap-2">
-                            {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
-                              <button key={t} onClick={() => {
-                                const newMeds = [...prescription.oralMeds];
-                                // Allow multiple selections for Prescription Definition (TDS support)
-                                if (newMeds[idx].timings.includes(t)) {
-                                  newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
-                                } else {
-                                  newMeds[idx].timings = [...newMeds[idx].timings, t];
-                                }
-                                setPrescription({ ...prescription, oralMeds: newMeds });
-                              }} className={`flex-1 min-w-[70px] py-2 rounded-full text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
-                                {t}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-2 text-[10px] text-stone-400 font-medium italic text-center">
-                            {/* Heuristic for Food Timing */}
-                            {med.name.toLowerCase().includes('metformin') ? 'Recommended: After Food Preffered' :
-                              med.name.toLowerCase().includes('acarbose') ? 'Recommended: With First Bite' :
-                                med.name.toLowerCase().includes('glimepiride') ? 'Recommended: Before Food' :
-                                  med.name.toLowerCase().includes('pantoprazole') ? 'Recommended: Before Food' : ''}
-                          </div>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
+                            <button key={t} onClick={() => {
+                              const newMeds = [...prescription.oralMeds];
+                              if (newMeds[idx].timings.includes(t)) {
+                                newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
+                              } else {
+                                newMeds[idx].timings = [...newMeds[idx].timings, t];
+                              }
+                              setPrescription({ ...prescription, oralMeds: newMeds });
+                            }} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-sm' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="text-[10px] text-stone-400 font-medium pl-1">
+                          {med.name.toLowerCase().includes('metformin') ? 'Take after food' :
+                            med.name.toLowerCase().includes('acarbose') ? 'Take with first bite' :
+                              med.name.toLowerCase().includes('glimepiride') ? 'Take before food' :
+                                med.name.toLowerCase().includes('pantoprazole') ? 'Take empty stomach' : ''}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg mt-6 flex justify-center gap-2"><Save size={18} /> Save Prescription</button>}
+                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-3 rounded-full font-bold shadow-lg shadow-stone-900/10 mt-6 text-sm hover:scale-[1.02] transition-transform">Save Prescription</button>}
                 </div>
 
                 {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
@@ -2454,7 +2413,7 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/85 dark:bg-stone-900/85 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_6px_20px_rgba(0,0,0,0.18)] border border-white/50 ring-1 ring-white/40">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/80 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/40 ring-1 ring-white/30">
             {[
               { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-700', activeBg: 'bg-emerald-100' },
               { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-700', activeBg: 'bg-blue-100' },
