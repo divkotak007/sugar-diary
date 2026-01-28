@@ -746,8 +746,18 @@ export default function App() {
     };
 
     const alerts = getPrescriptionAlerts(prescription, alertProfile);
+
+    // Hazard Alerts based on current real-time HGT entry
+    if (hgt) {
+      const val = parseFloat(hgt);
+      if (val < 70) alerts.push({ type: 'danger', message: "Low sugar detected (<70). Take fast-acting carbs immediately." });
+      else if (val > 400) alerts.push({ type: 'danger', message: "CRITICAL High (>400). Check ketones & consult doctor." });
+      else if (val > 300) alerts.push({ type: 'warning', message: "Very High (>300). Immediate correction required." });
+      else if (val > 250) alerts.push({ type: 'warning', message: "High (>250). Review insulin dose." });
+    }
+
     setSafetyAlerts(alerts);
-  }, [profile, prescription]);
+  }, [profile, prescription, hgt]); // Added hgt to dependency array
 
 
   useEffect(() => {
@@ -890,7 +900,7 @@ export default function App() {
               loadedPrescription.insulins = loadedPrescription.insulins.map(ins => ({
                 ...ins,
                 frequency: ins.frequency || 'Before Meals',
-                slidingScale: (ins.slidingScale || []).map(scale => ({ ...scale, dose: scale.dose || scale.units }))
+                slidingScale: ins.slidingScale || []
               }));
             }
             setProfile(loadedProfile);
