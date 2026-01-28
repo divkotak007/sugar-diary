@@ -2159,7 +2159,7 @@ export default function App() {
                   {/* ACTIVE LIST */}
                   <div className="space-y-4">
                     {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-stone-50 p-4 rounded-xl border border-stone-100 relative group">
+                      <div key={insulin.id} className="bg-stone-50 p-3 rounded-xl border border-stone-100 relative group">
                         <button onClick={() => {
                           if (confirm(`Remove ${insulin.name}?`)) setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== insulin.id) }));
                         }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
@@ -2238,7 +2238,7 @@ export default function App() {
                     ))}
 
                     {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-stone-50 p-4 rounded-xl border border-stone-100 relative group">
+                      <div key={med.id} className="bg-stone-50 p-3 rounded-xl border border-stone-100 relative group">
                         <button onClick={() => {
                           if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
                         }} className="absolute top-2 right-2 p-2 bg-white rounded-full text-stone-300 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>
@@ -2255,8 +2255,12 @@ export default function App() {
                             {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
                               <button key={t} onClick={() => {
                                 const newMeds = [...prescription.oralMeds];
-                                // Single selection only per dose as requested
-                                newMeds[idx].timings = [t];
+                                // Allow multiple selections for Prescription Definition (TDS support)
+                                if (newMeds[idx].timings.includes(t)) {
+                                  newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
+                                } else {
+                                  newMeds[idx].timings = [...newMeds[idx].timings, t];
+                                }
                                 setPrescription({ ...prescription, oralMeds: newMeds });
                               }} className={`flex-1 min-w-[70px] py-2 rounded-full text-xs font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-md' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
                                 {t}
@@ -2427,12 +2431,17 @@ export default function App() {
                                 {/* Edit/Delete Controls (Bottom Row) */}
                                 {!isCaregiverMode && (
                                   <div className="flex gap-3 justify-end mt-2 pt-2">
-                                    <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 text-stone-400 text-xs font-bold hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} disabled={isLocked} className={`px-3 py-1.5 text-stone-400 text-xs font-bold transition-colors flex items-center gap-1 ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-600'}`}>{isLocked ? <Lock size={12} /> : <Trash2 size={12} />} {isLocked ? 'Locked' : 'Delete'}</button>
+                                    {/* Strict Edit/Delete Window Rules */}
+                                    {!isLocked ? (
+                                      <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 text-stone-400 text-xs font-bold hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
+                                    ) : (
+                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} className="px-3 py-1.5 text-stone-300 text-xs font-bold hover:text-red-500 transition-colors flex items-center gap-1"><Trash2 size={12} /> Delete</button>
+                                    )}
                                   </div>
                                 )}
                               </div>
-                            )}
+                            )
+                            }
                           </div>
                         );
                       })}
@@ -2445,7 +2454,7 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/95 dark:bg-stone-900/95 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/50 ring-1 ring-white/40">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/85 dark:bg-stone-900/85 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_6px_20px_rgba(0,0,0,0.18)] border border-white/50 ring-1 ring-white/40">
             {[
               { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-700', activeBg: 'bg-emerald-100' },
               { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-700', activeBg: 'bg-blue-100' },
