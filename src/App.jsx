@@ -615,8 +615,8 @@ export default function App() {
   });
   const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
   const [medDatabase, setMedDatabase] = useState(() => ({
-    insulins: MEDICATION_DATABASE.filter(m => m.route === 'insulin'),
-    oralMeds: MEDICATION_DATABASE.filter(m => m.route === 'oral')
+    insulins: MED_LIBRARY.insulins || [],
+    oralMeds: MED_LIBRARY.oralMeds || []
   }));
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -1074,7 +1074,7 @@ export default function App() {
 
   const handleSeedDatabase = async () => {
     if (!confirm("Initialize Medication Database?")) return;
-    try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list'), MEDICATION_DATABASE); alert("Database Initialized!"); } catch (e) { alert("Error: " + e.message); }
+    try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list'), MED_LIBRARY); alert("Database Initialized!"); } catch (e) { alert("Error: " + e.message); }
   };
 
   const handleSaveProfile = async (e) => {
