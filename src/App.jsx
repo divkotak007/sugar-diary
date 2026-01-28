@@ -14,7 +14,7 @@ import {
   AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX, LayoutList,
   Save, Syringe, ScrollText, ShieldAlert, RefreshCw, WifiOff, Tag
 } from 'lucide-react';
-import { getPrescriptionAlerts, MEDICATION_DATABASE, FREQUENCY_RULES } from './data/medications.js';
+import { getPrescriptionAlerts, FREQUENCY_RULES } from './data/medications.js';
 import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
@@ -925,8 +925,37 @@ export default function App() {
 
   const checkContraindication = (medName) => {
     if (!medName || typeof medName !== 'string') return false;
-    const med = MEDICATION_DATABASE.find(m => m.name && m.name.toLowerCase().includes(medName.toLowerCase()));
-    return profile.pregnancyStatus && med?.flags?.pregnancy === 'avoid';
+
+    // Search in local MED_LIBRARY (Oral Meds)
+    let med = MED_LIBRARY.medications?.find(m =>
+      (m.generic_name && m.generic_name.toLowerCase().includes(medName.toLowerCase())) ||
+      (m.brand_names && m.brand_names.some(b => b.toLowerCase().includes(medName.toLowerCase())))
+    );
+
+    // If not found, search in Insulins
+    if (!med) {
+      med = MED_LIBRARY.insulins?.find(i =>
+        (i.generic_name && i.generic_name.toLowerCase().includes(medName.toLowerCase())) ||
+        (i.brand_names && i.brand_names.some(b => b.toLowerCase().includes(medName.toLowerCase())))
+      );
+    }
+
+    return profile.pregnancyStatus && med?.safety_flags?.pregnancy === 'avoid';
+  };
+
+  const getMedicationTags = (medName) => {
+    if (!medName) return [];
+    let med = MED_LIBRARY.medications?.find(m =>
+      (m.generic_name && m.generic_name.toLowerCase().includes(medName.toLowerCase())) ||
+      (m.brand_names && m.brand_names.some(b => b.toLowerCase().includes(medName.toLowerCase())))
+    );
+    if (!med) {
+      med = MED_LIBRARY.insulins?.find(i =>
+        (i.generic_name && i.generic_name.toLowerCase().includes(medName.toLowerCase())) ||
+        (i.brand_names && i.brand_names.some(b => b.toLowerCase().includes(medName.toLowerCase())))
+      );
+    }
+    return med?.tags || [];
   };
 
   const getSuggestion = (insulinId) => {
@@ -936,8 +965,13 @@ export default function App() {
     if (isNaN(current)) return null;
     if (current < 70) return "HYPO ALERT";
 
-    const medDetails = MEDICATION_DATABASE.find(m => m.name === insulin.name);
-    if (profile.pregnancyStatus && medDetails?.flags?.pregnancy === 'avoid') return "Unsafe (Pregnancy)";
+    // Safety Check using MED_LIBRARY
+    const medDetails = MED_LIBRARY.insulins?.find(i =>
+      (i.generic_name && i.generic_name.toLowerCase() === insulin.name.toLowerCase()) ||
+      (i.brand_names && i.brand_names.some(b => b.toLowerCase() === insulin.name.toLowerCase()))
+    );
+
+    if (profile.pregnancyStatus && medDetails?.safety_flags?.pregnancy === 'avoid') return "Unsafe (Pregnancy)";
 
     let baseDose = parseFloat(insulin.fixedDose || 0);
     let scaleDose = 0;
@@ -2115,18 +2149,19 @@ export default function App() {
 
                       {showInsulinResults && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
-                          {medDatabase.insulins.filter(i => i.name.toLowerCase().includes(insulinSearch.toLowerCase()) || (i.brands || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase()))).map(insulin => (
+                          {(medDatabase.insulins || []).filter(i => (i.name || i.generic_name || '').toLowerCase().includes(insulinSearch.toLowerCase()) || (i.brands || i.brand_names || []).some(b => b.toLowerCase().includes(insulinSearch.toLowerCase()))).map(insulin => (
                             <button
-                              key={insulin.name}
+                              key={insulin.name || insulin.generic_name}
                               onClick={() => {
-                                if (prescription.insulins.find(i => i.name === insulin.name)) return alert("Already added!");
-                                const newInsulin = { ...insulin, id: generateId(), type: 'insulin', frequency: 'Before Meals' };
+                                const iName = insulin.name || insulin.generic_name;
+                                if (prescription.insulins.find(i => i.name === iName)) return alert("Already added!");
+                                const newInsulin = { ...insulin, name: iName, id: generateId(), type: 'insulin', frequency: 'Before Meals' };
                                 setPrescription(p => ({ ...p, insulins: [...p.insulins, newInsulin] }));
                                 setInsulinSearch(''); setShowInsulinResults(false);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
-                              <span className="font-bold text-stone-700 text-sm">{insulin.name}</span>
+                              <span className="font-bold text-stone-700 text-sm">{insulin.name || insulin.generic_name}</span>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-emerald-500" />
                             </button>
                           ))}
@@ -2151,19 +2186,20 @@ export default function App() {
 
                       {showOralResults && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-stone-100 max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-2">
-                          {medDatabase.oralMeds.filter(m => m.name.toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase()))).map(med => (
+                          {(medDatabase.oralMeds || []).filter(m => (m.name || m.generic_name || '').toLowerCase().includes(oralSearch.toLowerCase()) || (m.brands || m.brand_names || []).some(b => b.toLowerCase().includes(oralSearch.toLowerCase()))).map(med => (
                             <button
-                              key={med.name}
+                              key={med.name || med.generic_name}
                               onClick={() => {
-                                if (prescription.oralMeds.find(m => m.name === med.name)) return alert("Already added!");
-                                const newMed = { ...med, id: generateId(), type: 'oral', frequency: 'Twice Daily', timings: ['Morning', 'Evening'] };
+                                const mName = med.name || med.generic_name;
+                                if (prescription.oralMeds.find(m => m.name === mName)) return alert("Already added!");
+                                const newMed = { ...med, name: mName, id: generateId(), type: 'oral', frequency: 'Twice Daily', timings: ['Morning', 'Evening'] };
                                 setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, newMed] }));
                                 setOralSearch(''); setShowOralResults(false);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
                               <div className="flex flex-col">
-                                <span className="font-bold text-stone-700 text-sm">{med.name}</span>
+                                <span className="font-bold text-stone-700 text-sm">{med.name || med.generic_name}</span>
                                 <span className="text-[10px] text-stone-400">{med.dose || 'Standard Dose'}</span>
                               </div>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-blue-500" />
@@ -2183,6 +2219,16 @@ export default function App() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
                               <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[10px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
+                            </div>
+                            {/* Clinical Tags */}
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {getMedicationTags(insulin.name).map(tag => (
+                                <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                  tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
+                                  }`}>
+                                  {tag.replace(/_/g, ' ')}
+                                </span>
+                              ))}
                             </div>
                           </div>
                           <button onClick={() => {
@@ -2286,6 +2332,16 @@ export default function App() {
                           <div>
                             <span className="font-bold text-stone-800 text-base">{med.name}</span>
                             <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
+                            {/* Clinical Tags for Oral Meds */}
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {getMedicationTags(med.name).map(tag => (
+                                <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                  tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
+                                  }`}>
+                                  {tag.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                           <button onClick={() => {
                             if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));

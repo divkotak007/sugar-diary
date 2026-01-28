@@ -1,0 +1,4 @@
+// PASTE YOUR ENTIRE MEDICATION DATASET HERE
+// You can paste JSON, CSV, or plain text lists.
+// Once you paste and save, please tell me to "process the data".
+
