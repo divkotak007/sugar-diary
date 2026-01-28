@@ -634,6 +634,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sugar_darkMode') === 'true');
   const [hapticsEnabled, setHapticsEnabled] = useState(() => localStorage.getItem('sugar_haptics') !== 'false'); // Default true
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('sugar_sound') !== 'false'); // Default true
+  const [deleteConfirmState, setDeleteConfirmState] = useState(null); // { id, message, onConfirm }
 
   // State for Chart Expansion
   const [estimatedHbA1c, setEstimatedHbA1c] = useState(null);
@@ -1144,11 +1145,17 @@ export default function App() {
       return alert("Action Locked: Entries are locked after 30 minutes to preserve medical history integrity.");
     }
 
-    if (!confirm("Confirm permanent deletion of this record?")) return;
-    try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
-      setEditingLog(null);
-    } catch (err) { alert("Delete failed."); }
+    setDeleteConfirmState({
+      id: id,
+      message: "Are you sure you want to permanently delete this record? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
+          setEditingLog(null);
+          setDeleteConfirmState(null);
+        } catch (err) { alert("Delete failed: " + err.message); }
+      }
+    });
   };
 
   const handleSavePrescription = async () => {
@@ -2044,8 +2051,8 @@ export default function App() {
               <div className="px-6 pb-32 animate-in slide-in-from-right">
                 <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2 text-stone-800 dark:text-stone-100"><Stethoscope className="text-emerald-600" /> Prescription</h2>
 
-                {/* UNIFIED PRESCRIPTION MANAGER */}
-                <div className="bg-stone-50/50 dark:bg-stone-900 p-6 rounded-[24px] shadow-sm mb-6">
+                {/* UNIFIED PRESCRIPTION MANAGER - INCREASED CONTRAST */}
+                <div className="bg-stone-100/60 dark:bg-stone-900 p-6 rounded-[24px] shadow-sm mb-6 border border-stone-200/50">
                   <h3 className="font-medium text-stone-400 dark:text-stone-500 text-sm uppercase tracking-widest mb-4 flex items-center gap-2">Prescription</h3>
 
                   {/* MINIMALIST ADD BUTTONS */}
@@ -2129,7 +2136,7 @@ export default function App() {
                   {/* ACTIVE LIST */}
                   <div className="space-y-3">
                     {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 relative group transition-all hover:shadow-md">
+                      <div key={insulin.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 border-l-4 border-l-emerald-500 relative group transition-all hover:shadow-md">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
@@ -2202,7 +2209,7 @@ export default function App() {
                     ))}
 
                     {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 relative group hover:shadow-md transition-all">
+                      <div key={med.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 border-l-4 border-l-blue-500 relative group hover:shadow-md transition-all">
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <span className="font-bold text-stone-800 text-base">{med.name}</span>
@@ -2238,7 +2245,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-3 rounded-full font-bold shadow-lg shadow-stone-900/10 mt-6 text-sm hover:scale-[1.02] transition-transform">Save Prescription</button>}
+                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-stone-900/10 mt-8 flex justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"><Save size={22} /> Save Prescription</button>}
                 </div>
 
                 {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
@@ -2413,12 +2420,12 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/80 backdrop-blur-3xl px-6 py-4 rounded-[40px] flex justify-between items-center z-[100] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/40 ring-1 ring-white/30">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/75 dark:bg-stone-900/80 backdrop-blur-xl px-4 py-3 rounded-[32px] flex justify-evenly items-center z-[100] shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-white/40 ring-1 ring-white/30">
             {[
-              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-700', activeBg: 'bg-emerald-100' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-700', activeBg: 'bg-blue-100' },
-              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-700', activeBg: 'bg-amber-100' },
-              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-700', activeBg: 'bg-purple-100' }
+              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-800', activeBg: 'bg-emerald-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
+              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-800', activeBg: 'bg-blue-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
+              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-800', activeBg: 'bg-amber-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
+              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-800', activeBg: 'bg-purple-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' }
             ].map(item => {
               const isActive = view === item.id;
               return (
@@ -2428,15 +2435,19 @@ export default function App() {
                     triggerHaptic(hapticsEnabled, 'light');
                     setView(item.id);
                   }}
-                  className={`relative p-3 rounded-2xl transition-all duration-300 flex items-center justify-center group ${isActive ? `${item.activeBg} shadow-inner scale-110 ring-2 ring-white` : 'bg-transparent hover:bg-stone-200/50'}`}
+                  className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}
                 >
-                  <div className={`relative transition-all duration-300 ${isActive ? item.activeColor : 'text-stone-400'}`}>
-                    <item.icon size={26} strokeWidth={isActive ? 2.5 : 2} />
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-1 transition-all shadow-sm ${isActive ? item.activeBg + ' shadow-md scale-110' : item.inactiveBg}`}>
+                    <item.icon size={24} className={`transition-colors ${isActive ? item.activeColor : item.inactiveColor}`} />
                   </div>
+                  <span className={`text-[11px] font-bold transition-colors ${isActive ? item.activeColor : 'text-stone-400'}`}>
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
           </nav>
+
           {
             expandedGraphData && (
               <ExpandedGraphModal
@@ -2454,6 +2465,35 @@ export default function App() {
             <p className="text-[9px] text-stone-300 dark:text-stone-700 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
           </div>
         </div >
+        {/* DELETE CONFIRMATION MODAL */}
+        {deleteConfirmState && (
+          <div className="fixed inset-0 z-[9999] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setDeleteConfirmState(null)}>
+            <div className="bg-white dark:bg-stone-800 rounded-[24px] p-6 max-w-sm w-full shadow-2xl border border-stone-100 dark:border-stone-700 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <Trash2 className="text-red-500" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-center text-stone-800 dark:text-stone-100 mb-2">Delete Record?</h3>
+              <p className="text-stone-500 dark:text-stone-400 text-center mb-8 font-medium leading-relaxed">
+                {deleteConfirmState.message}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setDeleteConfirmState(null)}
+                  className="w-full py-4 rounded-xl font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteConfirmState.onConfirm()}
+                  className="w-full py-4 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all active:scale-95"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </SecurityGuardian >
     </GlobalRecoveryBoundary >
   );
