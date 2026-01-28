@@ -2161,7 +2161,15 @@ export default function App() {
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
-                              <span className="font-bold text-stone-700 text-sm">{insulin.name || insulin.generic_name}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-stone-700 text-sm">{insulin.name || insulin.generic_name}</span>
+                                {(insulin.brand_names || insulin.brands) && (
+                                  <span className="text-[10px] text-stone-400 mt-0.5">
+                                    {(insulin.brand_names || insulin.brands).slice(0, 3).join(', ')}
+                                    {(insulin.brand_names || insulin.brands).length > 3 ? '...' : ''}
+                                  </span>
+                                )}
+                              </div>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-emerald-500" />
                             </button>
                           ))}
@@ -2200,7 +2208,12 @@ export default function App() {
                             >
                               <div className="flex flex-col">
                                 <span className="font-bold text-stone-700 text-sm">{med.name || med.generic_name}</span>
-                                <span className="text-[10px] text-stone-400">{med.dose || 'Standard Dose'}</span>
+                                {(med.brand_names || med.brands) && (
+                                  <span className="text-[10px] text-stone-400 mt-0.5">
+                                    {(med.brand_names || med.brands).slice(0, 3).join(', ')}
+                                    {(med.brand_names || med.brands).length > 3 ? '...' : ''}
+                                  </span>
+                                )}
                               </div>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-blue-500" />
                             </button>
