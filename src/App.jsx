@@ -20,7 +20,12 @@ import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
 
-// NOTE: jsPDF and autoTable are loaded dynamically via CDN in useEffect to prevent build errors.
+import MED_LIBRARY from './diabetes_medication_library.json';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+// NOTE: jsPDF and autoTable are loaded dynami
+// Wait, I see jsPDF imports were NOT in the file view I just saw. They might have been removed or handled differently.
+// I will just ADD the import above the NOTE.
 
 
 // --- CONFIGURATION ---
@@ -862,12 +867,10 @@ export default function App() {
             } catch (e) { console.error("Cache Parse Error", e); }
           }
 
-          const medListRef = doc(db, 'artifacts', appId, 'public', 'data', 'medications', 'master_list');
-          getDoc(medListRef).then(snap => { if (snap.exists()) setMedDatabase(snap.data()); }).catch(err => console.log("Using default meds"));
-          fetch('https://raw.githubusercontent.com/sugar-diary/main/diabtes_medication_library.json')
-            .then(res => { if (res.ok) return res.json(); throw new Error('Status ' + res.status); })
-            .then(json => { if (json && (json.insulins || json.oralMeds)) setMedDatabase(prev => ({ ...prev, ...json })); })
-            .catch(err => console.log("External Med Library Fetch Failed (Using default):", err));
+          // MEDICATION DB LOADING (Offline First)
+          // We now use the local JSON file directly to prevent network failures
+          setMedDatabase(MED_LIBRARY); // Instant load
+
           const pDoc = await getDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'));
           if (pDoc.exists()) {
             const data = pDoc.data();

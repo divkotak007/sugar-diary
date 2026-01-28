@@ -1,0 +1,471 @@
+{
+    "last_updated": "2024-01-28",
+    "version": "1.0.0",
+    "medications": [
+        {
+            "generic_name": "Metformin",
+            "drug_class": "Biguanide",
+            "form": "tablet",
+            "dose_variants": [
+                "500mg",
+                "850mg",
+                "1000mg",
+                "500mg SR",
+                "1000mg SR"
+            ],
+            "brand_names": [
+                "Glycomet",
+                "Glyciphage",
+                "Gluconorm",
+                "Okamet",
+                "Zomet",
+                "Bigomet"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "safe",
+                "hypo_risk": "low",
+                "weight_impact": "neutral/loss"
+            },
+            "common_combinations": [
+                "Metformin + Glimepiride (Glycomet-GP)",
+                "Metformin + Vildagliptin (Galvus-Met)",
+                "Metformin + Sitagliptin (Janumet)",
+                "Metformin + Dapagliflozin (Oxra-Met)"
+            ]
+        },
+        {
+            "generic_name": "Glimepiride",
+            "drug_class": "Sulfonylurea (SU)",
+            "form": "tablet",
+            "dose_variants": [
+                "0.5mg",
+                "1mg",
+                "2mg",
+                "3mg",
+                "4mg"
+            ],
+            "brand_names": [
+                "Amaryl",
+                "Zoryl",
+                "Glimestar",
+                "Glimisave",
+                "Euglim"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "high",
+                "weight_impact": "gain"
+            },
+            "common_combinations": [
+                "Glimepiride + Metformin"
+            ]
+        },
+        {
+            "generic_name": "Gliclazide",
+            "drug_class": "Sulfonylurea (SU)",
+            "form": "tablet",
+            "dose_variants": [
+                "40mg",
+                "80mg",
+                "30mg XR",
+                "60mg XR"
+            ],
+            "brand_names": [
+                "Reclide",
+                "Diamicron",
+                "Glizid",
+                "Glyrocin"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "moderate",
+                "weight_impact": "gain"
+            }
+        },
+        {
+            "generic_name": "Vildagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "50mg",
+                "100mg"
+            ],
+            "brand_names": [
+                "Galvus",
+                "Jalra",
+                "Zomelis",
+                "Vinglyn"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral"
+            }
+        },
+        {
+            "generic_name": "Sitagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "25mg",
+                "50mg",
+                "100mg"
+            ],
+            "brand_names": [
+                "Januvia",
+                "Istavel",
+                "Sitara"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral"
+            }
+        },
+        {
+            "generic_name": "Linagliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "2.5mg",
+                "5mg"
+            ],
+            "brand_names": [
+                "Trajenta",
+                "Ondero"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral"
+            },
+            "notes": "Safe for kidney patients"
+        },
+        {
+            "generic_name": "Teneligliptin",
+            "drug_class": "DPP4 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "20mg"
+            ],
+            "brand_names": [
+                "Tenel",
+                "Dynaglipt",
+                "Zita Plus",
+                "Tenepure"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral"
+            }
+        },
+        {
+            "generic_name": "Dapagliflozin",
+            "drug_class": "SGLT2 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "5mg",
+                "10mg"
+            ],
+            "brand_names": [
+                "Forxiga",
+                "Oxra",
+                "Dapayne"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "loss",
+                "warning": "Genital hygiene important"
+            }
+        },
+        {
+            "generic_name": "Empagliflozin",
+            "drug_class": "SGLT2 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "10mg",
+                "25mg"
+            ],
+            "brand_names": [
+                "Jardiance",
+                "Gibtulio"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "loss",
+                "warning": "Genital hygiene important"
+            }
+        },
+        {
+            "generic_name": "Canagliflozin",
+            "drug_class": "SGLT2 Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "100mg",
+                "300mg"
+            ],
+            "brand_names": [
+                "Invokana",
+                "Sulisent"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "loss"
+            }
+        },
+        {
+            "generic_name": "Pioglitazone",
+            "drug_class": "TZD",
+            "form": "tablet",
+            "dose_variants": [
+                "7.5mg",
+                "15mg",
+                "30mg"
+            ],
+            "brand_names": [
+                "Pioz",
+                "Pioglit",
+                "Glizone"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "gain",
+                "warning": "Avoid in Heart Failure"
+            }
+        },
+        {
+            "generic_name": "Voglibose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "0.2mg",
+                "0.3mg"
+            ],
+            "brand_names": [
+                "Volibo",
+                "Voglistar",
+                "PPG"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral",
+                "side_effect": "Gas/Flatulence"
+            }
+        },
+        {
+            "generic_name": "Acarbose",
+            "drug_class": "Alpha-Glucosidase Inhibitor",
+            "form": "tablet",
+            "dose_variants": [
+                "25mg",
+                "50mg"
+            ],
+            "brand_names": [
+                "Glucobay",
+                "Acarboz"
+            ],
+            "safety_flags": {
+                "renal_check": false,
+                "pregnancy": "avoid",
+                "hypo_risk": "low",
+                "weight_impact": "neutral"
+            }
+        },
+        {
+            "generic_name": "Repaglinide",
+            "drug_class": "Meglitinide",
+            "form": "tablet",
+            "dose_variants": [
+                "0.5mg",
+                "1mg",
+                "2mg"
+            ],
+            "brand_names": [
+                "Eurepa",
+                "Rapilin"
+            ],
+            "safety_flags": {
+                "renal_check": true,
+                "pregnancy": "avoid",
+                "hypo_risk": "moderate",
+                "weight_impact": "gain"
+            }
+        }
+    ],
+    "insulins": [
+        {
+            "generic_name": "Human Regular",
+            "type": "Short Acting",
+            "brand_names": [
+                "Actrapid",
+                "Huminsulin R",
+                "Insugen R"
+            ],
+            "onset": "30-60 min",
+            "peak": "2-4 hrs",
+            "duration": "6-8 hrs",
+            "timing": "30 mins before meal"
+        },
+        {
+            "generic_name": "Human NPH",
+            "type": "Intermediate Acting",
+            "brand_names": [
+                "Insulatard",
+                "Huminsulin N",
+                "Insugen N"
+            ],
+            "onset": "1-2 hrs",
+            "peak": "4-10 hrs",
+            "duration": "12-18 hrs",
+            "timing": "Bedtime or Twice daily"
+        },
+        {
+            "generic_name": "Human Premix 30/70",
+            "type": "Premix",
+            "brand_names": [
+                "Mixtard 30",
+                "Huminsulin 30/70",
+                "Insugen 30/70"
+            ],
+            "onset": "30 min",
+            "peak": "Dual",
+            "duration": "10-16 hrs",
+            "timing": "30 mins before breakfast/dinner"
+        },
+        {
+            "generic_name": "Human Premix 50/50",
+            "type": "Premix",
+            "brand_names": [
+                "Mixtard 50",
+                "Huminsulin 50/50"
+            ],
+            "onset": "30 min",
+            "peak": "Dual",
+            "duration": "10-16 hrs"
+        },
+        {
+            "generic_name": "Lispro",
+            "type": "Rapid Analog",
+            "brand_names": [
+                "Humalog",
+                "Eglucent"
+            ],
+            "onset": "15 min",
+            "peak": "1 hr",
+            "duration": "3-5 hrs",
+            "timing": "Just before meal"
+        },
+        {
+            "generic_name": "Aspart",
+            "type": "Rapid Analog",
+            "brand_names": [
+                "NovoRapid"
+            ],
+            "onset": "15 min",
+            "peak": "1 hr",
+            "duration": "3-5 hrs",
+            "timing": "Just before meal"
+        },
+        {
+            "generic_name": "Glulisine",
+            "type": "Rapid Analog",
+            "brand_names": [
+                "Apidra"
+            ],
+            "onset": "15 min",
+            "peak": "1 hr",
+            "duration": "3-5 hrs"
+        },
+        {
+            "generic_name": "Glargine U-100",
+            "type": "Basal Analog",
+            "brand_names": [
+                "Lantus",
+                "Basalog",
+                "Glaritus"
+            ],
+            "onset": "1-2 hrs",
+            "peak": "None (Flat)",
+            "duration": "24 hrs",
+            "timing": "Fixed time daily"
+        },
+        {
+            "generic_name": "Glargine U-300",
+            "type": "Basal Analog",
+            "brand_names": [
+                "Toujeo"
+            ],
+            "onset": "6 hrs",
+            "peak": "None",
+            "duration": "36 hrs"
+        },
+        {
+            "generic_name": "Degludec",
+            "type": "Basal Analog",
+            "brand_names": [
+                "Tresiba"
+            ],
+            "onset": "1 hr",
+            "peak": "None",
+            "duration": ">42 hrs"
+        },
+        {
+            "generic_name": "Aspart Premix 30",
+            "type": "Analog Premix",
+            "brand_names": [
+                "NovoMix 30"
+            ],
+            "onset": "15 min",
+            "peak": "Dual",
+            "duration": "14-24 hrs"
+        },
+        {
+            "generic_name": "Lispro Premix 25",
+            "type": "Analog Premix",
+            "brand_names": [
+                "Humalog Mix 25"
+            ],
+            "onset": "15 min",
+            "peak": "Dual",
+            "duration": "14-24 hrs"
+        },
+        {
+            "generic_name": "Lispro Premix 50",
+            "type": "Analog Premix",
+            "brand_names": [
+                "Humalog Mix 50"
+            ],
+            "onset": "15 min",
+            "peak": "Dual",
+            "duration": "14-24 hrs"
+        },
+        {
+            "generic_name": "Ryzodeg (Degludec+Aspart)",
+            "type": "Co-formulation",
+            "brand_names": [
+                "Ryzodeg"
+            ],
+            "onset": "15 min",
+            "peak": "Dual",
+            "duration": ">24 hrs"
+        }
+    ]
+}
