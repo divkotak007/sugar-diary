@@ -2202,7 +2202,7 @@ export default function App() {
 
                         {/* Sliding Scale Accordion */}
                         <div>
-                          {(insulin.slidingScale && insulin.slidingScale.length > 0) ? (
+                          {(insulin.slidingScale) ? (
                             <div className="bg-stone-50 rounded-xl p-3 animate-in slide-in-from-top-2">
                               <div className="flex justify-between items-center mb-2">
                                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Sliding Scale Active</span>
@@ -2216,26 +2216,57 @@ export default function App() {
                               </div>
                               {insulin.slidingScale.map((rule, rIdx) => (
                                 <div key={rIdx} className="flex items-center gap-2 mb-2 text-xs">
-                                  <span className="font-bold text-stone-500">{rule.min}-{rule.max}</span>
-                                  <span className="text-stone-300">→</span>
-                                  <span className="font-bold text-stone-800">{rule.dose}u</span>
+                                  <div className="flex gap-1 items-center flex-1">
+                                    <input
+                                      type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Min"
+                                      value={rule.min}
+                                      onChange={(e) => {
+                                        const newInsulins = [...prescription.insulins];
+                                        newInsulins[idx].slidingScale[rIdx].min = e.target.value;
+                                        setPrescription({ ...prescription, insulins: newInsulins });
+                                      }}
+                                    />
+                                    <span className="text-stone-300">-</span>
+                                    <input
+                                      type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Max"
+                                      value={rule.max}
+                                      onChange={(e) => {
+                                        const newInsulins = [...prescription.insulins];
+                                        newInsulins[idx].slidingScale[rIdx].max = e.target.value;
+                                        setPrescription({ ...prescription, insulins: newInsulins });
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-stone-300 mx-1">→</span>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number" className="w-10 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-800 outline-none focus:border-emerald-400" placeholder="U"
+                                      value={rule.dose}
+                                      onChange={(e) => {
+                                        const newInsulins = [...prescription.insulins];
+                                        newInsulins[idx].slidingScale[rIdx].dose = e.target.value;
+                                        setPrescription({ ...prescription, insulins: newInsulins });
+                                      }}
+                                    />
+                                    <span className="text-xs font-bold text-stone-400">u</span>
+                                  </div>
                                   <button onClick={() => {
                                     const newInsulins = [...prescription.insulins];
                                     newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx);
                                     setPrescription({ ...prescription, insulins: newInsulins });
-                                  }} className="ml-auto text-stone-300 hover:text-red-400"><X size={12} /></button>
+                                  }} className="ml-2 text-stone-300 hover:text-red-400"><X size={14} /></button>
                                 </div>
                               ))}
                               <button onClick={() => {
                                 const newInsulins = [...prescription.insulins];
-                                newInsulins[idx].slidingScale = [...(newInsulins[idx].slidingScale || []), { min: 150, max: 200, dose: 2 }];
+                                newInsulins[idx].slidingScale = [...(newInsulins[idx].slidingScale || []), { min: '', max: '', dose: '' }];
                                 setPrescription({ ...prescription, insulins: newInsulins });
                               }} className="w-full py-2 text-[10px] font-bold text-stone-400 hover:text-emerald-600 border border-dashed border-stone-200 rounded-lg bg-white">+ Add Level</button>
                             </div>
                           ) : (
                             <button onClick={() => {
                               const newInsulins = [...prescription.insulins];
-                              newInsulins[idx].slidingScale = [{ min: 150, max: 200, dose: 2 }];
+                              newInsulins[idx].slidingScale = []; // Initialize empty container, forcing explicit add
                               setPrescription({ ...prescription, insulins: newInsulins });
                             }} className="text-xs font-bold text-stone-400 hover:text-emerald-600 flex items-center gap-1 transition-colors">
                               <PlusCircle size={14} /> Enable Sliding Scale (Optional)
