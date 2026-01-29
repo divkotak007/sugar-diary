@@ -2315,8 +2315,8 @@ export default function App() {
                   {/* ACTIVE LIST */}
                   <div className="space-y-3">
                     {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 border-l-4 border-l-emerald-500 relative group transition-all hover:shadow-md">
-                        <div className="flex justify-between items-start mb-3">
+                      <div key={insulin.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 border-l-4 border-l-emerald-500 relative group">
+                        <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
                               {insulin._displayContext === 'brand' && insulin._displayBrand ? (
@@ -2327,12 +2327,12 @@ export default function App() {
                               ) : (
                                 <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
                               )}
-                              <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[10px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
+                              <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[9px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
                             </div>
                             {/* Clinical Tags */}
                             <div className="flex flex-wrap gap-1 mb-2">
                               {getMedicationTags(insulin.name).map(tag => (
-                                <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
                                   tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
                                   }`}>
                                   {tag.replace(/_/g, ' ')}
@@ -2345,24 +2345,24 @@ export default function App() {
                           }} className="text-stone-300 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16} /></button>
                         </div>
 
-                        <div className="mb-3">
+                        <div className="mb-2">
                           <input
                             type="number"
-                            placeholder="Fixed Dose (Units)"
+                            placeholder="Dose (Units)"
                             value={insulin.fixedDose || ''}
                             onChange={e => {
                               const newInsulins = [...prescription.insulins];
                               newInsulins[idx].fixedDose = e.target.value;
                               setPrescription({ ...prescription, insulins: newInsulins });
                             }}
-                            className="w-full bg-stone-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50 rounded-xl p-3 text-sm font-bold placeholder-stone-400 transition-all outline-none"
+                            className="w-full bg-stone-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50 rounded-xl p-2.5 text-sm font-bold placeholder-stone-400 transition-all outline-none"
                           />
                         </div>
 
                         {/* Sliding Scale Accordion */}
                         <div>
                           {(insulin.slidingScale) ? (
-                            <div className="bg-stone-50 rounded-xl p-3 animate-in slide-in-from-top-2">
+                            <div className="bg-stone-50 rounded-xl p-2.5 animate-in slide-in-from-top-2">
                               <div className="flex justify-between items-center mb-2">
                                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Sliding Scale Active</span>
                                 <button onClick={() => {
@@ -2436,7 +2436,7 @@ export default function App() {
                     ))}
 
                     {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 border-l-4 border-l-blue-500 relative group hover:shadow-md transition-all">
+                      <div key={med.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 border-l-4 border-l-blue-500 relative group">
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             {med._displayContext === 'brand' && med._displayBrand ? (
@@ -2451,7 +2451,7 @@ export default function App() {
                             {/* Clinical Tags for Oral Meds */}
                             <div className="flex flex-wrap gap-1 mt-1">
                               {getMedicationTags(med.name).map(tag => (
-                                <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
                                   tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
                                   }`}>
                                   {tag.replace(/_/g, ' ')}
@@ -2465,7 +2465,12 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
+                          {[
+                            { time: 'Morning', icon: '☀️' },
+                            { time: 'Afternoon', icon: '🌤️' },
+                            { time: 'Evening', icon: '🌆' },
+                            { time: 'Night', icon: '🌙' }
+                          ].map(({ time: t, icon }) => (
                             <button key={t} onClick={() => {
                               const newMeds = [...prescription.oralMeds];
                               if (newMeds[idx].timings.includes(t)) {
@@ -2474,8 +2479,8 @@ export default function App() {
                                 newMeds[idx].timings = [...newMeds[idx].timings, t];
                               }
                               setPrescription({ ...prescription, oralMeds: newMeds });
-                            }} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-sm' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
-                              {t}
+                            }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-sm' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
+                              {icon} {t}
                             </button>
                           ))}
                         </div>
