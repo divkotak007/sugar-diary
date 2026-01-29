@@ -649,7 +649,7 @@ export default function App() {
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
-  const [logTime, setLogTime] = useState(''); // Default to REAL-TIME (Empty string = Now)
+  const [logTime, setLogTime] = useState(() => new Date().toISOString().slice(0, 16)); // Default to current time
   const [expandedLogId, setExpandedLogId] = useState(null); // For Logbook Accordion
   const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
   const [editingLog, setEditingLog] = useState(null);
