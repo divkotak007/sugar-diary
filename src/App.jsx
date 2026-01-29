@@ -2724,12 +2724,12 @@ export default function App() {
 
           {/* NAV */}
           {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/75 dark:bg-stone-900/80 backdrop-blur-xl px-4 py-3 rounded-[32px] flex justify-evenly items-center z-[100] shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-white/40 ring-1 ring-white/30">
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/85 backdrop-blur-xl px-4 py-3 rounded-[32px] flex justify-evenly items-center z-[100] shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-white/50 ring-1 ring-white/40">
             {[
-              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-800', activeBg: 'bg-emerald-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-800', activeBg: 'bg-blue-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
-              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-800', activeBg: 'bg-amber-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' },
-              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-800', activeBg: 'bg-purple-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-stone-50' }
+              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-800', activeBg: 'bg-emerald-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-800', activeBg: 'bg-blue-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-800', activeBg: 'bg-amber-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-800', activeBg: 'bg-purple-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' }
             ].map(item => {
               const isActive = view === item.id;
               return (
@@ -2741,7 +2741,7 @@ export default function App() {
                   }}
                   className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}
                 >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-1 transition-all shadow-sm ${isActive ? item.activeBg + ' shadow-md scale-110' : item.inactiveBg}`}>
+                  <div className={`w-14 h-14 rounded-[18px] flex items-center justify-center mb-1 transition-all shadow-sm backdrop-blur-sm border border-white/20 ${isActive ? item.activeBg + ' shadow-md scale-110' : item.inactiveBg}`}>
                     <item.icon size={24} className={`transition-colors ${isActive ? item.activeColor : item.inactiveColor}`} />
                   </div>
                   <span className={`text-[11px] font-bold transition-colors ${isActive ? item.activeColor : 'text-stone-400'}`}>
