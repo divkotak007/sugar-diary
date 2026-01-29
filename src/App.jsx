@@ -795,8 +795,8 @@ export default function App() {
   }, []);
 
   // Helper: Local ISO string (YYYY-MM-DDTHH:MM)
-  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' + 
-    new Date().getHours().toString().padStart(2, '0') + ':' + 
+  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' +
+    new Date().getHours().toString().padStart(2, '0') + ':' +
     new Date().getMinutes().toString().padStart(2, '0');
 
   // 2. Precise Sync (anti-drift with requestAnimationFrame)
@@ -967,37 +967,7 @@ export default function App() {
     });
   }, []);
 
-  // Helper: Local ISO string (YYYY-MM-DDTHH:MM)
-  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' + 
-    new Date().getHours().toString().padStart(2, '0') + ':' + 
-    new Date().getMinutes().toString().padStart(2, '0');
 
-  // 2. Precise Sync (anti-drift with requestAnimationFrame)
-  useEffect(() => {
-    const syncNow = () => {
-      const nowStr = getLocalISO();
-      // Smart Sync: Only update if user hasn't manually edited
-      if (!logTimeManuallyEdited) setLogTime(nowStr);
-      if (!vitalsTimeManuallyEdited) setVitalsLogTime(nowStr);
-    };
-
-    syncNow(); // Immediate
-
-    let nextTick = Date.now() + 60000;
-    let animationFrameId;
-
-    const tick = () => {
-      const now = Date.now();
-      if (now >= nextTick) {
-        syncNow();
-        nextTick = now + 60000;
-      }
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    animationFrameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [logTimeManuallyEdited, vitalsTimeManuallyEdited]);
 
   useEffect(() => {
     if (!user) return;
