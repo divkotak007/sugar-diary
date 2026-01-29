@@ -1967,9 +1967,10 @@ export default function App() {
                           <input
                             type="datetime-local"
                             value={logTime}
-                            onChange={(e) => setLogTime(e.target.value)}
+                            onChange={(e) => { setIsManualLogEdit(true); setLogTime(e.target.value); }}
                             max={new Date().toISOString().slice(0, 16)}
-                            className="bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm"
+                            disabled={!!editingLog} // Locked during edit per strict governance
+                            className={`bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm ${editingLog ? 'opacity-50 cursor-not-allowed' : ''}`}
                           />
                         </div>
                       </div>
@@ -2108,9 +2109,10 @@ export default function App() {
                       <input
                         type="datetime-local"
                         value={vitalsLogTime}
-                        onChange={(e) => setVitalsLogTime(e.target.value)}
+                        onChange={(e) => { setIsManualVitalsEdit(true); setVitalsLogTime(e.target.value); }}
                         max={new Date().toISOString().slice(0, 16)}
-                        className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
+                        disabled={!!editingLog} // Locked during edit per strict governance
+                        className={`bg-transparent font-bold text-stone-700 outline-none w-full text-sm ${editingLog ? 'opacity-50 cursor-not-allowed' : ''}`}
                       />
                     </div>
                   </div>
@@ -2746,11 +2748,28 @@ export default function App() {
                                 {!isCaregiverMode && (
                                   <div className="flex gap-3 justify-end mt-2 pt-2">
                                     {/* Strict Edit/Delete Window Rules */}
-                                    {!isLocked ? (
-                                      <button onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }} className="px-3 py-1.5 text-stone-400 text-xs font-bold hover:text-blue-600 transition-colors flex items-center gap-1"><Edit3 size={12} /> Edit</button>
-                                    ) : (
-                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }} className="px-3 py-1.5 text-stone-300 text-xs font-bold hover:text-red-500 transition-colors flex items-center gap-1"><Trash2 size={12} /> Delete</button>
-                                    )}
+                                    {/* Strict Edit/Delete Window Rules */}
+                                    {/* Edit Button: Active 0-30m, Disabled/Muted >30m */}
+                                    <button
+                                      disabled={!canEdit(log.timestamp)}
+                                      onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }}
+                                      className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canEdit(log.timestamp)
+                                        ? 'border-stone-200 text-stone-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50'
+                                        : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
+                                    >
+                                      <Edit3 size={12} /> Edit
+                                    </button>
+
+                                    {/* Delete Button: Disabled/Muted 0-30m, Active >30m */}
+                                    <button
+                                      disabled={!canDelete(log.timestamp)}
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }}
+                                      className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canDelete(log.timestamp)
+                                        ? 'border-stone-200 text-stone-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50'
+                                        : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
+                                    >
+                                      <Trash2 size={12} /> Delete
+                                    </button>
                                   </div>
                                 )}
                               </div>
