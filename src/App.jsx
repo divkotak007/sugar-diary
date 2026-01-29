@@ -2141,14 +2141,14 @@ export default function App() {
 
                 {/* UNIFIED PRESCRIPTION MANAGER - INCREASED CONTRAST */}
                 <div className="bg-stone-100/60 dark:bg-stone-900 p-6 rounded-[24px] shadow-sm mb-6 border border-stone-200/50">
-                  <h3 className="font-medium text-stone-400 dark:text-stone-500 text-sm uppercase tracking-widest mb-4 flex items-center gap-2">Prescription</h3>
+
 
                   {/* MINIMALIST ADD BUTTONS */}
                   <div className="flex flex-col gap-3 mb-6">
                     {/* INSULIN SEARCH */}
                     <div className="relative search-container group">
-                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showInsulinResults ? 'bg-white border-emerald-500 ring-2 ring-emerald-50 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
-                        <Syringe size={18} className={`transition-colors ${showInsulinResults ? 'text-emerald-500' : 'text-stone-400'}`} />
+                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showInsulinResults ? 'bg-white border-stone-400 ring-2 ring-stone-200 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
+                        <Syringe size={18} className="text-stone-600" />
                         <input
                           type="text"
                           placeholder="Add Insulin"
@@ -2230,8 +2230,8 @@ export default function App() {
 
                     {/* ORAL MEDICATION SEARCH */}
                     <div className="relative search-container group">
-                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showOralResults ? 'bg-white border-blue-500 ring-2 ring-blue-50 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
-                        <Pill size={18} className={`transition-colors ${showOralResults ? 'text-blue-500' : 'text-stone-400'}`} />
+                      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-text ${showOralResults ? 'bg-white border-stone-400 ring-2 ring-stone-200 shadow-lg' : 'bg-transparent border-stone-200 hover:border-stone-300 hover:bg-white/50'}`}>
+                        <Pill size={18} className="text-stone-600" />
                         <input
                           type="text"
                           placeholder="Add Medicine"
@@ -2316,17 +2316,17 @@ export default function App() {
                   {/* ACTIVE LIST */}
                   <div className="space-y-3">
                     {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 border-l-4 border-l-emerald-500 relative group">
+                      <div key={insulin.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-col">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="mb-1">
                               {insulin._displayContext === 'brand' && insulin._displayBrand ? (
                                 <>
-                                  <span className="font-bold text-stone-800 text-base">{insulin._displayBrand}</span>
-                                  <span className="text-xs text-stone-400">(Generic: {insulin.generic_name || insulin.name})</span>
+                                  <div className="font-semibold text-stone-900 text-lg">{insulin._displayBrand}</div>
+                                  <div className="text-xs text-stone-500 mt-0.5">Generic: {insulin.generic_name || insulin.name}</div>
                                 </>
                               ) : (
-                                <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
+                                <div className="font-semibold text-stone-900 text-lg">{insulin.name}</div>
                               )}
                             </div>
                             {/* Clinical Info Button (On-Demand) */}
@@ -2371,7 +2371,7 @@ export default function App() {
                               newInsulins[idx].fixedDose = e.target.value;
                               setPrescription({ ...prescription, insulins: newInsulins });
                             }}
-                            className="w-full bg-stone-50 border-transparent focus:bg-white focus:border-emerald-200 focus:ring-4 focus:ring-emerald-50 rounded-xl p-2.5 text-sm font-bold placeholder-stone-400 transition-all outline-none"
+                            className="w-full bg-white border-stone-200 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 rounded-xl p-2.5 text-sm font-bold placeholder-stone-400 transition-all outline-none"
                           />
                         </div>
 
@@ -2452,16 +2452,16 @@ export default function App() {
                     ))}
 
                     {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 border-l-4 border-l-blue-500 relative group">
+                      <div key={med.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             {med._displayContext === 'brand' && med._displayBrand ? (
                               <>
-                                <span className="font-bold text-stone-800 text-base">{med._displayBrand}</span>
-                                <span className="text-xs text-stone-400 ml-2">(Generic: {med.generic_name || med.name})</span>
+                                <div className="font-semibold text-stone-900 text-lg">{med._displayBrand}</div>
+                                <div className="text-xs text-stone-500 mt-0.5">Generic: {med.generic_name || med.name}</div>
                               </>
                             ) : (
-                              <span className="font-bold text-stone-800 text-base">{med.name}</span>
+                              <div className="font-semibold text-stone-900 text-lg">{med.name}</div>
                             )}
                             <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
                             {/* Clinical Tags for Oral Meds */}
@@ -2509,7 +2509,7 @@ export default function App() {
                                 newMeds[idx].timings = [...newMeds[idx].timings, t];
                               }
                               setPrescription({ ...prescription, oralMeds: newMeds });
-                            }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-sm' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
+                            }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-700 text-white border-stone-700' : 'bg-transparent text-stone-600 border-stone-300 hover:border-stone-400'}`}>
                               {t}
                             </button>
                           ))}
