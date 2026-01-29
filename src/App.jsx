@@ -794,6 +794,15 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Continuous time sync with device clock
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLogTime(new Date().toISOString().slice(0, 16));
+      setVitalsLogTime(new Date().toISOString().slice(0, 16));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (fullHistory.length > 0) {
       const insights = generateAllInsights(fullHistory);
@@ -933,6 +942,15 @@ export default function App() {
       }
       setLoading(false);
     });
+  }, []);
+
+  // Continuous time sync with device clock
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLogTime(new Date().toISOString().slice(0, 16));
+      setVitalsLogTime(new Date().toISOString().slice(0, 16));
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

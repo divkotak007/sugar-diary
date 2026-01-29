@@ -1,0 +1,9 @@
+﻿  // Continuous time sync with device clock
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLogTime(new Date().toISOString().slice(0, 16));
+      setVitalsLogTime(new Date().toISOString().slice(0, 16));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
