@@ -958,6 +958,18 @@ export default function App() {
     return med?.tags || [];
   };
 
+  const detectSearchContext = (searchTerm, medication) => {
+    if (!searchTerm || !medication) return { context: 'generic', matchedBrand: null };
+    const term = searchTerm.toLowerCase().trim();
+    const genericName = (medication.generic_name || medication.name || '').toLowerCase();
+    const brandNames = medication.brand_names || medication.brands || [];
+    const matchedBrand = brandNames.find(b => b.toLowerCase().includes(term));
+    if (matchedBrand && !genericName.includes(term)) {
+      return { context: 'brand', matchedBrand };
+    }
+    return { context: 'generic', matchedBrand: null };
+  };
+
   const getSuggestion = (insulinId) => {
     const insulin = prescription.insulins.find(i => i.id === insulinId);
     if (!insulin || !hgt) return null;
@@ -2153,22 +2165,60 @@ export default function App() {
                             <button
                               key={insulin.name || insulin.generic_name}
                               onClick={() => {
+                                const ctx = detectSearchContext(insulinSearch, insulin);
                                 const iName = insulin.name || insulin.generic_name;
-                                if (prescription.insulins.find(i => i.name === iName)) return alert("Already added!");
-                                const newInsulin = { ...insulin, name: iName, id: generateId(), type: 'insulin', frequency: 'Before Meals' };
+                                const genericName = insulin.generic_name || insulin.name;
+
+                                // Enhanced duplicate check - same generic, regardless of brand
+                                const duplicate = prescription.insulins.find(i =>
+                                  (i.generic_name || i.name) === genericName
+                                );
+                                if (duplicate) {
+                                  return alert(`${genericName} already added!`);
+                                }
+
+                                const newInsulin = {
+                                  ...insulin,
+                                  name: iName,
+                                  id: generateId(),
+                                  type: 'insulin',
+                                  frequency: 'Before Meals',
+                                  _displayContext: ctx.context,
+                                  _displayBrand: ctx.matchedBrand
+                                };
                                 setPrescription(p => ({ ...p, insulins: [...p.insulins, newInsulin] }));
                                 setInsulinSearch(''); setShowInsulinResults(false);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
                               <div className="flex flex-col">
-                                <span className="font-bold text-stone-700 text-sm">{insulin.name || insulin.generic_name}</span>
-                                {(insulin.brand_names || insulin.brands) && (
-                                  <span className="text-[10px] text-stone-400 mt-0.5">
-                                    {(insulin.brand_names || insulin.brands).slice(0, 3).join(', ')}
-                                    {(insulin.brand_names || insulin.brands).length > 3 ? '...' : ''}
-                                  </span>
-                                )}
+                                {(() => {
+                                  const ctx = detectSearchContext(insulinSearch, insulin);
+                                  const genericName = insulin.generic_name || insulin.name;
+                                  const allBrands = insulin.brand_names || insulin.brands || [];
+
+                                  if (ctx.context === 'brand') {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-stone-700 text-sm">{ctx.matchedBrand}</span>
+                                        <span className="text-[10px] text-stone-400 mt-0.5">
+                                          Generic: {genericName} {allBrands.filter(b => b !== ctx.matchedBrand).length > 0 ? '| Other: ' + allBrands.filter(b => b !== ctx.matchedBrand).slice(0, 2).join(', ') : ''}
+                                        </span>
+                                      </>
+                                    );
+                                  } else {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-stone-700 text-sm">{genericName}</span>
+                                        {allBrands.length > 0 && (
+                                          <span className="text-[10px] text-stone-400 mt-0.5">
+                                            Brands: {allBrands.slice(0, 3).join(', ')}{allBrands.length > 3 ? '...' : ''}
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  }
+                                })()}
                               </div>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-emerald-500" />
                             </button>
@@ -2198,22 +2248,61 @@ export default function App() {
                             <button
                               key={med.name || med.generic_name}
                               onClick={() => {
+                                const ctx = detectSearchContext(oralSearch, med);
                                 const mName = med.name || med.generic_name;
-                                if (prescription.oralMeds.find(m => m.name === mName)) return alert("Already added!");
-                                const newMed = { ...med, name: mName, id: generateId(), type: 'oral', frequency: 'Twice Daily', timings: ['Morning', 'Evening'] };
+                                const genericName = med.generic_name || med.name;
+
+                                // Enhanced duplicate check - same generic, regardless of brand
+                                const duplicate = prescription.oralMeds.find(m =>
+                                  (m.generic_name || m.name) === genericName
+                                );
+                                if (duplicate) {
+                                  return alert(`${genericName} already added!`);
+                                }
+
+                                const newMed = {
+                                  ...med,
+                                  name: mName,
+                                  id: generateId(),
+                                  type: 'oral',
+                                  frequency: 'Twice Daily',
+                                  timings: ['Morning', 'Evening'],
+                                  _displayContext: ctx.context,
+                                  _displayBrand: ctx.matchedBrand
+                                };
                                 setPrescription(p => ({ ...p, oralMeds: [...p.oralMeds, newMed] }));
                                 setOralSearch(''); setShowOralResults(false);
                               }}
                               className="w-full text-left p-3 hover:bg-stone-50 flex items-center justify-between group"
                             >
                               <div className="flex flex-col">
-                                <span className="font-bold text-stone-700 text-sm">{med.name || med.generic_name}</span>
-                                {(med.brand_names || med.brands) && (
-                                  <span className="text-[10px] text-stone-400 mt-0.5">
-                                    {(med.brand_names || med.brands).slice(0, 3).join(', ')}
-                                    {(med.brand_names || med.brands).length > 3 ? '...' : ''}
-                                  </span>
-                                )}
+                                {(() => {
+                                  const ctx = detectSearchContext(oralSearch, med);
+                                  const genericName = med.generic_name || med.name;
+                                  const allBrands = med.brand_names || med.brands || [];
+
+                                  if (ctx.context === 'brand') {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-stone-700 text-sm">{ctx.matchedBrand}</span>
+                                        <span className="text-[10px] text-stone-400 mt-0.5">
+                                          Generic: {genericName} {allBrands.filter(b => b !== ctx.matchedBrand).length > 0 ? '| Other: ' + allBrands.filter(b => b !== ctx.matchedBrand).slice(0, 2).join(', ') : ''}
+                                        </span>
+                                      </>
+                                    );
+                                  } else {
+                                    return (
+                                      <>
+                                        <span className="font-bold text-stone-700 text-sm">{genericName}</span>
+                                        {allBrands.length > 0 && (
+                                          <span className="text-[10px] text-stone-400 mt-0.5">
+                                            Brands: {allBrands.slice(0, 3).join(', ')}{allBrands.length > 3 ? '...' : ''}
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  }
+                                })()}
                               </div>
                               <PlusCircle size={16} className="text-stone-300 group-hover:text-blue-500" />
                             </button>
@@ -2230,7 +2319,14 @@ export default function App() {
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
+                              {insulin._displayContext === 'brand' && insulin._displayBrand ? (
+                                <>
+                                  <span className="font-bold text-stone-800 text-base">{insulin._displayBrand}</span>
+                                  <span className="text-xs text-stone-400">(Generic: {insulin.generic_name || insulin.name})</span>
+                                </>
+                              ) : (
+                                <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
+                              )}
                               <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[10px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
                             </div>
                             {/* Clinical Tags */}
@@ -2343,7 +2439,14 @@ export default function App() {
                       <div key={med.id} className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 border-l-4 border-l-blue-500 relative group hover:shadow-md transition-all">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <span className="font-bold text-stone-800 text-base">{med.name}</span>
+                            {med._displayContext === 'brand' && med._displayBrand ? (
+                              <>
+                                <span className="font-bold text-stone-800 text-base">{med._displayBrand}</span>
+                                <span className="text-xs text-stone-400 ml-2">(Generic: {med.generic_name || med.name})</span>
+                              </>
+                            ) : (
+                              <span className="font-bold text-stone-800 text-base">{med.name}</span>
+                            )}
                             <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
                             {/* Clinical Tags for Oral Meds */}
                             <div className="flex flex-wrap gap-1 mt-1">
