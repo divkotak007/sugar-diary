@@ -1383,7 +1383,7 @@ export default function App() {
         setTimeout(() => setShowSuccess(false), 2000);
       }
       setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-      setLogTime(''); // Reset to real-time mode
+      setLogTime(new Date().toISOString().slice(0, 16)); // Reset to current time
       setEditingLog(null);
     } catch (err) { alert("Save failed: " + err.message); }
   };
@@ -1926,6 +1926,7 @@ export default function App() {
                             type="datetime-local"
                             value={logTime}
                             onChange={(e) => setLogTime(e.target.value)}
+                            max={new Date().toISOString().slice(0, 16)}
                             className="bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm"
                           />
                         </div>
@@ -2066,6 +2067,7 @@ export default function App() {
                         type="datetime-local"
                         value={vitalsLogTime}
                         onChange={(e) => setVitalsLogTime(e.target.value)}
+                        max={new Date().toISOString().slice(0, 16)}
                         className="bg-transparent font-bold text-stone-700 outline-none w-full text-sm"
                       />
                     </div>
