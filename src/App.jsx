@@ -614,6 +614,7 @@ export default function App() {
     instructions: '', comorbidities: []
   });
   const [prescription, setPrescription] = useState({ insulins: [], oralMeds: [], instructions: '' });
+  const [showMedInfo, setShowMedInfo] = useState(null); // Track which med's clinical info is shown
   const [medDatabase, setMedDatabase] = useState(() => ({
     insulins: MED_LIBRARY.insulins || [],
     oralMeds: MED_LIBRARY.oralMeds || []
@@ -2327,22 +2328,37 @@ export default function App() {
                               ) : (
                                 <span className="font-bold text-stone-800 text-base">{insulin.name}</span>
                               )}
-                              <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[9px] font-bold uppercase tracking-wider">{insulin.class?.[0] || 'Insulin'}</span>
                             </div>
-                            {/* Clinical Tags */}
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {getMedicationTags(insulin.name).map(tag => (
-                                <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
-                                  tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
-                                  }`}>
-                                  {tag.replace(/_/g, ' ')}
-                                </span>
-                              ))}
-                            </div>
+                            {/* Clinical Info Button (On-Demand) */}
+                            {getMedicationTags(insulin.name).length > 0 && (
+                              <button
+                                onClick={() => setShowMedInfo(showMedInfo === insulin.id ? null : insulin.id)}
+                                className="text-[10px] text-stone-400 hover:text-stone-600 flex items-center gap-1 mt-1"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="12" y1="16" x2="12" y2="12" />
+                                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                                </svg>
+                                Clinical Info
+                              </button>
+                            )}
+                            {/* Clinical Tags - Shown only when info button clicked */}
+                            {showMedInfo === insulin.id && (
+                              <div className="flex flex-wrap gap-1 mt-2 p-2 bg-stone-50 rounded-lg animate-in fade-in slide-in-from-top-1">
+                                {getMedicationTags(insulin.name).map(tag => (
+                                  <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                    tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
+                                    }`}>
+                                    {tag.replace(/_/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <button onClick={() => {
                             if (confirm(`Remove ${insulin.name}?`)) setPrescription(p => ({ ...p, insulins: p.insulins.filter(i => i.id !== insulin.id) }));
-                          }} className="text-stone-300 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16} /></button>
+                          }} className="text-stone-400 hover:text-red-500 p-1"><X size={16} /></button>
                         </div>
 
                         <div className="mb-2">
@@ -2450,27 +2466,41 @@ export default function App() {
                             <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
                             {/* Clinical Tags for Oral Meds */}
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {getMedicationTags(med.name).map(tag => (
-                                <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
-                                  tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
-                                  }`}>
-                                  {tag.replace(/_/g, ' ')}
-                                </span>
-                              ))}
+                              {/* Clinical Info Button (On-Demand) */}
+                              {getMedicationTags(med.name).length > 0 && (
+                                <button
+                                  onClick={() => setShowMedInfo(showMedInfo === med.id ? null : med.id)}
+                                  className="text-[10px] text-stone-400 hover:text-stone-600 flex items-center gap-1"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="16" x2="12" y2="12" />
+                                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                                  </svg>
+                                  Clinical Info
+                                </button>
+                              )}
                             </div>
+                            {/* Clinical Tags - Shown only when info button clicked */}
+                            {showMedInfo === med.id && (
+                              <div className="flex flex-wrap gap-1 mt-2 p-2 bg-stone-50 rounded-lg animate-in fade-in slide-in-from-top-1">
+                                {getMedicationTags(med.name).map(tag => (
+                                  <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                                    tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
+                                    }`}>
+                                    {tag.replace(/_/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <button onClick={() => {
                             if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
-                          }} className="text-stone-300 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={16} /></button>
+                          }} className="text-stone-400 hover:text-red-500 p-1"><X size={16} /></button>
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {[
-                            { time: 'Morning', icon: '☀️' },
-                            { time: 'Afternoon', icon: '🌤️' },
-                            { time: 'Evening', icon: '🌆' },
-                            { time: 'Night', icon: '🌙' }
-                          ].map(({ time: t, icon }) => (
+                          {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
                             <button key={t} onClick={() => {
                               const newMeds = [...prescription.oralMeds];
                               if (newMeds[idx].timings.includes(t)) {
@@ -2480,7 +2510,7 @@ export default function App() {
                               }
                               setPrescription({ ...prescription, oralMeds: newMeds });
                             }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-800 text-white border-stone-800 shadow-sm' : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'}`}>
-                              {icon} {t}
+                              {t}
                             </button>
                           ))}
                         </div>
