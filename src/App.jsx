@@ -650,8 +650,10 @@ export default function App() {
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
   const [logTime, setLogTime] = useState(() => new Date().toISOString().slice(0, 16)); // Default to current time
+  const [logTimeManuallyEdited, setLogTimeManuallyEdited] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState(null); // For Logbook Accordion
   const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
+  const [vitalsTimeManuallyEdited, setVitalsTimeManuallyEdited] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
