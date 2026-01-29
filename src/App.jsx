@@ -58,6 +58,23 @@ const TAG_EMOJIS = {
 
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
+// Edit allowed ONLY within 30 minutes
+const canEdit = (timestamp) => {
+  if (!timestamp) return false;
+  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
+  return ageInMinutes <= 30; // Can edit if WITHIN 30 minutes
+};
+
+// Delete allowed ONLY after 30 minutes
+const canDelete = (timestamp) => {
+  if (!timestamp) return false;
+  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
+  return ageInMinutes > 30; // Can delete if AFTER 30 minutes
+};
+
+// Legacy function - deprecated but kept for backwards compatibility
 const isActionLocked = (timestamp) => {
   if (!timestamp) return false;
   const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
@@ -1228,9 +1245,12 @@ export default function App() {
     const log = fullHistory.find(l => l.id === id);
     if (!log) return;
 
-    // 30 Minute Lock Protection using consolidated helper
-    if (isActionLocked(log.timestamp)) {
-      return alert("Action Locked: Entries are locked after 30 minutes to preserve medical history integrity.");
+    // Check if delete is allowed (ONLY after 30 minutes)
+    if (!canDelete(log.timestamp)) {
+      const dateObj = log.timestamp.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
+      const ageInMinutes = Math.floor((Date.now() - dateObj.getTime()) / 60000);
+      const minutesRemaining = 30 - ageInMinutes;
+      return alert(`Delete Not Allowed: Entries can only be deleted after 30 minutes to preserve medical accuracy. Please wait ${minutesRemaining} more minute(s).`);
     }
 
     setDeleteConfirmState({
@@ -1369,6 +1389,11 @@ export default function App() {
   };
 
   const handleStartEdit = (log) => {
+    // Check if edit is allowed (ONLY within 30 minutes)
+    if (!canEdit(log.timestamp)) {
+      return alert("Edit Not Allowed: Entries can only be edited within 30 minutes of creation to preserve medical accuracy.");
+    }
+
     setEditingLog(log);
     setHgt(log.hgt?.toString() || '');
     setMealStatus(log.mealStatus || 'Pre-Meal');
