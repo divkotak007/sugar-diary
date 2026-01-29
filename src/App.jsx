@@ -647,13 +647,13 @@ export default function App() {
   const [fullHistory, setFullHistory] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
 
-  const [pdfStartDate, setPdfStartDate] = useState('');
-  const [pdfEndDate, setPdfEndDate] = useState('');
-  // Helper: Get Local ISO String (Corrects for Timezone)
+  // Helper: Get Local ISO String (Universal Device Time)
+  // Constructs YYYY-MM-DDTHH:MM directly from device clock components
+  // bypassing toISOString() which can cause timezone drift/confusion.
   const getNow = () => {
     const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   };
 
   const [logTime, setLogTime] = useState(getNow);
