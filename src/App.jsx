@@ -649,11 +649,18 @@ export default function App() {
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
-  const [logTime, setLogTime] = useState(() => new Date().toISOString().slice(0, 16)); // Default to current time
-  const [logTimeManuallyEdited, setLogTimeManuallyEdited] = useState(false);
+  // Helper: Get Local ISO String (Corrects for Timezone)
+  const getNow = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
+  const [logTime, setLogTime] = useState(getNow);
+  const [isManualLogEdit, setIsManualLogEdit] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState(null); // For Logbook Accordion
-  const [vitalsLogTime, setVitalsLogTime] = useState(new Date().toISOString().slice(0, 16));
-  const [vitalsTimeManuallyEdited, setVitalsTimeManuallyEdited] = useState(false);
+  const [vitalsLogTime, setVitalsLogTime] = useState(getNow);
+  const [isManualVitalsEdit, setIsManualVitalsEdit] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
 
   const [expandedGraphData, setExpandedGraphData] = useState(null);
@@ -803,30 +810,24 @@ export default function App() {
 
   // 2. Precise Sync (anti-drift with requestAnimationFrame)
   useEffect(() => {
-    const syncNow = () => {
-      const nowStr = getLocalISO();
-      // Smart Sync: Only update if user hasn't manually edited
-      if (!logTimeManuallyEdited) setLogTime(nowStr);
-      if (!vitalsTimeManuallyEdited) setVitalsLogTime(nowStr);
+    const syncTime = () => {
+      if (!isManualLogEdit) setLogTime(getNow());
+      if (!isManualVitalsEdit) setVitalsLogTime(getNow());
     };
 
-    syncNow(); // Immediate
+    const interval = setInterval(syncTime, 60000);
 
-    let nextTick = Date.now() + 60000;
-    let animationFrameId;
-
-    const tick = () => {
-      const now = Date.now();
-      if (now >= nextTick) {
-        syncNow();
-        nextTick = now + 60000;
-      }
-      animationFrameId = requestAnimationFrame(tick);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') syncTime();
     };
 
-    animationFrameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [logTimeManuallyEdited, vitalsTimeManuallyEdited]);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isManualLogEdit, isManualVitalsEdit]);
 
   useEffect(() => {
     if (fullHistory.length > 0) {
@@ -1439,6 +1440,8 @@ export default function App() {
     setMedsTaken(medsMap);
     setContextTags(log.tags || []);
     const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
+    // When editing, we treat it as a manual override so sync doesn't overwrite it
+    setIsManualLogEdit(true);
     setLogTime(date.toISOString().slice(0, 16));
     setView('diary');
     window.scrollTo({ top: 0, behavior: 'smooth' });
