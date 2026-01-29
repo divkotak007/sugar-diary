@@ -794,14 +794,37 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Continuous time sync with device clock
+  // Helper: Local ISO string (YYYY-MM-DDTHH:MM)
+  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' + 
+    new Date().getHours().toString().padStart(2, '0') + ':' + 
+    new Date().getMinutes().toString().padStart(2, '0');
+
+  // 2. Precise Sync (anti-drift with requestAnimationFrame)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLogTime(new Date().toISOString().slice(0, 16));
-      setVitalsLogTime(new Date().toISOString().slice(0, 16));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    const syncNow = () => {
+      const nowStr = getLocalISO();
+      // Smart Sync: Only update if user hasn't manually edited
+      if (!logTimeManuallyEdited) setLogTime(nowStr);
+      if (!vitalsTimeManuallyEdited) setVitalsLogTime(nowStr);
+    };
+
+    syncNow(); // Immediate
+
+    let nextTick = Date.now() + 60000;
+    let animationFrameId;
+
+    const tick = () => {
+      const now = Date.now();
+      if (now >= nextTick) {
+        syncNow();
+        nextTick = now + 60000;
+      }
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [logTimeManuallyEdited, vitalsTimeManuallyEdited]);
 
   useEffect(() => {
     if (fullHistory.length > 0) {
@@ -944,14 +967,37 @@ export default function App() {
     });
   }, []);
 
-  // Continuous time sync with device clock
+  // Helper: Local ISO string (YYYY-MM-DDTHH:MM)
+  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' + 
+    new Date().getHours().toString().padStart(2, '0') + ':' + 
+    new Date().getMinutes().toString().padStart(2, '0');
+
+  // 2. Precise Sync (anti-drift with requestAnimationFrame)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLogTime(new Date().toISOString().slice(0, 16));
-      setVitalsLogTime(new Date().toISOString().slice(0, 16));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    const syncNow = () => {
+      const nowStr = getLocalISO();
+      // Smart Sync: Only update if user hasn't manually edited
+      if (!logTimeManuallyEdited) setLogTime(nowStr);
+      if (!vitalsTimeManuallyEdited) setVitalsLogTime(nowStr);
+    };
+
+    syncNow(); // Immediate
+
+    let nextTick = Date.now() + 60000;
+    let animationFrameId;
+
+    const tick = () => {
+      const now = Date.now();
+      if (now >= nextTick) {
+        syncNow();
+        nextTick = now + 60000;
+      }
+      animationFrameId = requestAnimationFrame(tick);
+    };
+
+    animationFrameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [logTimeManuallyEdited, vitalsTimeManuallyEdited]);
 
   useEffect(() => {
     if (!user) return;
