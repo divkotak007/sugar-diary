@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import {
   getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
-  onSnapshot, query, orderBy, limit, deleteDoc, updateDoc
+  query, orderBy, limit, deleteDoc, updateDoc, enableMultiTabIndexedDbPersistence, getDocs
 } from 'firebase/firestore';
 import {
   BookOpen, ChevronDown, ChevronUp, Edit3, Plus, Trash2, X, Activity,
@@ -20,6 +20,7 @@ import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
 import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch } from './utils/time.js';
+import { offlineStorage } from './services/offlineStorage.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { jsPDF } from 'jspdf';
@@ -43,6 +44,18 @@ const firebaseConfig = (typeof window !== 'undefined' && window.__firebase_confi
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// OFFLINE PERSISTENCE (Write Queue & Cache)
+// Enables offline writes to be queued and synced automatically on reconnect
+if (typeof window !== 'undefined') {
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Persistence failed: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Persistence not supported by browser');
+    }
+  });
+}
 const provider = new GoogleAuthProvider();
 const appId = (typeof window !== 'undefined' && window.__app_id) ? window.__app_id : 'sugar-diary-v1';
 
@@ -960,10 +973,44 @@ export default function App() {
 
 
 
+  // PRIMARY READ OPTIMIZATION: Cache-First Strategy
+  // Replaces onSnapshot with Manual Fetch + Stale-While-Revalidate
+  const fetchLogs = async (force = false) => {
+    if (!user) return;
+    const cacheKey = `logs_${user.uid}`;
+
+    // 1. Load from Cache immediately
+    const cached = offlineStorage.get(cacheKey);
+    if (cached && cached.data) {
+      setFullHistory(cached.data);
+    }
+
+    // 2. Decide if we need to fetch network
+    // Fetch if: No cache, Cache Stale (>10m), or Force Refresh (User Action/Write)
+    if (!cached || offlineStorage.isStale(cacheKey) || force) {
+      console.log('Fetching logs from network...'); // Audit Log
+      try {
+        const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(100));
+        const snapshot = await getDocs(q);
+        const freshLogs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        setFullHistory(freshLogs);
+        offlineStorage.save(cacheKey, freshLogs); // Update Cache
+      } catch (err) {
+        console.error("Network Fetch Failed", err);
+        // If fetch fails, we already showed cached data, so user sees no error (Success)
+      }
+    }
+  };
+
+  // Initial Load + Reconnect Listener
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(100));
-    return onSnapshot(q, (s) => setFullHistory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    fetchLogs(); // Initial load
+
+    const handleOnline = () => fetchLogs(true); // Sync on reconnect
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
   }, [user]);
 
   const checkContraindication = (medName) => {
@@ -1241,6 +1288,7 @@ export default function App() {
           timestamp
         });
         alert("Entry Updated.");
+        fetchLogs(true); // Refresh cache
       } else {
         // Update profile docs
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: getEpoch() }, { merge: true });
@@ -1254,6 +1302,7 @@ export default function App() {
             timestamp: finalTimestamp, // Use high-precision timestamp
             tags: ['Vital Update', ...updatedParams]
           });
+          fetchLogs(true); // Refresh cache
         }
 
       }
@@ -1312,6 +1361,7 @@ export default function App() {
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: getEpoch() }, { merge: true });
       await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
       alert("Prescription Saved."); setView('diary');
+      fetchLogs(true); // Refresh cache
     } catch (err) { alert("Save failed: " + err.message); }
   };
 
@@ -1403,10 +1453,13 @@ export default function App() {
       if (editingLog && !editingLog.type) {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), entryData);
         alert("Record Updated!");
+        fetchLogs(true); // Refresh list & cache
       } else {
+        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
         await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
+        setTimeout(() => fetchLogs(true), 500); // Trigger refresh to update list & cache
       }
       setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
       setLogTime(toInputString(getEpoch())); // Reset to current time
