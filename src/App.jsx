@@ -19,6 +19,7 @@ import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
+import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch } from './utils/time.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { jsPDF } from 'jspdf';
@@ -58,20 +59,14 @@ const TAG_EMOJIS = {
 
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
-// Edit allowed ONLY within 30 minutes
+// Edit allowed ONLY within 30 minutes (Strict Epoch Logic)
 const canEdit = (timestamp) => {
-  if (!timestamp) return false;
-  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
-  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
-  return ageInMinutes <= 30; // Can edit if WITHIN 30 minutes
+  return minutesSince(timestamp) <= 30;
 };
 
 // Delete allowed ONLY after 30 minutes
 const canDelete = (timestamp) => {
-  if (!timestamp) return false;
-  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
-  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
-  return ageInMinutes > 30; // Can delete if AFTER 30 minutes
+  return minutesSince(timestamp) > 30;
 };
 
 // Legacy function - deprecated but kept for backwards compatibility
@@ -439,9 +434,8 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
       return false;
     })
     .sort((a, b) => {
-      const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
-      const tb = b.timestamp?.seconds || new Date(b.timestamp).getTime() / 1000 || 0;
-      return tb - ta;
+      // Fix: Use strict safeEpoch for comparison
+      return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
     });
 
   return (
@@ -501,8 +495,8 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
         {isLogOpen && (
           <div className="p-6 space-y-3 animate-in slide-in-from-bottom duration-300 max-h-[400px] overflow-y-auto">
             {relevantLogs.map((log) => {
-              const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
-              const isLocked = (Date.now() - dateObj.getTime()) / 1000 < 1800;
+              const dateObj = new Date(safeEpoch(log.timestamp));
+              const isLocked = !canEdit(log.timestamp);
 
               return (
                 <div key={log.id} className="bg-white p-5 rounded-[24px] shadow-sm border border-stone-100 flex justify-between items-center group">
@@ -650,14 +644,8 @@ export default function App() {
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
 
-  // Helper: Get Local ISO String (Universal Device Time)
-  // Constructs YYYY-MM-DDTHH:MM directly from device clock components
-  // bypassing toISOString() which can cause timezone drift/confusion.
-  const getNow = () => {
-    const now = new Date();
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  };
+  // Helper: Use centralized time utility
+  const getNow = () => toInputString(getEpoch());
 
   const [logTime, setLogTime] = useState(getNow);
   const [isManualLogEdit, setIsManualLogEdit] = useState(false);
@@ -740,9 +728,8 @@ export default function App() {
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
     const sorted = [...fullHistory].sort((a, b) => {
-      const ta = a.timestamp?.seconds || new Date(a.timestamp).getTime() / 1000 || 0;
-      const tb = b.timestamp?.seconds || new Date(b.timestamp).getTime() / 1000 || 0;
-      return tb - ta;
+      // Fix: Ensure we compare milliseconds vs milliseconds
+      return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
     });
 
     const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: [] };
@@ -806,10 +793,8 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Helper: Local ISO string (YYYY-MM-DDTHH:MM)
-  const getLocalISO = () => new Date().toISOString().slice(0, 10) + 'T' +
-    new Date().getHours().toString().padStart(2, '0') + ':' +
-    new Date().getMinutes().toString().padStart(2, '0');
+  // Helper: Local ISO string (YYYY-MM-DDTHH:MM) - DEPRECATED, mapped to getNow
+  const getLocalISO = getNow;
 
   // 2. Precise Sync (anti-drift with requestAnimationFrame)
   useEffect(() => {
@@ -1154,7 +1139,7 @@ export default function App() {
     if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight");
     if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
 
-    const timestamp = vitalsLogTime ? new Date(vitalsLogTime) : new Date();
+    const timestamp = vitalsLogTime ? fromInputString(vitalsLogTime) : getEpoch();
 
     // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
     if (!editingLog) {
@@ -1165,7 +1150,7 @@ export default function App() {
           l.type === 'vital_update' &&
           l.updatedParams &&
           l.updatedParams.some(p => updatedParams.includes(p)) &&
-          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+          Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000
         );
 
         if (recent) {
@@ -1186,8 +1171,8 @@ export default function App() {
     // to ensure seconds/ms integrity.
     let finalTimestamp = timestamp;
     if (!editingLog) {
-      const now = new Date();
-      const inputTime = new Date(vitalsLogTime);
+      const now = getEpoch();
+      const inputTime = fromInputString(vitalsLogTime);
       // If input matches current minute (user didn't change it much) or is default, prefer high-precision NOW
       if (Math.abs(now - inputTime) < 60000) finalTimestamp = now;
     }
@@ -1258,7 +1243,7 @@ export default function App() {
         alert("Entry Updated.");
       } else {
         // Update profile docs
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: new Date().toISOString() }, { merge: true });
+        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: getEpoch() }, { merge: true });
 
         // Add log entry ONLY for the changed vitals
         if (updatedParams.length > 0 || hasChanges) {
@@ -1324,7 +1309,7 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: new Date().toISOString() }, { merge: true });
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: getEpoch() }, { merge: true });
       await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
       alert("Prescription Saved."); setView('diary');
     } catch (err) { alert("Save failed: " + err.message); }
@@ -1352,9 +1337,10 @@ export default function App() {
     }
 
     // Legacy duplicate checks removed to resolve ReferenceError
-    const timestamp = logTime ? new Date(logTime) : new Date();
-    if (isNaN(timestamp.getTime())) return alert("Invalid Log Time.");
-    if (timestamp > new Date()) return alert("Cannot log entries in the future.");
+    // STRICT: Timestamp Logic (UTC Epoch)
+    const timestamp = logTime ? fromInputString(logTime) : getEpoch(); // Returns Number
+    if (!timestamp) return alert("Invalid Log Time.");
+    if (isFuture(timestamp)) return alert("Cannot log entries in the future.");
 
     // GRANULAR DUPLICATE CHECKS
     if (!editingLog) {
@@ -1362,7 +1348,7 @@ export default function App() {
       if (hgt) {
         const recentSugar = fullHistory.find(l =>
           !l.type && l.hgt &&
-          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+          Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000
         );
         if (recentSugar) return alert("Action Blocked: Glucose was already logged in the last hour. Please wait before re-checking.");
       }
@@ -1423,7 +1409,7 @@ export default function App() {
         setTimeout(() => setShowSuccess(false), 2000);
       }
       setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-      setLogTime(new Date().toISOString().slice(0, 16)); // Reset to current time
+      setLogTime(toInputString(getEpoch())); // Reset to current time
       setEditingLog(null);
     } catch (err) { alert("Save failed: " + err.message); }
   };
@@ -1442,17 +1428,16 @@ export default function App() {
     (log.medsTaken || []).forEach(m => medsMap[m] = true);
     setMedsTaken(medsMap);
     setContextTags(log.tags || []);
-    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
     // When editing, we treat it as a manual override so sync doesn't overwrite it
     setIsManualLogEdit(true);
-    setLogTime(date.toISOString().slice(0, 16));
+    setLogTime(toInputString(log.timestamp));
     setView('diary');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleStartEditVital = (log) => {
     // 30-Minute Lock Check
-    if (isActionLocked(log.timestamp)) {
+    if (!canEdit(log.timestamp)) {
       return alert("Editing Locked: Vitals logs become read-only after 30 minutes for clinical accuracy.");
     }
 
@@ -1476,8 +1461,7 @@ export default function App() {
 
     setVitalsForm(formSnapshot);
 
-    const date = new Date(log.timestamp?.seconds * 1000 || log.timestamp);
-    setVitalsLogTime(date.toISOString().slice(0, 16));
+    setVitalsLogTime(toInputString(log.timestamp));
 
     // Focus on the first available field
     if (formSnapshot.hba1c) setHighlightField('hba1c');
@@ -1492,7 +1476,7 @@ export default function App() {
     if (!confirm("Are you sure you want to delete your account? This action is reversible for 30 days.")) return;
     try {
       await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
-        'profile.deletedAt': new Date().toISOString()
+        'profile.deletedAt': getEpoch()
       });
       alert("Account scheduled for deletion. You will be logged out.");
       auth.signOut();
