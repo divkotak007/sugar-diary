@@ -26,6 +26,7 @@ import { offlineStorage } from './services/offlineStorage.js';
 import { auditLogger } from './services/auditLogger.js';
 import { feedback } from './utils/feedback.js';
 import { performanceSentinel } from './utils/performanceSentinel.js';
+import { lazyWithRetry } from './utils/lazyWithRetry.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { generatePDFReport } from './services/pdfGenerator';
@@ -33,9 +34,9 @@ import { SecurityGuardian, GlobalRecoveryBoundary } from './components/SecurityC
 import { SimpleTrendGraph, GraphErrorBoundary } from './components/SimpleTrendGraph';
 import { StatBadge, MealOption, ContextTag } from './components/UIComponents';
 
-const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
-const ExpandedGraphModal = React.lazy(() => import('./components/ExpandedGraphModal'));
-const ConsentScreen = React.lazy(() => import('./components/ConsentScreen'));
+const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
+const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
+const ConsentScreen = lazyWithRetry(() => import('./components/ConsentScreen'));
 
 
 // --- CONFIGURATION ---
