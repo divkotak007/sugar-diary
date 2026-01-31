@@ -72,4 +72,6 @@ export const safeEpoch = (ts) => {
 export const minutesSince = (ts) => Math.floor((getEpoch() - safeEpoch(ts)) / 60000);
 
 export const canEdit = (timestamp) => minutesSince(timestamp) <= 30;
-export const canDelete = (timestamp) => minutesSince(timestamp) > 30;
+// Deletion is ALWAYS allowed (internally), but UI must enforce confirmation.
+// The "Lock" on deletion has been removed per V2 Governance.
+export const canDelete = (timestamp) => true;

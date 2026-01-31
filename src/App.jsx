@@ -21,7 +21,7 @@ import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
 import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
-import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch } from './utils/time.js';
+import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch, canEdit, canDelete } from './utils/time.js';
 import { offlineStorage } from './services/offlineStorage.js';
 import { auditLogger } from './services/auditLogger.js';
 import { feedback } from './utils/feedback.js';
@@ -86,23 +86,7 @@ const TAG_EMOJIS = {
 
 // --- HELPERS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
-// Edit allowed ONLY within 30 minutes (Strict Epoch Logic)
-const canEdit = (timestamp) => {
-  return minutesSince(timestamp) <= 30;
-};
-
-// Delete allowed ONLY after 30 minutes
-const canDelete = (timestamp) => {
-  return minutesSince(timestamp) > 30;
-};
-
-// Legacy function - deprecated but kept for backwards compatibility
-const isActionLocked = (timestamp) => {
-  if (!timestamp) return false;
-  const dateObj = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
-  const ageInMinutes = (Date.now() - dateObj.getTime()) / 60000;
-  return ageInMinutes > 30; // Locked if older than 30 mins
-};
+// Legacy "Action Lock" removed. Now using Time Authority (canEdit/canDelete) from utils/time.js
 
 // --- HAPTIC/SOUND WRAPPER ---
 // Centralized trigger for both senses based on state
@@ -824,11 +808,9 @@ export default function App() {
     if (!log) return;
 
     // Check if delete is allowed (ONLY after 30 minutes)
+    // Check if delete is allowed (Always allowed per V2, but we keep the check for safety if policy reverts)
     if (!canDelete(log.timestamp)) {
-      const dateObj = log.timestamp.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
-      const ageInMinutes = Math.floor((Date.now() - dateObj.getTime()) / 60000);
-      const minutesRemaining = 30 - ageInMinutes;
-      return alert(`Delete Not Allowed: Entries can only be deleted after 30 minutes to preserve medical accuracy. Please wait ${minutesRemaining} more minute(s).`);
+      return alert("Delete Not Allowed.");
     }
 
     setDeleteConfirmState({
@@ -2028,7 +2010,7 @@ export default function App() {
                     <div className="space-y-3">
                       {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).map(log => {
                         const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
-                        const isLocked = isActionLocked(log.timestamp);
+                        const isLocked = !canEdit(log.timestamp);
                         const isExpanded = expandedLogId === log.id;
 
                         return (
