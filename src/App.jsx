@@ -237,8 +237,18 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                 <div className={`p-2 rounded-lg ${hapticsEnabled ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}><Smartphone size={18} /></div>
                 <span className="font-bold text-stone-700 dark:text-stone-300">Haptics</span>
               </div>
-              <button onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setHapticsEnabled(!hapticsEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setHapticsEnabled(!hapticsEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
                 <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${hapticsEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${soundEnabled ? 'bg-pink-100 text-pink-600' : 'bg-stone-100 text-stone-400'}`}><Volume2 size={18} /></div>
+                <span className="font-bold text-stone-700 dark:text-stone-300">Sound Effects</span>
+              </div>
+              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setSoundEnabled(!soundEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${soundEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
               </button>
             </div>
           </div>
@@ -1999,33 +2009,6 @@ export default function App() {
 
                       <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
                         <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
-                        {/* Sound Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl mb-2">
-                          <div className="flex items-center gap-3">
-                            <Volume2 size={20} className="text-stone-400" />
-                            <span className="font-bold text-stone-700 dark:text-stone-300">Sound Effects</span>
-                          </div>
-                          <button
-                            onClick={() => setSoundEnabled(!soundEnabled)}
-                            className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${soundEnabled ? 'bg-stone-900 dark:bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
-                          >
-                            <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${soundEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                          </button>
-                        </div>
-
-                        {/* Haptics Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl mb-4">
-                          <div className="flex items-center gap-3">
-                            <Hand size={20} className="text-stone-400" />
-                            <span className="font-bold text-stone-700 dark:text-stone-300">Haptic Feedback</span>
-                          </div>
-                          <button
-                            onClick={() => setHapticsEnabled(!hapticsEnabled)}
-                            className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${hapticsEnabled ? 'bg-stone-900 dark:bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
-                          >
-                            <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${hapticsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                          </button>
-                        </div>
                         <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-900 p-3 rounded-xl border border-stone-100 dark:border-stone-700 focus-within:border-emerald-500 transition-all">
                           <Calendar size={18} className="text-stone-400" />
                           <input
