@@ -21,6 +21,7 @@ import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
 import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch } from './utils/time.js';
 import { offlineStorage } from './services/offlineStorage.js';
+import { auditLogger } from './services/auditLogger.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { jsPDF } from 'jspdf';
@@ -977,17 +978,17 @@ export default function App() {
   // Replaces onSnapshot with Manual Fetch + Stale-While-Revalidate
   const fetchLogs = async (force = false) => {
     if (!user) return;
-    const cacheKey = `logs_${user.uid}`;
+    const cacheKey = `logs`; // Key simplified, userId handled by service
 
-    // 1. Load from Cache immediately
-    const cached = offlineStorage.get(cacheKey);
+    // 1. Load from Cache immediately (Async Decrypt)
+    const cached = await offlineStorage.get(cacheKey, user.uid);
     if (cached && cached.data) {
       setFullHistory(cached.data);
     }
 
     // 2. Decide if we need to fetch network
     // Fetch if: No cache, Cache Stale (>10m), or Force Refresh (User Action/Write)
-    if (!cached || offlineStorage.isStale(cacheKey) || force) {
+    if (!cached || await offlineStorage.isStale(cacheKey, user.uid) || force) {
       console.log('Fetching logs from network...'); // Audit Log
       try {
         const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), orderBy('timestamp', 'desc'), limit(100));
@@ -995,7 +996,7 @@ export default function App() {
         const freshLogs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
         setFullHistory(freshLogs);
-        offlineStorage.save(cacheKey, freshLogs); // Update Cache
+        await offlineStorage.save(cacheKey, freshLogs, user.uid); // Update Cache (Async Encrypt)
       } catch (err) {
         console.error("Network Fetch Failed", err);
         // If fetch fails, we already showed cached data, so user sees no error (Success)
@@ -1333,7 +1334,8 @@ export default function App() {
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
-          setEditingLog(null);
+          auditLogger.log(user.uid, 'DATA_DELETE', { logId: id }); // AUDIT
+          fetchLogs(true); // Refresh cache
           setDeleteConfirmState(null);
         } catch (err) { alert("Delete failed: " + err.message); }
       }
@@ -1452,11 +1454,12 @@ export default function App() {
     try {
       if (editingLog && !editingLog.type) {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), entryData);
+        auditLogger.log(user.uid, 'DATA_UPDATE', { logId: editingLog.id, type: 'diary' }); // AUDIT
         alert("Record Updated!");
         fetchLogs(true); // Refresh list & cache
       } else {
-        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
-        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
+        const ref = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
+        auditLogger.log(user.uid, 'DATA_CREATE', { logId: ref.id, type: 'diary' }); // AUDIT
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
         setTimeout(() => fetchLogs(true), 500); // Trigger refresh to update list & cache

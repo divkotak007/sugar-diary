@@ -1,8 +1,10 @@
 /**
- * Offline Storage Service
- * Handles 'Read Optimization' via localStorage caching.
- * strategy: Cache-First with Stale-Check.
+ * Offline Storage Service (SECURE)
+ * Handles 'Read Optimization' via Encrypted localStorage.
+ * Strategy: Cache-First with Stale-Check + AES-GCM Encryption.
  */
+
+import { cryptoUtils } from '../utils/crypto.js';
 
 const KEYS = {
     PREFIX: 'sugar_offline_',
@@ -14,29 +16,41 @@ const DEFAULT_STALE_MS = 10 * 60 * 1000; // 10 Minutes
 
 export const offlineStorage = {
     /**
-     * Save data to local cache with timestamp
+     * Save data to local cache (Encrypted)
+     * @param {string} key 
+     * @param {any} data 
+     * @param {string} userId - REQUIRED for encryption
      */
-    save: (key, data) => {
+    save: async (key, data, userId) => {
+        if (!userId) return;
         try {
             const payload = {
                 timestamp: Date.now(),
                 data: data
             };
-            localStorage.setItem(KEYS.PREFIX + key, JSON.stringify(payload));
+            // ENCRYPT BEFORE STORAGE
+            const encrypted = await cryptoUtils.encrypt(payload, userId);
+            if (encrypted) {
+                localStorage.setItem(KEYS.PREFIX + key + '_' + userId, encrypted);
+            }
         } catch (e) {
             console.warn("Offline Storage Full/Error", e);
         }
     },
 
     /**
-     * Get data from local cache
-     * returns { data, timestamp } or null
+     * Get data from local cache (Decrypted)
+     * @param {string} key 
+     * @param {string} userId - REQUIRED for decryption
+     * @returns {Promise<{data: any, timestamp: number} | null>}
      */
-    get: (key) => {
+    get: async (key, userId) => {
+        if (!userId) return null;
         try {
-            const raw = localStorage.getItem(KEYS.PREFIX + key);
+            const raw = localStorage.getItem(KEYS.PREFIX + key + '_' + userId);
             if (!raw) return null;
-            return JSON.parse(raw);
+            // DECRYPT AFTER RETRIEVAL
+            return await cryptoUtils.decrypt(raw, userId);
         } catch (e) {
             return null;
         }
@@ -44,17 +58,29 @@ export const offlineStorage = {
 
     /**
      * Check if cache is stale
+     * (Requires async retrieval now)
      */
-    isStale: (key, durationMs = DEFAULT_STALE_MS) => {
-        const cached = offlineStorage.get(key);
+    isStale: async (key, userId, durationMs = DEFAULT_STALE_MS) => {
+        const cached = await offlineStorage.get(key, userId);
         if (!cached) return true;
         return (Date.now() - cached.timestamp) > durationMs;
     },
 
     /**
-     * Clear specific cache
+     * Clear specific cache for user
      */
-    clear: (key) => {
-        localStorage.removeItem(KEYS.PREFIX + key);
+    clear: (key, userId) => {
+        if (userId) localStorage.removeItem(KEYS.PREFIX + key + '_' + userId);
+    },
+
+    /**
+     * Security Wipe on Logout
+     */
+    clearAll: () => {
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith(KEYS.PREFIX)) {
+                localStorage.removeItem(k);
+            }
+        });
     }
 };

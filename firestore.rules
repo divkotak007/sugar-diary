@@ -2,35 +2,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User-specific data - strict access control
-    // Only the authenticated user can read/write their own data
+    // MEDICAL GRADE SECURITY: STRICT ISOLATION
+    // ----------------------------------------
+    
+    // 1. User Data (Logs, Profile, etc.)
+    // STRICT: Only the authenticated user can read/write their OWN data directory.
     match /artifacts/{appId}/users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Public data - read only for authenticated users
-    // Contains shared medication database, reference ranges, etc.
+    // 2. Audit Trails (Internal)
+    // Write-only for client events, Read-only for admins (backend)
+    match /audit_trails/{userId}/events/{eventId} {
+       allow create: if request.auth != null && request.auth.uid == userId;
+       allow read, update, delete: if false; // Logs are immutable and private
+    }
+
+    // 3. Public Maintenance / Reference Data
+    // Read-only for authenticated users
     match /artifacts/{appId}/public/{document=**} {
       allow read: if request.auth != null;
-      allow write: if false; // Admin only - not allowed via client
-    }
-    
-    // Medication master list - read only
-    match /artifacts/{appId}/public/data/medications/{document=**} {
-      allow read: if request.auth != null;
       allow write: if false;
     }
     
-    // Device schemas - read only
-    match /artifacts/{appId}/public/data/deviceSchemas/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-    
-    // Reference ranges - read only
-    match /artifacts/{appId}/public/data/ranges/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false;
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
