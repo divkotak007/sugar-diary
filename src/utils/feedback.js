@@ -89,5 +89,19 @@ export const feedback = {
         } catch (e) {
             console.warn("Sound Error", e);
         }
+    },
+
+    /**
+     * Trigger standardized feedback (Haptic + Sound)
+     * @param {boolean} hapticsEnabled 
+     * @param {boolean} soundEnabled 
+     * @param {string} type - 'selection'|'tick', 'light'|'click', 'success', 'medium'
+     */
+    trigger: (hapticsEnabled, soundEnabled, type = 'medium') => {
+        const hapticType = type === 'tick' ? 'selection' : type;
+        const soundType = type === 'tick' ? 'tick' : (type === 'success' ? 'success' : 'click');
+
+        feedback.haptic(hapticsEnabled, hapticType);
+        feedback.sound(soundEnabled, soundType);
     }
 };

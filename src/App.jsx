@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import {
@@ -25,11 +25,14 @@ import { auditLogger } from './services/auditLogger.js';
 import { feedback } from './utils/feedback.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-// NOTE: jsPDF and autoTable are loaded dynami
-// Wait, I see jsPDF imports were NOT in the file view I just saw. They might have been removed or handled differently.
-// I will just ADD the import above the NOTE.
+import { generatePDFReport } from './services/pdfGenerator';
+import { SecurityGuardian, GlobalRecoveryBoundary } from './components/SecurityComponents';
+import { SimpleTrendGraph, GraphErrorBoundary } from './components/SimpleTrendGraph';
+import { StatBadge, MealOption, ContextTag } from './components/UIComponents';
+
+const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
+const ExpandedGraphModal = React.lazy(() => import('./components/ExpandedGraphModal'));
+const ConsentScreen = React.lazy(() => import('./components/ConsentScreen'));
 
 
 // --- CONFIGURATION ---
@@ -92,71 +95,6 @@ const isActionLocked = (timestamp) => {
   return ageInMinutes > 30; // Locked if older than 30 mins
 };
 
-// --- SECURITY GUARDIAN (Firewall Layer) ---
-const SecurityGuardian = ({ children }) => {
-  useEffect(() => {
-    const handleContextMenu = (e) => {
-      e.preventDefault();
-      return false;
-    };
-
-    const handleKeyDown = (e) => {
-      // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-      if (
-        e.keyCode === 123 ||
-        (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
-        (e.ctrlKey && e.keyCode === 85) ||
-        (e.ctrlKey && e.keyCode === 83)
-      ) {
-        e.preventDefault();
-        return false;
-      }
-    };
-
-    window.addEventListener('contextmenu', handleContextMenu);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('contextmenu', handleContextMenu);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  return (
-    <div className="select-none h-full relative">
-      {children}
-    </div>
-  );
-};
-
-// --- RECOVERY & INTERACTION ---
-const GlobalRecoveryBoundary = ({ children }) => {
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    const handleError = () => setHasError(true);
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-
-  if (hasError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50 p-6 flex-col text-center">
-        <AlertTriangle size={64} className="text-amber-500 mb-4" />
-        <h2 className="text-2xl font-black text-stone-800 mb-2">Something went wrong</h2>
-        <p className="text-stone-400 font-bold mb-6">We detected a minor glitch. Your data is safe!</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-stone-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2"
-        >
-          <RefreshCw size={20} /> Restart App
-        </button>
-      </div>
-    );
-  }
-  return children;
-};
-
 // --- HAPTIC/SOUND WRAPPER ---
 // Centralized trigger for both senses based on state
 const triggerFeedback = (hapticState, soundState, type = 'medium') => {
@@ -177,457 +115,6 @@ const calculateAge = (dob) => {
     age--;
   }
   return age;
-};
-
-// --- COMPONENTS ---
-const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white dark:bg-stone-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-stone-100 dark:border-stone-800 animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-stone-50 dark:border-stone-800 flex justify-between items-center bg-stone-50/50 dark:bg-stone-800/50">
-          <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2"><Settings size={22} className="text-stone-400" /> Settings</h2>
-          <button onClick={onClose} className="p-2 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-full transition-colors"><X size={20} className="text-stone-400" /></button>
-        </div>
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          {/* Compliance Stats */}
-          <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-2xl">
-            <h3 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">7-Day Compliance</h3>
-            <div className="flex justify-around items-center">
-              <div className="text-center">
-                <div className="text-[8px] font-bold text-stone-400 uppercase mb-0.5">Oral</div>
-                <div className="text-sm font-black text-stone-600 dark:text-stone-300">{compliance.oral}%</div>
-              </div>
-              <div className="w-px h-6 bg-stone-200 dark:bg-stone-700" />
-              <div className="text-center">
-                <div className="text-[8px] font-bold text-stone-400 uppercase mb-0.5">Insulin</div>
-                <div className="text-sm font-black text-stone-600 dark:text-stone-300">{compliance.insulin}%</div>
-              </div>
-              <div className="w-px h-6 bg-stone-200 dark:bg-stone-700" />
-              <div className="text-center">
-                <div className="text-[8px] font-bold text-emerald-500 uppercase mb-0.5">Overall</div>
-                <div className="text-sm font-black text-emerald-600">{compliance.overall}%</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-1">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-amber-100 text-amber-600' : 'bg-stone-100 text-stone-400'}`}>{darkMode ? <Sun size={18} /> : <Moon size={18} />}</div>
-                <span className="font-bold text-stone-700 dark:text-stone-300">Dark Mode</span>
-              </div>
-              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setDarkMode(!darkMode); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${darkMode ? 'bg-emerald-500' : 'bg-stone-300'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${darkMode ? 'translate-x-[24px]' : 'translate-x-0'}`} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${isHighContrast ? 'bg-blue-100 text-blue-600' : 'bg-stone-100 text-stone-400'}`}><Zap size={18} /></div>
-                <span className="font-bold text-stone-700 dark:text-stone-300">High Contrast</span>
-              </div>
-              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setIsHighContrast(!isHighContrast); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${isHighContrast ? 'bg-blue-500' : 'bg-stone-300'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${isHighContrast ? 'translate-x-[24px]' : 'translate-x-0'}`} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${hapticsEnabled ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}><Smartphone size={18} /></div>
-                <span className="font-bold text-stone-700 dark:text-stone-300">Haptics</span>
-              </div>
-              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setHapticsEnabled(!hapticsEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${hapticsEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${hapticsEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${soundEnabled ? 'bg-pink-100 text-pink-600' : 'bg-stone-100 text-stone-400'}`}><Volume2 size={18} /></div>
-                <span className="font-bold text-stone-700 dark:text-stone-300">Sound Effects</span>
-              </div>
-              <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setSoundEnabled(!soundEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${soundEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
-              </button>
-            </div>
-          </div>
-
-          <div className="pt-4 space-y-3">
-            <button onClick={onShare} className="w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-all">
-              <Lock size={18} /> Share Caregiver Link
-            </button>
-            <button onClick={onSoftDelete} className="w-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-100 transition-all text-sm">
-              <Trash2 size={16} /> Delete Account
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
-
-  <button onClick={() => { if (onClick) onClick(); }} className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative ${updated ? 'bg-white dark:bg-stone-800 border-blue-400 shadow-md ring-2 ring-blue-50 dark:ring-blue-900/40' : 'bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600'}`}>
-    {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-stone-800 animate-pulse" />}
-    <span className="text-2xl mb-1 filter-none">{emoji}</span>
-    <div className="font-bold text-stone-800 dark:text-stone-200 text-lg leading-none">{value || '-'}</div>
-    <div className="text-xs text-stone-400 font-bold uppercase mt-1">{label}</div>
-    {unit && <div className="text-[10px] text-stone-300 dark:text-stone-500 font-bold">{unit}</div>}
-  </button>
-);
-
-const MealOption = ({ label, icon: Icon, selected, onClick }) => (
-  <button onClick={onClick} className={`flex-1 py-4 px-3 rounded-2xl flex flex-col items-center gap-2 transition-all duration-200 border-2 touch-manipulation ${selected ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 text-amber-900 dark:text-amber-400 shadow-md scale-95' : 'bg-white dark:bg-stone-800 border-transparent text-stone-400 dark:text-stone-500 hover:bg-stone-50 dark:hover:bg-stone-700'}`}>
-    <Icon size={22} />
-    <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
-  </button>
-);
-
-const ContextTag = ({ label, icon: Icon, selected, onClick, color = 'stone' }) => (
-  <button onClick={onClick} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-200 text-[10px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
-    <Icon size={14} /> {label}
-  </button>
-);
-
-// Graph Component (Clickable, No Overflow)
-const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) => {
-  if (!data || data.length < 2) return (
-    <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer active:scale-95 transition-all">
-      <div className="flex justify-between items-center mb-4"><span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span><span className="text-xs text-stone-300 font-bold">No Data</span></div>
-      <div className="h-24 bg-stone-50 rounded-xl flex items-center justify-center text-stone-300 text-xs font-bold">Add more entries</div>
-    </div>
-  );
-
-  // CORRECTION: Keep small chart to MAX 5 dots only
-  const visibleData = data.slice(-5);
-
-  const padding = 10;
-  const height = 100;
-  const width = 300; // Fixed width for viewBox
-
-  const vals = visibleData.map(d => d.value);
-  let min = Math.min(...vals) * 0.98;
-  let max = Math.max(...vals) * 1.02;
-  if (min === max) { min -= 1; max += 1; }
-  const range = max - min;
-
-  const points = visibleData.map((d, i) => {
-    const x = padding + (i / (visibleData.length - 1)) * (width - 2 * padding);
-    const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
-    return { x, y, value: d.value, date: d.date };
-  });
-
-  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-  const refY = normalRange ? height - padding - ((normalRange - min) / range) * (height - 2 * padding) : null;
-  // Normal Range Rectangle Calculation
-  const normalMinY = normalRange ? height - padding - ((normalRange * 1.1 - min) / range) * (height - 2 * padding) : 0;
-  const normalMaxY = normalRange ? height - padding - ((normalRange * 0.9 - min) / range) * (height - 2 * padding) : height;
-  const showNormalBand = normalRange && label !== "HbA1c";
-
-  return (
-    <div
-      onClick={onClick}
-      aria-label={`${label} progress trend chart`}
-      className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-all z-0"
-    >
-      <div className="flex justify-between items-center mb-4">
-        <span className="text-xs font-bold uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
-        <span className={`text-sm font-bold text-${color}-600 dark:text-${color}-400`}>{data[data.length - 1].value} {unit}</span>
-      </div>
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-hidden pointer-events-none">
-        {/* Grid lines */}
-        {[0.2, 0.4, 0.6, 0.8].map(ratio => (
-          <line key={ratio} x1={padding} y1={height * ratio} x2={width - 2 * padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
-        ))}
-
-        {/* Normal Range Band (Gray Dotted/Muted Background) */}
-        {showNormalBand && (
-          <rect
-            x={padding}
-            y={normalMinY}
-            width={width - 2 * padding}
-            height={Math.max(0, normalMaxY - normalMinY)}
-            className={`opacity-80 fill-current ${color === 'orange' ? 'text-orange-50 dark:text-stone-700' : 'text-emerald-50 dark:text-stone-700'}`}
-          />
-        )}
-
-        {label === "HbA1c" && (
-          <g opacity="0.1">
-            <rect x={padding} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
-            <rect x={padding} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={width - 2 * padding} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
-            <rect x={padding} y={0} width={width - 2 * padding} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
-          </g>
-        )}
-        {refY && refY > 0 && refY < height && (
-          <g>
-            <text x={width - padding} y={refY - 2} textAnchor="end" fontSize="8" fill="#6b7280" fontStyle="italic">Normal: {normalRange}</text>
-          </g>
-        )}
-        <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" points={polylinePoints} />
-        {points.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="2" />
-          </g>
-        ))}
-      </svg>
-      <div className="absolute bottom-1 right-2 text-[8px] text-stone-300 font-bold uppercase tracking-widest">Tap to Expand</div>
-    </div>
-  );
-};
-
-// Error Boundary Fallback for Graphs
-const GraphErrorBoundary = ({ children }) => {
-  try {
-    return children;
-  } catch (e) {
-    return (
-      <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-center justify-center h-24 text-stone-400 text-xs italic">
-        Unable to load trend data safely.
-      </div>
-    );
-  }
-};
-
-// Expanded Graph Modal
-const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fullHistory, onEdit, onDelete }) => {
-  const containerRef = React.useRef(null);
-  const [isLogOpen, setIsLogOpen] = useState(false);
-  const height = 300;
-  const padding = 40;
-
-  // Crash Prevention
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-[32px] w-full max-w-sm text-center">
-          <AlertCircle size={48} className="mx-auto text-stone-300 mb-4" />
-          <h3 className="text-xl font-bold text-stone-800 mb-2">No Data Points</h3>
-          <button onClick={onClose} className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold">Close View</button>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    if (containerRef.current) containerRef.current.scrollLeft = containerRef.current.scrollWidth;
-  }, [data]);
-
-  const values = data.map(d => d.value);
-  const dataMin = Math.min(...values);
-  const dataMax = Math.max(...values);
-  const dataRange = (dataMax - dataMin) || (dataMax * 0.1) || 1;
-  const min = dataMin - (dataRange * 0.4);
-  const max = dataMax + (dataRange * 0.4);
-  const range = max - min || 1;
-
-  const screenWidth = Math.min(window.innerWidth - 48, 600);
-  const pointsPerView = 5;
-  const pointSpacing = screenWidth / pointsPerView;
-  const graphWidth = Math.max(screenWidth, data.length * pointSpacing);
-
-  const points = data.map((d, i) => {
-    const x = padding + (i / (data.length - 1 === 0 ? 1 : data.length - 1)) * (graphWidth - 2 * padding);
-    const y = height - padding - ((d.value - min) / range) * (height - 2 * padding);
-    return { x, y, val: d.value, date: d.date, id: d.id };
-  });
-
-  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-
-  // Filter history for this specific vital
-  const vitalType = label.toLowerCase();
-
-  // 1. Get the exact data points used in the graph (already filtered/deduplicated)
-  const graphPointIds = new Set(data.map(d => d.id));
-
-  const relevantLogs = [...fullHistory]
-    .filter(log => {
-      // PRIMARY RULE: Only show logs that are actual data points in the graph
-      if (graphPointIds.has(log.id)) return true;
-
-      // SECONDARY RULE: For recent 'vital_update' logs that might not be in graph yet (edge case)
-      if (log.type === 'vital_update') {
-        return log.updatedParams && log.updatedParams.includes(vitalType);
-      }
-
-      // Strict Fallback: Do not show generic logs unless they are graph points
-      return false;
-    })
-    .sort((a, b) => {
-      // Fix: Use strict safeEpoch for comparison
-      return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
-    });
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-in fade-in flex flex-col">
-      <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-6 py-6 border-b border-stone-100 flex justify-between items-center">
-        <div>
-          <h3 className={`text-2xl font-black text-${color}-600 uppercase tracking-tighter`}>{label} Trends</h3>
-          <p className="text-xs text-stone-400 font-bold uppercase">Read-Only Visualization</p>
-        </div>
-        <button onClick={onClose} className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors"><X size={24} className="text-stone-600" /></button>
-      </div>
-
-      <div className="p-6 pb-0 overflow-hidden">
-        <div ref={containerRef} className="w-full overflow-x-auto pb-6 scroll-smooth cursor-default overflow-y-hidden">
-          <div style={{ width: graphWidth, height }}>
-            <svg width={graphWidth} height={height} viewBox={`0 0 ${graphWidth} ${height}`} className="overflow-hidden pointer-events-none">
-              {[0.2, 0.4, 0.6, 0.8].map(ratio => (
-                <line key={ratio} x1={0} y1={height * ratio} x2={graphWidth} y2={height * ratio} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4" />
-              ))}
-              {label === "HbA1c" && (
-                <g opacity="0.05">
-                  <rect x={0} y={height - padding - ((5.7 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((5.7 - 0) / range) * (height - 2 * padding)} fill="#10b981" />
-                  <rect x={0} y={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} width={graphWidth} height={((6.5 - 5.7) / range) * (height - 2 * padding)} fill="#f59e0b" />
-                  <rect x={0} y={0} width={graphWidth} height={height - padding - ((6.5 - min) / range) * (height - 2 * padding)} fill="#ef4444" />
-                </g>
-              )}
-              <polyline fill="none" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" points={polylinePoints} />
-              {points.map((p, i) => (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r="8" fill="white" stroke={color === 'orange' ? '#f97316' : color === 'purple' ? '#a855f7' : color === 'red' ? '#ef4444' : color === 'blue' ? '#3b82f6' : '#10b981'} strokeWidth="4" />
-                  <text x={p.x} y={p.y - 20} textAnchor="middle" fontSize="14" fontWeight="900" fill="#1c1917">{p.val}</text>
-                  <text x={p.x} y={height - 5} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#78716c">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
-                </g>
-              ))}
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-auto bg-stone-50 rounded-t-[40px] shadow-inner transition-all duration-300">
-        <button
-          onClick={() => setIsLogOpen(!isLogOpen)}
-          className="w-full flex justify-between items-center p-6 bg-white rounded-t-[40px] rounded-b-none border-b border-stone-100 group active:scale-[0.99] transition-all sticky top-0"
-        >
-          <div className="flex items-center gap-4">
-            <div className={`p-3 bg-${color}-50 rounded-2xl`}>
-              <ScrollText className={`text-${color}-600`} size={24} />
-            </div>
-            <div className="text-left">
-              <h4 className="text-xl font-black text-stone-800 tracking-tighter uppercase">History Logbook</h4>
-              <p className="text-xs font-bold text-stone-400">{relevantLogs.length} Records Documented</p>
-            </div>
-          </div>
-          {isLogOpen ? <ChevronDown size={24} className="text-stone-300" /> : <ChevronUp size={24} className="text-stone-300" />}
-        </button>
-
-        {isLogOpen && (
-          <div className="p-6 space-y-3 animate-in slide-in-from-bottom duration-300 max-h-[400px] overflow-y-auto">
-            {relevantLogs.map((log) => {
-              const dateObj = new Date(safeEpoch(log.timestamp));
-              const isLocked = !canEdit(log.timestamp);
-
-              return (
-                <div key={log.id} className="bg-white p-5 rounded-[24px] shadow-sm border border-stone-100 flex justify-between items-center group">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center bg-stone-50 py-2 px-3 rounded-2xl min-w-[64px]">
-                      <div className="text-[10px] font-black text-stone-400 uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
-                      <div className="text-lg font-black text-stone-800 leading-tight">{dateObj.getDate()}</div>
-                    </div>
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-stone-800">{log.snapshot.profile[vitalType]}</span>
-                        <span className="text-xs font-bold text-stone-400 uppercase">{unit}</span>
-                      </div>
-                      <div className="text-[10px] font-bold text-stone-400 uppercase tracking-tighter">Recorded at {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onEdit(log, vitalType)}
-                      className="p-3 bg-stone-50 rounded-xl text-stone-400 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-90"
-                      title="Edit Entry"
-                    >
-                      <Edit3 size={18} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(log.id)}
-                      disabled={isLocked}
-                      className={`p-3 rounded-xl transition-all active:scale-90 ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                      title={isLocked ? "Delete Locked (>30m required)" : "Delete Entry"}
-                    >
-                      {isLocked ? <Lock size={18} /> : <Trash2 size={18} />}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {relevantLogs.length === 0 && (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BookOpen size={24} className="text-stone-300" />
-                </div>
-                <p className="text-stone-400 font-bold text-sm">No recorded history for {label} yet.</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- CONSENT SCREEN ---
-const ConsentScreen = ({ onConsent }) => {
-  const [agreed, setAgreed] = useState(false);
-  // PRELOADED TERMS
-  const termsData = TERMS_AND_CONDITIONS;
-  const loading = false;
-
-  const iconMap = { Activity, ScrollText, ShieldAlert };
-  const renderContent = (content) => content.map((part, idx) => <span key={idx} className={part.bold ? "font-bold" : ""}>{part.text}</span>);
-
-  return (
-    <div className="min-h-screen bg-stone-100 p-6 flex items-center justify-center font-sans">
-      <div className="bg-white max-w-lg w-full rounded-[32px] shadow-2xl overflow-hidden border border-stone-200">
-        <div className="bg-stone-900 p-6 text-white">
-          <div className="flex items-center gap-3 mb-2">
-            <ShieldAlert className="text-amber-400" size={32} />
-            <h1 className="text-2xl font-serif font-bold">Medico-Legal Notice</h1>
-          </div>
-          <p className="text-stone-400 text-sm">Mandatory review required before use.</p>
-        </div>
-        <div className="p-8 h-96 overflow-y-auto space-y-6 text-stone-600 text-sm leading-relaxed border-b border-stone-100">
-          {loading ? (
-            <div className="text-center text-stone-400 italic">Loading terms...</div>
-          ) : termsData ? (
-            termsData.sections.map((section) => {
-              const Icon = iconMap[section.header.icon];
-              return (
-                <section key={section.id}>
-                  <h3 className="font-bold text-stone-800 text-lg mb-2 flex items-center gap-2">
-                    {Icon && <Icon size={18} className={section.header.colorClass} />}
-                    {section.header.text}
-                  </h3>
-                  {section.blocks.map((block, bIdx) => {
-                    if (block.type === 'paragraph') return <p key={bIdx}>{renderContent(block.content)}</p>;
-                    if (block.type === 'alert_paragraph') return <p key={bIdx} className="mt-2 text-red-600 font-bold">{renderContent(block.content)}</p>;
-                    if (block.type === 'list') return <ul key={bIdx} className="list-disc pl-5 space-y-1 mt-2">{block.items.map((item, iIdx) => <li key={iIdx}>{renderContent(item.content)}</li>)}</ul>;
-                    return null;
-                  })}
-                </section>
-              );
-            })
-          ) : (
-            <div className="text-red-500">Failed to load terms. Please refresh.</div>
-          )}
-        </div>
-        <div className="p-6 bg-stone-50">
-          <label className="flex items-start gap-4 cursor-pointer mb-6 p-4 bg-white rounded-xl border border-stone-200 transition-colors hover:border-emerald-200">
-            <input type="checkbox" className="mt-1 w-6 h-6 accent-blue-600" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
-            <span className="text-stone-700 font-medium">I have read and understood the Legal Disclaimer, Research Consent, and Safety Protocols.</span>
-          </label>
-          <button onClick={onConsent} disabled={!agreed} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all ${agreed ? 'bg-stone-900 text-white active:scale-95' : 'bg-stone-300 text-stone-500'}`}>
-            I Agree & Continue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 // --- MAIN APP ---
@@ -749,7 +236,7 @@ export default function App() {
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
     const sorted = [...fullHistory].sort((a, b) => {
-      // Fix: Ensure we compare milliseconds vs milliseconds
+      // Fix: Use strict safeEpoch for comparison
       return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
     });
 
@@ -1557,205 +1044,14 @@ export default function App() {
   };
 
   const generatePDF = () => {
-    // FIX: Robust check for window.jspdf or default jsPDF from CDN
-    const pdfLib = window.jspdf;
-    if (!pdfLib && !window.jsPDF) { alert("PDF Generator is initializing... please wait 5 seconds and try again."); return; }
-
-    // Handle different CDN loading patterns
-    const jsPDF = pdfLib ? pdfLib.jsPDF : window.jsPDF;
-    if (!jsPDF) { alert("PDF Library not found. Please refresh."); return; }
-
-    const doc = new jsPDF();
-
-    // FIX: Robust check for autoTable attachment
-    const runAutoTable = (options) => {
-      if (doc.autoTable) doc.autoTable(options);
-      else if (pdfLib && pdfLib.autoTable) pdfLib.autoTable(doc, options);
-      else if (window.autoTable) window.autoTable(doc, options);
-      else {
-        console.error("AutoTable plugin not found. Trying fallback...");
-        // Fallback: Sometimes autoTable attaches to jsPDF prototype late
-        try { doc.autoTable(options); } catch (e) { console.error(e); }
+    generatePDFReport({
+      user, profile, prescription, compliance, fullHistory, pdfStartDate, pdfEndDate,
+      trendData: {
+        weight: getTrendData('weight'),
+        hba1c: getTrendData('hba1c'),
+        creatinine: getTrendData('creatinine')
       }
-    };
-
-    doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 22);
-    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text(`Patient: ${user.displayName || 'User'}`, 14, 32);
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37);
-    doc.setTextColor(0);
-
-    const vitalsHead = ['Age', 'Gender', 'Weight', 'HbA1c', 'Creatinine'];
-    const vitalsBody = [profile.age, profile.gender || '-', profile.weight, profile.hba1c, profile.creatinine];
-    if (profile.gender === 'Female' && profile.pregnancyStatus) { vitalsHead.push('Pregnancy'); vitalsBody.push('YES (High Risk)'); }
-    runAutoTable({ startY: 45, head: [vitalsHead], body: [vitalsBody] });
-
-    if (profile.comorbidities?.length > 0) {
-      runAutoTable({ startY: (doc.lastAutoTable || {}).finalY + 5, head: [['Known Comorbidities']], body: [[profile.comorbidities.join(', ')]], theme: 'plain', styles: { fontSize: 9, fontStyle: 'italic', cellPadding: 2 } });
-    }
-
-    let finalY = (doc.lastAutoTable || {}).finalY + 10;
-    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Vital Trends", 14, finalY);
-
-    // Graph Drawing Logic (Side-by-Side)
-    const drawGraph = (data, title, startX, startY, width, height, norm, color) => {
-      if (!data || data.length < 2) return;
-
-      const gX = startX; const gY = startY + 6;
-      doc.setFontSize(9); doc.setTextColor(60); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
-
-      // Filter out technical updates (Rx/Vital changes) from the PDF report
-      const reportData = (fullHistory || []).filter(l => !['prescription_update', 'vital_update'].includes(l.type));
-      const vals = data.map(d => d.value);
-      const dataMin = Math.min(...vals);
-      const dataMax = Math.max(...vals);
-      const dataRange = (dataMax - dataMin) || (dataMax * 0.1) || 1;
-
-      // Keep trend in mid section by adding 40% padding above and below
-      let min = dataMin - (dataRange * 0.4);
-      let max = dataMax + (dataRange * 0.4);
-
-      const range = max - min;
-
-      // Subtle Clinical Color Zones for HbA1c
-      if (title.includes("HbA1c")) {
-        const getY = (val) => gY + height - ((val - min) / range) * height;
-
-        // Green Zone
-        doc.setFillColor(240, 253, 244);
-        const y57 = Math.max(gY, Math.min(gY + height, getY(5.7)));
-        doc.rect(gX, y57, width, (gY + height) - y57, 'F');
-
-        // Yellow Zone
-        doc.setFillColor(255, 251, 235);
-        const y65 = Math.max(gY, Math.min(gY + height, getY(6.5)));
-        doc.rect(gX, y65, width, y57 - y65, 'F');
-
-        // Red Zone
-        doc.setFillColor(254, 242, 242);
-        doc.rect(gX, gY, width, y65 - gY, 'F');
-      }
-
-      // Horizontal reference lines (very faint)
-      doc.setDrawColor(240); doc.setLineWidth(0.1);
-      [0.25, 0.5, 0.75].forEach(r => { doc.line(gX, gY + height * r, gX + width, gY + height * r); });
-
-      if (norm) {
-        const refY = gY + height - ((norm - min) / range) * height;
-        if (refY >= gY && refY <= gY + height) {
-          doc.setDrawColor(200); doc.setLineDashPattern([1, 1], 0); doc.line(gX, refY, gX + width, refY);
-          doc.setLineDashPattern([], 0);
-        }
-      }
-
-      const [r, g, b] = color === 'orange' ? [234, 88, 12] : color === 'purple' ? [147, 51, 234] : [5, 150, 105];
-
-      // Strategy: 1st point is baseline (first entry ever), then 4 most recent
-      let pdfPoints = [];
-      if (data.length <= 5) {
-        pdfPoints = data;
-      } else {
-        pdfPoints = [data[0], ...data.slice(-4)];
-      }
-
-      pdfPoints.forEach((d, i) => {
-        const x = gX + i / (pdfPoints.length - 1 === 0 ? 1 : pdfPoints.length - 1) * width;
-        const y = gY + height - ((d.value - min) / range) * height;
-
-        if (i > 0) {
-          const prev = pdfPoints[i - 1];
-          const x1 = gX + (i - 1) / (pdfPoints.length - 1) * width;
-          const y1 = gY + height - ((prev.value - min) / range) * height;
-          doc.setDrawColor(r, g, b); doc.setLineWidth(1.2); doc.line(x1, y1, x, y);
-        }
-
-        // Darker, solid dots
-        doc.setFillColor(r, g, b); doc.circle(x, y, 1.5, 'F');
-
-        // Value Labels
-        doc.setFontSize(8); doc.setTextColor(40); doc.setFont("helvetica", "bold");
-        doc.text(d.value.toString(), x, y - 4, { align: 'center' });
-
-        // Date Labels
-        doc.setFontSize(5); doc.setTextColor(180); doc.setFont("helvetica", "normal");
-        doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, gY + height + 4, { align: 'center' });
-      });
-    };
-
-    const gW = 60; const gH = 32; // Slightly more height
-    drawGraph(getTrendData('weight'), "Weight (kg)", 14, finalY, gW, gH, null, 'orange');
-    drawGraph(getTrendData('hba1c'), "HbA1c (%)", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
-    drawGraph(getTrendData('creatinine'), "Creatinine", 14 + (gW + 5) * 2, finalY, gW, gH, 1.2, 'purple');
-    finalY += gH + 25; // More padding after trends
-
-    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
-    const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
-    runAutoTable({ startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
-    finalY = (doc.lastAutoTable || {}).finalY + 5;
-    const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
-    runAutoTable({ startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
-
-    // Update finalY after Oral Meds Table
-    finalY = (doc.lastAutoTable || {}).finalY + 15;
-
-    // Page break safety for Instructions
-    if (finalY > 260 && profile.instructions) { doc.addPage(); finalY = 20; }
-
-    const pdfFilteredHistory = (fullHistory || []).filter(l => {
-      if (l.type === 'vital_update' || l.type === 'prescription_update') return false;
-      const d = new Date(l.timestamp?.seconds * 1000 || l.timestamp);
-      if (pdfStartDate && d < new Date(pdfStartDate)) return false;
-      if (pdfEndDate) { const end = new Date(pdfEndDate); end.setHours(23, 59, 59, 999); if (d > end) return false; }
-      return true;
     });
-
-    if (profile.instructions) {
-      doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.text("Medical Instructions", 14, finalY);
-      doc.setFontSize(10); doc.setFont("helvetica", "normal");
-      const splitText = doc.splitTextToSize(profile.instructions, 180);
-      doc.text(splitText, 14, finalY + 8);
-      finalY += (splitText.length * 6) + 15;
-    }
-
-    // Page break safety for Logbook
-    if (finalY > 260) { doc.addPage(); finalY = 20; }
-    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
-    // FILTER: STRICT CLEANUP FOR PDF
-    // Exclude entries that have NO meaningful data (No sugar, no insulin, no meds, no context)
-    const logRows = pdfFilteredHistory
-      .filter(l => {
-        // Check for valid glucose (not null, not empty string, not NaN)
-        const hasSugar = l.hgt && !isNaN(parseFloat(l.hgt));
-        // Check for meds
-        const hasMeds = l.medsTaken && l.medsTaken.length > 0;
-        // Check for insulin
-        const hasInsulin = l.insulinDoses && Object.keys(l.insulinDoses).length > 0;
-        // Check for meaningful tags (optional, but good for context)
-        const hasTags = l.tags && l.tags.length > 0;
-
-        return hasSugar || hasMeds || hasInsulin || hasTags;
-      })
-      .map(l => [
-        new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(),
-        l.hgt || '-',
-        l.mealStatus,
-        Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}: ${d}u`).join(', '),
-        (l.tags || []).join(', ')
-      ]);
-    runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
-
-    // COMPLIANCE SECTION AT THE END
-    finalY = (doc.lastAutoTable || {}).finalY + 15;
-    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 20, 'F');
-    doc.setFontSize(10); doc.setTextColor(80); doc.setFont("helvetica", "bold");
-    doc.text("Medication Compliance Summary (7-Day Trend)", 20, finalY + 8);
-
-    doc.setFontSize(9);
-    doc.setTextColor(5, 150, 105); doc.text(`Oral: ${compliance.oral}%`, 20, finalY + 16);
-    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 60, finalY + 16);
-    doc.setTextColor(15, 23, 42); doc.text(`Overall Compliance Score: ${compliance.overall}%`, 110, finalY + 16);
-
-    try { doc.save("SugarDiary_Report.pdf"); } catch (e) { alert("Failed to save PDF. Please try again."); }
   };
 
 
@@ -1836,27 +1132,33 @@ export default function App() {
     );
   }
 
-  if (!profile.hasConsented) return <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />;
+  if (!profile.hasConsented) return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-100"><div className="text-center text-stone-400 italic">Starting...</div></div>}>
+      <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />
+    </Suspense>
+  );
 
   return (
     <GlobalRecoveryBoundary>
       <SecurityGuardian>
         <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark bg-stone-950 text-stone-300' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
 
-          <SettingsModal
-            isOpen={showSettings}
-            onClose={() => setShowSettings(false)}
-            compliance={compliance}
-            onShare={handleShareLink}
-            profile={profile}
-            onSoftDelete={handleSoftDelete}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            isHighContrast={isHighContrast}
-            setIsHighContrast={setIsHighContrast}
-            hapticsEnabled={hapticsEnabled}
-            setHapticsEnabled={setHapticsEnabled}
-          />
+          <Suspense fallback={null}>
+            <SettingsModal
+              isOpen={showSettings}
+              onClose={() => setShowSettings(false)}
+              compliance={compliance}
+              onShare={handleShareLink}
+              profile={profile}
+              onSoftDelete={handleSoftDelete}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              isHighContrast={isHighContrast}
+              setIsHighContrast={setIsHighContrast}
+              hapticsEnabled={hapticsEnabled}
+              setHapticsEnabled={setHapticsEnabled}
+            />
+          </Suspense>
 
           {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
 
@@ -2864,13 +2166,17 @@ export default function App() {
 
           {
             expandedGraphData && (
-              <ExpandedGraphModal
-                {...expandedGraphData}
-                fullHistory={fullHistory}
-                onEdit={handleStartEditVital}
-                onDelete={handleDeleteEntry}
-                onClose={() => setExpandedGraphData(null)}
-              />
+              expandedGraphData && (
+                <Suspense fallback={null}>
+                  <ExpandedGraphModal
+                    {...expandedGraphData}
+                    fullHistory={fullHistory}
+                    onEdit={handleStartEditVital}
+                    onDelete={handleDeleteEntry}
+                    onClose={() => setExpandedGraphData(null)}
+                  />
+                </Suspense>
+              )
             )
           }
 
