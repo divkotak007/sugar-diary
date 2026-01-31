@@ -22,6 +22,7 @@ import { TERMS_AND_CONDITIONS } from './data/terms.js';
 import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch } from './utils/time.js';
 import { offlineStorage } from './services/offlineStorage.js';
 import { auditLogger } from './services/auditLogger.js';
+import { feedback } from './utils/feedback.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { jsPDF } from 'jspdf';
@@ -156,18 +157,14 @@ const GlobalRecoveryBoundary = ({ children }) => {
   return children;
 };
 
-const triggerHaptic = (hapticsEnabled, type = 'medium') => {
-  if (hapticsEnabled && typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-    try {
-      switch (type) {
-        case 'light': window.navigator.vibrate(10); break;
-        case 'medium': window.navigator.vibrate(40); break;
-        case 'heavy': window.navigator.vibrate([50, 50, 50]); break;
-        case 'success': window.navigator.vibrate([10, 30, 10]); break;
-        default: window.navigator.vibrate(20);
-      }
-    } catch (e) { /* ignore */ }
-  }
+// --- HAPTIC/SOUND WRAPPER ---
+// Centralized trigger for both senses based on state
+const triggerFeedback = (hapticState, soundState, type = 'medium') => {
+  const hapticType = type === 'tick' ? 'selection' : type;
+  const soundType = type === 'tick' ? 'tick' : (type === 'success' ? 'success' : 'click');
+
+  feedback.haptic(hapticState, hapticType);
+  feedback.sound(soundState, soundType);
 };
 
 const calculateAge = (dob) => {
@@ -183,7 +180,7 @@ const calculateAge = (dob) => {
 };
 
 // --- COMPONENTS ---
-const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled }) => {
+const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
@@ -1792,7 +1789,7 @@ export default function App() {
     setTimeout(() => {
       try {
         if (Notification.permission === 'granted') {
-          triggerHaptic(hapticsEnabled);
+          triggerFeedback(hapticsEnabled, soundEnabled, 'success');
           new Notification("Medicine Reminder (Test)", {
             body: "Time to check your blood sugar and take your scheduled dose.",
             vibrate: hapticsEnabled ? [200, 100, 200] : []
@@ -2002,6 +1999,33 @@ export default function App() {
 
                       <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
                         <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
+                        {/* Sound Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl mb-2">
+                          <div className="flex items-center gap-3">
+                            <Volume2 size={20} className="text-stone-400" />
+                            <span className="font-bold text-stone-700 dark:text-stone-300">Sound Effects</span>
+                          </div>
+                          <button
+                            onClick={() => setSoundEnabled(!soundEnabled)}
+                            className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${soundEnabled ? 'bg-stone-900 dark:bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${soundEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+
+                        {/* Haptics Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl mb-4">
+                          <div className="flex items-center gap-3">
+                            <Hand size={20} className="text-stone-400" />
+                            <span className="font-bold text-stone-700 dark:text-stone-300">Haptic Feedback</span>
+                          </div>
+                          <button
+                            onClick={() => setHapticsEnabled(!hapticsEnabled)}
+                            className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${hapticsEnabled ? 'bg-stone-900 dark:bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
+                          >
+                            <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${hapticsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
                         <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-900 p-3 rounded-xl border border-stone-100 dark:border-stone-700 focus-within:border-emerald-500 transition-all">
                           <Calendar size={18} className="text-stone-400" />
                           <input
