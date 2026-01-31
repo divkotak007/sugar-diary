@@ -737,7 +737,7 @@ export default function App() {
             body: `You have ${medsDue.length} meds scheduled: ${medsDue.slice(0, 2).join(', ')}${medsDue.length > 2 ? '...' : ''}`,
             icon: '/favicon.ico'
           });
-          triggerHaptic(hapticsEnabled);
+          triggerFeedback(hapticsEnabled, soundEnabled, 'medium');
         }
       }
     };
@@ -1950,7 +1950,7 @@ export default function App() {
                           <span className="text-xl font-bold text-stone-400">mg/dL</span>
                         </div>
                         <div className="flex gap-2 mb-4">
-                          {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => { triggerHaptic(hapticsEnabled, 'light'); setMealStatus(m); }} />)}
+                          {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'tick'); setMealStatus(m); }} />)}
                         </div>
                       </div>
 
@@ -1978,7 +1978,7 @@ export default function App() {
                           <div className="flex gap-2 flex-wrap">
                             {med.timings.map(t => (
                               <button key={t} onClick={() => {
-                                triggerHaptic();
+                                triggerFeedback(hapticsEnabled, soundEnabled, 'tick');
                                 setMedsTaken(p => {
                                   const newState = { ...p };
                                   // STRICT: Radio behavior - ensure only one slot per med is true at a time
@@ -2172,7 +2172,7 @@ export default function App() {
                       </div>
                     )
                   ) : (
-                    !isCaregiverMode && <button onClick={() => { triggerHaptic(); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+                    !isCaregiverMode && <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'success'); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
                   )}
                 </div>
 
@@ -2846,7 +2846,7 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    triggerHaptic(hapticsEnabled, 'light');
+                    triggerFeedback(hapticsEnabled, soundEnabled, 'light');
                     setView(item.id);
                   }}
                   className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}

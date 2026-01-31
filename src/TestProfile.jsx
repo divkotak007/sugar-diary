@@ -1,7 +1,12 @@
-import React from 'react';
-import { Lock, Unlock, Activity, Baby, Calendar, Database, ChevronRight, Trash2, Clock, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+    User, Calendar, Activity, Heart, Shield, AlertTriangle,
+    ChevronRight, Thermometer, ScrollText, Pill, Syringe,
+    CheckCircle2, AlertCircle, TrendingUp, X, Scale
+} from 'lucide-react';
+import { feedback } from './utils/feedback.js';
 
-export const TestProfile = ({ view, profile, unlockPersonal, setUnlockPersonal, vitalsForm, setVitalsForm, calculateAge, unlockComorbidities, setProfile, setUnlockComorbidities, vitalsLogTime, setVitalsLogTime, editingLog, isCaregiverMode, handleSaveProfile, setEditingLog, triggerHaptic, handleSeedDatabase, handleShareLink, T, handleSoftDelete, remindersEnabled, requestNotificationPermission, scheduleDemoReminder, getTrendData, setExpandedGraphData, expandedGraphData }) => {
+export const TestProfile = ({ view, profile, unlockPersonal, setUnlockPersonal, vitalsForm, setVitalsForm, calculateAge, unlockComorbidities, setProfile, setUnlockComorbidities, vitalsLogTime, setVitalsLogTime, editingLog, isCaregiverMode, handleSaveProfile, setEditingLog, handleSeedDatabase, handleShareLink, T, handleSoftDelete, remindersEnabled, requestNotificationPermission, scheduleDemoReminder, getTrendData, setExpandedGraphData, expandedGraphData }) => {
     return (
         <>
             {view === 'profile' && (
@@ -137,7 +142,7 @@ export const TestProfile = ({ view, profile, unlockPersonal, setUnlockPersonal, 
                                 </div>
                             )
                         ) : (
-                            !isCaregiverMode && <button onClick={() => { triggerHaptic(); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
+                            !isCaregiverMode && <button onClick={() => { feedback.haptic(true, 'success'); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
                         )}
 
 
