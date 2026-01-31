@@ -6,7 +6,8 @@
 
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-const db = getFirestore();
+// REMOVED top-level db init to prevent race condition before App.jsx initializes app
+// const db = getFirestore();
 
 export const auditLogger = {
     /**
@@ -17,6 +18,8 @@ export const auditLogger = {
      */
     log: async (userId, eventType, details) => {
         if (!userId) return;
+        // Lazy Init: Get Firestore instance only when needed, ensuring App is initialized first
+        const db = getFirestore();
         try {
             // Clean undefined values to prevent Firestore errors
             const safeDetails = JSON.parse(JSON.stringify(details || {}));
