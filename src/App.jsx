@@ -2,9 +2,11 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
-  query, orderBy, limit, deleteDoc, updateDoc, enableMultiTabIndexedDbPersistence, getDocs
+  getFirestore, doc, getDoc, collection, serverTimestamp,
+  query, orderBy, limit, enableMultiTabIndexedDbPersistence, getDocs
 } from 'firebase/firestore';
+import { safeAddDoc as addDoc, safeSetDoc as setDoc, safeUpdateDoc as updateDoc, safeDeleteDoc as deleteDoc } from './services/safeDataLayer';
+
 import {
   BookOpen, ChevronDown, ChevronUp, Edit3, Plus, Trash2, X, Activity,
   AlertCircle, Calendar, Check, ChevronRight, Clock, Droplets,
@@ -23,6 +25,7 @@ import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeE
 import { offlineStorage } from './services/offlineStorage.js';
 import { auditLogger } from './services/auditLogger.js';
 import { feedback } from './utils/feedback.js';
+import { performanceSentinel } from './utils/performanceSentinel.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { generatePDFReport } from './services/pdfGenerator';
@@ -49,6 +52,12 @@ const firebaseConfig = (typeof window !== 'undefined' && window.__firebase_confi
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Initialize Performance Sentinel (Passive)
+if (typeof window !== 'undefined') {
+  performanceSentinel.init();
+  performanceSentinel.checkDependencies();
+}
 
 // OFFLINE PERSISTENCE (Write Queue & Cache)
 // Enables offline writes to be queued and synced automatically on reconnect
