@@ -19,6 +19,7 @@ import {
 import { getPrescriptionAlerts, FREQUENCY_RULES } from './data/medications.js';
 import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
+import { sortLogsDes, getLogTimestamp } from './utils/timeUtils.js';
 import { TRANSLATIONS } from './data/translations.js';
 import { TERMS_AND_CONDITIONS } from './data/terms.js';
 import { getEpoch, toInputString, fromInputString, isFuture, minutesSince, safeEpoch, canEdit, canDelete } from './utils/time.js';
@@ -110,6 +111,7 @@ const calculateAge = (dob) => {
   }
   return age;
 };
+
 
 // --- MAIN APP ---
 export default function App() {
@@ -229,10 +231,7 @@ export default function App() {
 
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
-    const sorted = [...fullHistory].sort((a, b) => {
-      // Fix: Use strict safeEpoch for comparison
-      return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
-    });
+    const sorted = sortLogsDes(fullHistory);
 
     const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: [] };
 
@@ -589,7 +588,7 @@ export default function App() {
       })
       .map(log => ({
         id: log.id,
-        date: log.timestamp?.seconds * 1000 || (log.timestamp instanceof Date ? log.timestamp.getTime() : new Date(log.timestamp).getTime()),
+        date: getLogTimestamp(log.timestamp),
         value: parseFloat(log.snapshot.profile[metric])
       }))
       .sort((a, b) => a.date - b.date);
@@ -681,6 +680,7 @@ export default function App() {
     // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
     if (!editingLog) {
       const updatedParams = Object.keys(vitalsForm).filter(k => vitalsForm[k] !== '' && vitalsForm[k] !== undefined);
+<<<<<<< HEAD
 
       if (updatedParams.length > 0) {
         const recent = fullHistory.find(l =>
@@ -694,6 +694,16 @@ export default function App() {
           const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
           return alert(`Action Blocked: ${pNames.toUpperCase()} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
         }
+=======
+      const recent = fullHistory.find(l =>
+        l.type === 'vital_update' &&
+        l.updatedParams?.some(p => updatedParams.includes(p)) &&
+        Math.abs(timestamp - getLogTimestamp(l.timestamp)) < 3600000
+      );
+      if (recent) {
+        const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
+        return alert(`Action Blocked: ${pNames} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
+>>>>>>> 88cc24f (Implement strict chronological ordering for logs)
       }
     }
 
@@ -805,10 +815,17 @@ export default function App() {
     const log = fullHistory.find(l => l.id === id);
     if (!log) return;
 
+<<<<<<< HEAD
     // Check if delete is allowed (ONLY after 30 minutes)
     // Check if delete is allowed (Always allowed per V2, but we keep the check for safety if policy reverts)
     if (!canDelete(log.timestamp)) {
       return alert("Delete Not Allowed.");
+=======
+    // 30 Minute Lock Protection
+    const ageSeconds = (Date.now() - getLogTimestamp(log.timestamp)) / 1000;
+    if (ageSeconds < 1800) {
+      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes to prevent accidental deletions.`);
+>>>>>>> 88cc24f (Implement strict chronological ordering for logs)
     }
 
     setDeleteConfirmState({
@@ -924,8 +941,22 @@ export default function App() {
     // STRICT: Prevent Empty regular logs
     const hasContext = contextTags.length > 0;
 
+<<<<<<< HEAD
     if (!hgt && !hasOralMeds && !hasInsulin && !hasContext) {
       return alert("Empty Log: Please enter a Blood Sugar value, Medication, or Context tag before saving.");
+=======
+    const timestamp = logTime ? new Date(logTime) : new Date();
+    if (isNaN(timestamp.getTime())) return alert("Invalid Log Time.");
+    if (timestamp > new Date()) return alert("Cannot log entries in the future.");
+
+    // Duplicate Check (1 Hour Rule)
+    if (!editingLog) {
+      const recent = fullHistory.find(l =>
+        !l.type &&
+        Math.abs(timestamp - getLogTimestamp(l.timestamp)) < 3600000
+      );
+      if (recent) return alert("Action Blocked: A log was recorded in the last hour. Duplicate entries are prevented for clinical safety.");
+>>>>>>> 88cc24f (Implement strict chronological ordering for logs)
     }
 
     const entryData = {
@@ -1045,7 +1076,170 @@ export default function App() {
         hba1c: getTrendData('hba1c'),
         creatinine: getTrendData('creatinine')
       }
+<<<<<<< HEAD
     });
+=======
+    };
+
+    doc.setFillColor(5, 150, 105); doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255); doc.setFontSize(22); doc.text("SugarDiary Report", 14, 22);
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text(`Patient: ${user.displayName || 'User'}`, 14, 32);
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 37);
+    doc.setTextColor(0);
+
+    const vitalsHead = ['Age', 'Gender', 'Weight', 'HbA1c', 'Creatinine'];
+    const vitalsBody = [profile.age, profile.gender || '-', profile.weight, profile.hba1c, profile.creatinine];
+    if (profile.gender === 'Female' && profile.pregnancyStatus) { vitalsHead.push('Pregnancy'); vitalsBody.push('YES (High Risk)'); }
+    runAutoTable({ startY: 45, head: [vitalsHead], body: [vitalsBody] });
+
+    if (profile.comorbidities?.length > 0) {
+      runAutoTable({ startY: (doc.lastAutoTable || {}).finalY + 5, head: [['Known Comorbidities']], body: [[profile.comorbidities.join(', ')]], theme: 'plain', styles: { fontSize: 9, fontStyle: 'italic', cellPadding: 2 } });
+    }
+
+    let finalY = (doc.lastAutoTable || {}).finalY + 10;
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Vital Trends", 14, finalY);
+
+    // Graph Drawing Logic (Side-by-Side)
+    const drawGraph = (data, title, startX, startY, width, height, norm, color) => {
+      if (!data || data.length < 2) return;
+
+      const gX = startX; const gY = startY + 6;
+      doc.setFontSize(9); doc.setTextColor(60); doc.setFont("helvetica", "bold"); doc.text(title, startX, startY + 4);
+
+      const vals = data.map(d => d.value);
+      const dataMin = Math.min(...vals);
+      const dataMax = Math.max(...vals);
+      const dataRange = (dataMax - dataMin) || (dataMax * 0.1) || 1;
+
+      // Keep trend in mid section by adding 40% padding above and below
+      let min = dataMin - (dataRange * 0.4);
+      let max = dataMax + (dataRange * 0.4);
+
+      const range = max - min;
+
+      // Subtle Clinical Color Zones for HbA1c
+      if (title.includes("HbA1c")) {
+        const getY = (val) => gY + height - ((val - min) / range) * height;
+
+        // Green Zone
+        doc.setFillColor(240, 253, 244);
+        const y57 = Math.max(gY, Math.min(gY + height, getY(5.7)));
+        doc.rect(gX, y57, width, (gY + height) - y57, 'F');
+
+        // Yellow Zone
+        doc.setFillColor(255, 251, 235);
+        const y65 = Math.max(gY, Math.min(gY + height, getY(6.5)));
+        doc.rect(gX, y65, width, y57 - y65, 'F');
+
+        // Red Zone
+        doc.setFillColor(254, 242, 242);
+        doc.rect(gX, gY, width, y65 - gY, 'F');
+      }
+
+      // Horizontal reference lines (very faint)
+      doc.setDrawColor(240); doc.setLineWidth(0.1);
+      [0.25, 0.5, 0.75].forEach(r => { doc.line(gX, gY + height * r, gX + width, gY + height * r); });
+
+      if (norm) {
+        const refY = gY + height - ((norm - min) / range) * height;
+        if (refY >= gY && refY <= gY + height) {
+          doc.setDrawColor(200); doc.setLineDashPattern([1, 1], 0); doc.line(gX, refY, gX + width, refY);
+          doc.setLineDashPattern([], 0);
+        }
+      }
+
+      const [r, g, b] = color === 'orange' ? [234, 88, 12] : color === 'purple' ? [147, 51, 234] : [5, 150, 105];
+
+      // Strategy: 1st point is baseline (first entry ever), then 4 most recent
+      let pdfPoints = [];
+      if (data.length <= 5) {
+        pdfPoints = data;
+      } else {
+        pdfPoints = [data[0], ...data.slice(-4)];
+      }
+
+      pdfPoints.forEach((d, i) => {
+        const x = gX + i / (pdfPoints.length - 1 === 0 ? 1 : pdfPoints.length - 1) * width;
+        const y = gY + height - ((d.value - min) / range) * height;
+
+        if (i > 0) {
+          const prev = pdfPoints[i - 1];
+          const x1 = gX + (i - 1) / (pdfPoints.length - 1) * width;
+          const y1 = gY + height - ((prev.value - min) / range) * height;
+          doc.setDrawColor(r, g, b); doc.setLineWidth(1.2); doc.line(x1, y1, x, y);
+        }
+
+        // Darker, solid dots
+        doc.setFillColor(r, g, b); doc.circle(x, y, 1.5, 'F');
+
+        // Value Labels
+        doc.setFontSize(8); doc.setTextColor(40); doc.setFont("helvetica", "bold");
+        doc.text(d.value.toString(), x, y - 4, { align: 'center' });
+
+        // Date Labels
+        doc.setFontSize(5); doc.setTextColor(180); doc.setFont("helvetica", "normal");
+        doc.text(new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), x, gY + height + 4, { align: 'center' });
+      });
+    };
+
+    const gW = 60; const gH = 32; // Slightly more height
+    drawGraph(getTrendData('weight'), "Weight (kg)", 14, finalY, gW, gH, null, 'orange');
+    drawGraph(getTrendData('hba1c'), "HbA1c (%)", 14 + gW + 5, finalY, gW, gH, 5.7, 'emerald');
+    drawGraph(getTrendData('creatinine'), "Creatinine", 14 + (gW + 5) * 2, finalY, gW, gH, 1.2, 'purple');
+    finalY += gH + 25; // More padding after trends
+
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Prescription", 14, finalY);
+    const insulinRows = prescription.insulins.map(i => [i.name, i.type, i.frequency || '-', (i.slidingScale || []).map(s => `${s.min}-${s.max}:${s.dose}u`).join(' | ') || 'Fixed']);
+    runAutoTable({ startY: finalY + 5, head: [['Insulin', 'Type', 'Freq', 'Scale']], body: insulinRows });
+    finalY = (doc.lastAutoTable || {}).finalY + 5;
+    const oralRows = prescription.oralMeds.map(m => [m.name, m.dose, m.frequency, m.timings.join(', ')]);
+    runAutoTable({ startY: finalY, head: [['Drug', 'Dose', 'Freq', 'Timings']], body: oralRows });
+
+    // Update finalY after Oral Meds Table
+    finalY = (doc.lastAutoTable || {}).finalY + 15;
+
+    // Page break safety for Instructions
+    if (finalY > 260 && profile.instructions) { doc.addPage(); finalY = 20; }
+
+    const pdfFilteredHistory = sortLogsDes(fullHistory.filter(l => {
+      if (l.type === 'vital_update' || l.type === 'prescription_update') return false;
+      const d = new Date(getLogTimestamp(l.timestamp));
+      if (pdfStartDate && d < new Date(pdfStartDate)) return false;
+      if (pdfEndDate) { const end = new Date(pdfEndDate); end.setHours(23, 59, 59, 999); if (d > end) return false; }
+      return true;
+    }));
+
+    if (profile.instructions) {
+      doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.text("Medical Instructions", 14, finalY);
+      doc.setFontSize(10); doc.setFont("helvetica", "normal");
+      const splitText = doc.splitTextToSize(profile.instructions, 180);
+      doc.text(splitText, 14, finalY + 8);
+      finalY += (splitText.length * 6) + 15;
+    }
+
+    // Page break safety for Logbook
+    if (finalY > 260) { doc.addPage(); finalY = 20; }
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.text("Logbook", 14, finalY);
+    const logRows = pdfFilteredHistory.map(l => [
+      new Date(l.timestamp?.seconds * 1000 || l.timestamp).toLocaleString(), l.hgt || '-', l.mealStatus,
+      Object.entries(l.insulinDoses || {}).map(([id, d]) => `${prescription.insulins.find(i => i.id === id)?.name || 'Ins'}: ${d}u`).join(', '),
+      (l.tags || []).join(', ')
+    ]);
+    runAutoTable({ startY: finalY + 5, head: [['Time', 'Sugar', 'Context', 'Insulin', 'Notes']], body: logRows });
+
+    // COMPLIANCE SECTION AT THE END
+    finalY = (doc.lastAutoTable || {}).finalY + 15;
+    doc.setFillColor(245, 247, 250); doc.rect(14, finalY, 182, 20, 'F');
+    doc.setFontSize(10); doc.setTextColor(80); doc.setFont("helvetica", "bold");
+    doc.text("Medication Compliance Summary (7-Day Trend)", 20, finalY + 8);
+
+    doc.setFontSize(9);
+    doc.setTextColor(5, 150, 105); doc.text(`Oral: ${compliance.oral}%`, 20, finalY + 16);
+    doc.setTextColor(37, 99, 235); doc.text(`Insulin: ${compliance.insulin}%`, 60, finalY + 16);
+    doc.setTextColor(15, 23, 42); doc.text(`Overall Compliance Score: ${compliance.overall}%`, 110, finalY + 16);
+
+    try { doc.save("SugarDiary_Report.pdf"); } catch (e) { alert("Failed to save PDF. Please try again."); }
+>>>>>>> 88cc24f (Implement strict chronological ordering for logs)
   };
 
 
@@ -1727,21 +1921,55 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* ACTIVE LIST */}
-                  <div className="space-y-3">
-                    {prescription.insulins.map((insulin, idx) => (
-                      <div key={insulin.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex flex-col">
-                            <div className="mb-1">
-                              {insulin._displayContext === 'brand' && insulin._displayBrand ? (
-                                <>
-                                  <div className="font-semibold text-stone-900 text-lg">{insulin._displayBrand}</div>
-                                  <div className="text-xs text-stone-500 mt-0.5">Generic: {insulin.generic_name || insulin.name}</div>
-                                </>
-                              ) : (
-                                <div className="font-semibold text-stone-900 text-lg">{insulin.name}</div>
-                              )}
+<<<<<<< HEAD
+  {/* ACTIVE LIST */ }
+  <div className="space-y-3">
+    {prescription.insulins.map((insulin, idx) => (
+      <div key={insulin.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col">
+            <div className="mb-1">
+              {insulin._displayContext === 'brand' && insulin._displayBrand ? (
+                <>
+                  <div className="font-semibold text-stone-900 text-lg">{insulin._displayBrand}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">Generic: {insulin.generic_name || insulin.name}</div>
+                </>
+              ) : (
+                <div className="font-semibold text-stone-900 text-lg">{insulin.name}</div>
+              )}
+=======
+                <div className="flex gap-2 text-xs items-center"><span className="font-bold text-stone-400">PDF Range:</span><input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="bg-white border rounded p-1" /><span className="text-stone-300">to</span><input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="bg-white border rounded p-1" /></div>
+              <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider italic">Tap any entry to Edit or Delete</div>
+            </div>
+            <div className="space-y-3">
+              {sortLogsDes(fullHistory.filter(item => item.type !== 'vital_update' && item.type !== 'prescription_update')).map(item => {
+                const isExpanded = expandedLogId === item.id;
+                return (
+                  <div key={item.id} className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-100 dark:border-stone-800 transition-all overflow-hidden">
+                    <button
+                      onClick={() => setExpandedLogId(isExpanded ? null : item.id)}
+                      className="w-full text-left p-4 flex justify-between items-center"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${item.hgt && item.hgt < 70 ? 'bg-red-100 text-red-600' : item.hgt && item.hgt > 250 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                          {item.hgt || '-'}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">{item.mealStatus}</div>
+                          <div className="text-[10px] text-stone-300">{new Date(item.timestamp?.seconds * 1000 || item.timestamp).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronUp size={20} className="text-stone-300" /> : <ChevronDown size={20} className="text-stone-300" />}
+                    </button>
+
+                    {isExpanded && (
+                        <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-200">
+                          <div className="pt-2 border-t border-stone-50 dark:border-stone-800">
+                            <div className="text-xs text-stone-500 dark:text-stone-400 mb-2 space-y-1">
+                              {item.medsTaken && item.medsTaken.map(k => { const [id, time] = k.split('_'); const name = item.snapshot?.prescription?.oralMeds?.find(m => m.id === id)?.name || "Med"; return <div key={k} className="flex items-center gap-1"><Pill size={12} className="text-purple-500" /> {name} ({time})</div> })}
+                              {item.oralMedsTaken && item.oralMedsTaken.map(m => (<div key={m} className="flex items-center gap-1"><Pill size={12} className="text-gray-400" /> {m}</div>))}
+                              {item.insulinDoses && Object.entries(item.insulinDoses).map(([id, d]) => { const insName = item.snapshot?.prescription?.insulins?.find(i => i.id === id)?.name || 'Ins'; return <div key={id} className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-500"><Syringe size={12} /> {insName}: {d}u</div> })}
+>>>>>>> 88cc24f (Implement strict chronological ordering for logs)
                             </div>
                             {/* Clinical Info Button (On-Demand) */}
                             {getMedicationTags(insulin.name).length > 0 && (
@@ -1790,425 +2018,425 @@ export default function App() {
                         </div>
 
                         {/* Sliding Scale Accordion */}
-                        <div>
-                          {(insulin.slidingScale) ? (
-                            <div className="bg-stone-50 rounded-xl p-2.5 animate-in slide-in-from-top-2">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Sliding Scale Active</span>
-                                <button onClick={() => {
-                                  if (confirm("Disable sliding scale?")) {
+                    <div>
+                      {(insulin.slidingScale) ? (
+                        <div className="bg-stone-50 rounded-xl p-2.5 animate-in slide-in-from-top-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Sliding Scale Active</span>
+                            <button onClick={() => {
+                              if (confirm("Disable sliding scale?")) {
+                                const newInsulins = [...prescription.insulins];
+                                newInsulins[idx].slidingScale = [];
+                                setPrescription({ ...prescription, insulins: newInsulins });
+                              }
+                            }} className="text-[10px] text-red-500 font-bold hover:underline">Disable</button>
+                          </div>
+                          {insulin.slidingScale.map((rule, rIdx) => (
+                            <div key={rIdx} className="flex items-center gap-2 mb-2 text-xs">
+                              <div className="flex gap-1 items-center flex-1">
+                                <input
+                                  type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Min"
+                                  value={rule.min}
+                                  onChange={(e) => {
                                     const newInsulins = [...prescription.insulins];
-                                    newInsulins[idx].slidingScale = [];
+                                    newInsulins[idx].slidingScale[rIdx].min = e.target.value;
                                     setPrescription({ ...prescription, insulins: newInsulins });
-                                  }
-                                }} className="text-[10px] text-red-500 font-bold hover:underline">Disable</button>
+                                  }}
+                                />
+                                <span className="text-stone-300">-</span>
+                                <input
+                                  type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Max"
+                                  value={rule.max}
+                                  onChange={(e) => {
+                                    const newInsulins = [...prescription.insulins];
+                                    newInsulins[idx].slidingScale[rIdx].max = e.target.value;
+                                    setPrescription({ ...prescription, insulins: newInsulins });
+                                  }}
+                                />
                               </div>
-                              {insulin.slidingScale.map((rule, rIdx) => (
-                                <div key={rIdx} className="flex items-center gap-2 mb-2 text-xs">
-                                  <div className="flex gap-1 items-center flex-1">
-                                    <input
-                                      type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Min"
-                                      value={rule.min}
-                                      onChange={(e) => {
-                                        const newInsulins = [...prescription.insulins];
-                                        newInsulins[idx].slidingScale[rIdx].min = e.target.value;
-                                        setPrescription({ ...prescription, insulins: newInsulins });
-                                      }}
-                                    />
-                                    <span className="text-stone-300">-</span>
-                                    <input
-                                      type="number" className="w-12 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-600 outline-none focus:border-emerald-400" placeholder="Max"
-                                      value={rule.max}
-                                      onChange={(e) => {
-                                        const newInsulins = [...prescription.insulins];
-                                        newInsulins[idx].slidingScale[rIdx].max = e.target.value;
-                                        setPrescription({ ...prescription, insulins: newInsulins });
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="text-stone-300 mx-1">→</span>
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="number" className="w-10 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-800 outline-none focus:border-emerald-400" placeholder="U"
-                                      value={rule.dose}
-                                      onChange={(e) => {
-                                        const newInsulins = [...prescription.insulins];
-                                        newInsulins[idx].slidingScale[rIdx].dose = e.target.value;
-                                        setPrescription({ ...prescription, insulins: newInsulins });
-                                      }}
-                                    />
-                                    <span className="text-xs font-bold text-stone-400">u</span>
-                                  </div>
-                                  <button onClick={() => {
+                              <span className="text-stone-300 mx-1">→</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number" className="w-10 p-1 bg-white border border-stone-200 rounded text-center font-bold text-stone-800 outline-none focus:border-emerald-400" placeholder="U"
+                                  value={rule.dose}
+                                  onChange={(e) => {
                                     const newInsulins = [...prescription.insulins];
-                                    newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx);
+                                    newInsulins[idx].slidingScale[rIdx].dose = e.target.value;
                                     setPrescription({ ...prescription, insulins: newInsulins });
-                                  }} className="ml-2 text-stone-300 hover:text-red-400"><X size={14} /></button>
-                                </div>
-                              ))}
+                                  }}
+                                />
+                                <span className="text-xs font-bold text-stone-400">u</span>
+                              </div>
                               <button onClick={() => {
                                 const newInsulins = [...prescription.insulins];
-                                newInsulins[idx].slidingScale = [...(newInsulins[idx].slidingScale || []), { min: '', max: '', dose: '' }];
+                                newInsulins[idx].slidingScale = newInsulins[idx].slidingScale.filter((_, i) => i !== rIdx);
                                 setPrescription({ ...prescription, insulins: newInsulins });
-                              }} className="w-full py-2 text-[10px] font-bold text-stone-400 hover:text-emerald-600 border border-dashed border-stone-200 rounded-lg bg-white">+ Add Level</button>
+                              }} className="ml-2 text-stone-300 hover:text-red-400"><X size={14} /></button>
                             </div>
-                          ) : (
-                            <button onClick={() => {
-                              const newInsulins = [...prescription.insulins];
-                              newInsulins[idx].slidingScale = []; // Initialize empty container, forcing explicit add
-                              setPrescription({ ...prescription, insulins: newInsulins });
-                            }} className="text-xs font-bold text-stone-400 hover:text-emerald-600 flex items-center gap-1 transition-colors">
-                              <PlusCircle size={14} /> Enable Sliding Scale (Optional)
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-
-                    {prescription.oralMeds.map((med, idx) => (
-                      <div key={med.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            {med._displayContext === 'brand' && med._displayBrand ? (
-                              <>
-                                <div className="font-semibold text-stone-900 text-lg">{med._displayBrand}</div>
-                                <div className="text-xs text-stone-500 mt-0.5">Generic: {med.generic_name || med.name}</div>
-                              </>
-                            ) : (
-                              <div className="font-semibold text-stone-900 text-lg">{med.name}</div>
-                            )}
-                            <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
-                            {/* Clinical Tags for Oral Meds */}
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {/* Clinical Info Button (On-Demand) */}
-                              {getMedicationTags(med.name).length > 0 && (
-                                <button
-                                  onClick={() => setShowMedInfo(showMedInfo === med.id ? null : med.id)}
-                                  className="text-[10px] text-stone-400 hover:text-stone-600 flex items-center gap-1"
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="16" x2="12" y2="12" />
-                                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                                  </svg>
-                                  Clinical Info
-                                </button>
-                              )}
-                            </div>
-                            {/* Clinical Tags - Shown only when info button clicked */}
-                            {showMedInfo === med.id && (
-                              <div className="flex flex-wrap gap-1 mt-2 p-2 bg-stone-50 rounded-lg animate-in fade-in slide-in-from-top-1">
-                                {getMedicationTags(med.name).map(tag => (
-                                  <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
-                                    tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
-                                    }`}>
-                                    {tag.replace(/_/g, ' ')}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                          ))}
                           <button onClick={() => {
-                            if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
-                          }} className="text-stone-400 hover:text-red-500 p-1"><X size={16} /></button>
+                            const newInsulins = [...prescription.insulins];
+                            newInsulins[idx].slidingScale = [...(newInsulins[idx].slidingScale || []), { min: '', max: '', dose: '' }];
+                            setPrescription({ ...prescription, insulins: newInsulins });
+                          }} className="w-full py-2 text-[10px] font-bold text-stone-400 hover:text-emerald-600 border border-dashed border-stone-200 rounded-lg bg-white">+ Add Level</button>
                         </div>
+                      ) : (
+                        <button onClick={() => {
+                          const newInsulins = [...prescription.insulins];
+                          newInsulins[idx].slidingScale = []; // Initialize empty container, forcing explicit add
+                          setPrescription({ ...prescription, insulins: newInsulins });
+                        }} className="text-xs font-bold text-stone-400 hover:text-emerald-600 flex items-center gap-1 transition-colors">
+                          <PlusCircle size={14} /> Enable Sliding Scale (Optional)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
 
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
-                            <button key={t} onClick={() => {
-                              const newMeds = [...prescription.oralMeds];
-                              if (newMeds[idx].timings.includes(t)) {
-                                newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
-                              } else {
-                                newMeds[idx].timings = [...newMeds[idx].timings, t];
-                              }
-                              setPrescription({ ...prescription, oralMeds: newMeds });
-                            }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-700 text-white border-stone-700' : 'bg-transparent text-stone-600 border-stone-300 hover:border-stone-400'}`}>
-                              {t}
-                            </button>
+              {prescription.oralMeds.map((med, idx) => (
+                <div key={med.id} className="bg-white/80 p-5 rounded-lg border border-stone-200 border-l-2 border-l-stone-300 relative">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      {med._displayContext === 'brand' && med._displayBrand ? (
+                        <>
+                          <div className="font-semibold text-stone-900 text-lg">{med._displayBrand}</div>
+                          <div className="text-xs text-stone-500 mt-0.5">Generic: {med.generic_name || med.name}</div>
+                        </>
+                      ) : (
+                        <div className="font-semibold text-stone-900 text-lg">{med.name}</div>
+                      )}
+                      <span className="text-stone-400 text-sm ml-2 font-medium">{med.dose || 'Standard Dose'}</span>
+                      {/* Clinical Tags for Oral Meds */}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {/* Clinical Info Button (On-Demand) */}
+                        {getMedicationTags(med.name).length > 0 && (
+                          <button
+                            onClick={() => setShowMedInfo(showMedInfo === med.id ? null : med.id)}
+                            className="text-[10px] text-stone-400 hover:text-stone-600 flex items-center gap-1"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                            Clinical Info
+                          </button>
+                        )}
+                      </div>
+                      {/* Clinical Tags - Shown only when info button clicked */}
+                      {showMedInfo === med.id && (
+                        <div className="flex flex-wrap gap-1 mt-2 p-2 bg-stone-50 rounded-lg animate-in fade-in slide-in-from-top-1">
+                          {getMedicationTags(med.name).map(tag => (
+                            <span key={tag} className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${tag.includes('BENEFIT') || tag.includes('SAFE') || tag.includes('LOSS') || tag.includes('NEUTRAL') ? 'bg-emerald-50 text-emerald-600' :
+                              tag.includes('RISK') || tag.includes('CAUTION') || tag.includes('GAIN') ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-500'
+                              }`}>
+                              {tag.replace(/_/g, ' ')}
+                            </span>
                           ))}
                         </div>
-                        <div className="text-[10px] text-stone-400 font-medium pl-1">
-                          {med.name.toLowerCase().includes('metformin') ? 'Take after food' :
-                            med.name.toLowerCase().includes('acarbose') ? 'Take with first bite' :
-                              med.name.toLowerCase().includes('glimepiride') ? 'Take before food' :
-                                med.name.toLowerCase().includes('pantoprazole') ? 'Take empty stomach' : ''}
-                        </div>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                    <button onClick={() => {
+                      if (confirm(`Remove ${med.name}?`)) setPrescription(p => ({ ...p, oralMeds: p.oralMeds.filter(m => m.id !== med.id) }));
+                    }} className="text-stone-400 hover:text-red-500 p-1"><X size={16} /></button>
                   </div>
 
-                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-stone-900/10 mt-8 flex justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"><Save size={22} /> Save Prescription</button>}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
+                      <button key={t} onClick={() => {
+                        const newMeds = [...prescription.oralMeds];
+                        if (newMeds[idx].timings.includes(t)) {
+                          newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
+                        } else {
+                          newMeds[idx].timings = [...newMeds[idx].timings, t];
+                        }
+                        setPrescription({ ...prescription, oralMeds: newMeds });
+                      }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-700 text-white border-stone-700' : 'bg-transparent text-stone-600 border-stone-300 hover:border-stone-400'}`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-stone-400 font-medium pl-1">
+                    {med.name.toLowerCase().includes('metformin') ? 'Take after food' :
+                      med.name.toLowerCase().includes('acarbose') ? 'Take with first bite' :
+                        med.name.toLowerCase().includes('glimepiride') ? 'Take before food' :
+                          med.name.toLowerCase().includes('pantoprazole') ? 'Take empty stomach' : ''}
+                  </div>
                 </div>
+              ))}
+            </div>
 
-                {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
-                {safetyAlerts.length > 0 && (
-                  <div className="mt-8 mb-4">
-                    <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex items-center justify-between p-4 bg-stone-50/80 dark:bg-stone-900/40 rounded-2xl text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group border border-stone-100/50">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <ShieldAlert className="text-stone-400 group-hover:text-amber-500 transition-colors" size={20} />
-                          {safetyAlerts.some(a => a.type === 'danger') && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse ring-2 ring-stone-100" />}
-                        </div>
-                        <span className="font-bold text-sm uppercase tracking-wide">Clinical Safety Checks</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-stone-200 dark:bg-stone-800 text-stone-500 text-[10px] font-black px-2 py-0.5 rounded-full">{safetyAlerts.length} Alerts</span>
-                        {showAlertDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </div>
-                    </button>
+            {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-stone-900/10 mt-8 flex justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"><Save size={22} /> Save Prescription</button>}
+          </div>
 
-                    {showAlertDetails && (
-                      <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
-                        {safetyAlerts.map((alert, idx) => (
-                          <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.type === 'danger' ? 'bg-red-50/30 border-red-100 text-red-800' : 'bg-amber-50/30 border-amber-100 text-amber-800'}`}>
-                            {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-400" size={16} /> : <AlertTriangle className="flex-shrink-0 text-amber-400" size={16} />}
-                            <div>
-                              <p className="font-bold text-xs">{alert.message}</p>
+          {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
+          {safetyAlerts.length > 0 && (
+            <div className="mt-8 mb-4">
+              <button onClick={() => setShowAlertDetails(!showAlertDetails)} className="w-full flex items-center justify-between p-4 bg-stone-50/80 dark:bg-stone-900/40 rounded-2xl text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group border border-stone-100/50">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <ShieldAlert className="text-stone-400 group-hover:text-amber-500 transition-colors" size={20} />
+                    {safetyAlerts.some(a => a.type === 'danger') && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse ring-2 ring-stone-100" />}
+                  </div>
+                  <span className="font-bold text-sm uppercase tracking-wide">Clinical Safety Checks</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-stone-200 dark:bg-stone-800 text-stone-500 text-[10px] font-black px-2 py-0.5 rounded-full">{safetyAlerts.length} Alerts</span>
+                  {showAlertDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </div>
+              </button>
+
+              {showAlertDetails && (
+                <div className="mt-2 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
+                  {safetyAlerts.map((alert, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border flex items-start gap-3 ${alert.type === 'danger' ? 'bg-red-50/30 border-red-100 text-red-800' : 'bg-amber-50/30 border-amber-100 text-amber-800'}`}>
+                      {alert.type === 'danger' ? <ShieldAlert className="flex-shrink-0 text-red-400" size={16} /> : <AlertTriangle className="flex-shrink-0 text-amber-400" size={16} />}
+                      <div>
+                        <p className="font-bold text-xs">{alert.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        )
+          }
+
+        {
+          view === 'history' && (
+            <div className="px-6 pb-32 animate-in slide-in-from-right">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-serif font-bold flex items-center gap-2 text-stone-800"><BookOpen className="text-stone-800" /> History</h2>
+                <button onClick={generatePDF} className="bg-stone-900 text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"><Download size={14} /> PDF Report</button>
+              </div>
+
+              <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                <div className="bg-white p-2 rounded-xl border border-stone-100 flex items-center gap-2 min-w-[140px]">
+                  <Calendar size={14} className="text-stone-400" />
+                  <div className="flex flex-col">
+                    <label className="text-[8px] font-bold text-stone-400 uppercase">Start Date</label>
+                    <input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="text-xs font-bold outline-none text-stone-700 bg-transparent" />
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded-xl border border-stone-100 flex items-center gap-2 min-w-[140px]">
+                  <Calendar size={14} className="text-stone-400" />
+                  <div className="flex flex-col">
+                    <label className="text-[8px] font-bold text-stone-400 uppercase">End Date</label>
+                    <input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="text-xs font-bold outline-none text-stone-700 bg-transparent" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
+                <h3 className="font-bold text-stone-700 mb-4 text-sm uppercase tracking-widest flex items-center gap-2"><LayoutList size={16} /> Logbook History</h3>
+
+                {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).length === 0 ? (
+                  <div className="text-center py-10">
+                    <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4"><BookOpen className="text-stone-200" /></div>
+                    <p className="text-stone-400 font-bold">No entries found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).map(log => {
+                      const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
+                      const isLocked = !canEdit(log.timestamp);
+                      const isExpanded = expandedLogId === log.id;
+
+                      return (
+                        <div key={log.id} onClick={() => setExpandedLogId(isExpanded ? null : log.id)} className={`bg-stone-50 rounded-[32px] border border-stone-100 relative group animate-in slide-in-from-bottom-2 transition-all cursor-pointer ${isExpanded ? 'p-5 ring-2 ring-emerald-500/20 bg-white shadow-md' : 'p-4 hover:bg-stone-100'}`}>
+
+                          {/* SUMMARY VIEW (Always Visible) */}
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                              {/* Date Box */}
+                              <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl ${isExpanded ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-stone-500'} transition-colors`}>
+                                <span className="text-[10px] font-black uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</span>
+                                <span className="text-lg font-black leading-none">{dateObj.getDate()}</span>
+                              </div>
+
+                              {/* Main Value (Sugar) */}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  {log.hgt ? (
+                                    <span className="text-xl font-black text-stone-800">{log.hgt} <span className="text-xs font-bold text-stone-400">mg/dL</span></span>
+                                  ) : (
+                                    <span className="text-sm font-bold text-stone-400 italic">No glucose logged</span>
+                                  )}
+                                </div>
+                                <div className="text-xs font-bold text-stone-400 uppercase tracking-widest flex items-center gap-2">
+                                  {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  {log.mealStatus && <span>• {log.mealStatus}</span>}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Expansion Indicator */}
+                            <div className={`text-stone-300 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-emerald-500' : ''}`}>
+                              <ChevronDown size={20} />
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+
+                          {/* EXPANDED DETAILS (Hidden by default) */}
+                          {isExpanded && (
+                            <div className="mt-4 pt-4 border-t border-stone-100 space-y-2 animate-in fade-in slide-in-from-top-1">
+
+                              {/* Meds List */}
+                              {log.medsTaken && log.medsTaken.map(k => {
+                                const [id, time] = k.split('_');
+                                const med = prescription.oralMeds.find(m => m.id === id);
+                                return med ? (
+                                  <div key={k} className="flex items-center gap-3 text-xs text-stone-600 py-1">
+                                    <div className="w-6 flex justify-center"><Pill size={14} className="text-blue-400" /></div>
+                                    <span className="font-bold text-stone-700">{med.name}</span>
+                                    <span className="text-stone-400 text-[10px]">• {time}</span>
+                                  </div>
+                                ) : null;
+                              })}
+
+                              {/* Insulin List */}
+                              {log.insulinDoses && Object.entries(log.insulinDoses).map(([id, dose]) => {
+                                const ins = prescription.insulins.find(i => i.id === id);
+                                return ins ? (
+                                  <div key={id} className="flex items-center gap-3 text-xs text-stone-600 py-1">
+                                    <div className="w-6 flex justify-center"><Syringe size={14} className="text-emerald-500" /></div>
+                                    <span className="font-bold text-stone-700">{ins.name}</span>
+                                    <span className="bg-emerald-100 text-emerald-700 px-1.5 rounded text-[10px] font-black">{dose}u</span>
+                                  </div>
+                                ) : null;
+                              })}
+
+                              {/* Tags List - Concatenated */}
+                              {log.tags && log.tags.length > 0 && (
+                                <div className="flex items-center gap-3 text-xs text-stone-500 py-1">
+                                  <div className="w-6 flex justify-center"><Tag size={14} className="text-stone-300" /></div>
+                                  <span>{log.tags.map(t => `${TAG_EMOJIS[t] || ''} ${t}`).join(', ')}</span>
+                                </div>
+                              )}
+
+                              {/* Edit/Delete Controls (Bottom Row) */}
+                              {!isCaregiverMode && (
+                                <div className="flex gap-3 justify-end mt-2 pt-2">
+                                  {/* Strict Edit/Delete Window Rules */}
+                                  {/* Strict Edit/Delete Window Rules */}
+                                  {/* Edit Button: Active 0-30m, Disabled/Muted >30m */}
+                                  <button
+                                    disabled={!canEdit(log.timestamp)}
+                                    onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }}
+                                    className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canEdit(log.timestamp)
+                                      ? 'border-stone-200 text-stone-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50'
+                                      : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
+                                  >
+                                    <Edit3 size={12} /> Edit
+                                  </button>
+
+                                  {/* Delete Button: Disabled/Muted 0-30m, Active >30m */}
+                                  <button
+                                    disabled={!canDelete(log.timestamp)}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }}
+                                    className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canDelete(log.timestamp)
+                                      ? 'border-stone-200 text-stone-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50'
+                                      : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
+                                  >
+                                    <Trash2 size={12} /> Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                          }
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            )
-          }
+            </div>
+          )
+        }
 
-          {
-            view === 'history' && (
-              <div className="px-6 pb-32 animate-in slide-in-from-right">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-serif font-bold flex items-center gap-2 text-stone-800"><BookOpen className="text-stone-800" /> History</h2>
-                  <button onClick={generatePDF} className="bg-stone-900 text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg hover:scale-105 transition-transform"><Download size={14} /> PDF Report</button>
+        {/* NAV */}
+        {/* FLOATING FROSTED PILL NAVBAR */}
+        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/85 backdrop-blur-xl px-4 py-3 rounded-[32px] flex justify-evenly items-center z-[100] shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-white/50 ring-1 ring-white/40">
+          {[
+            { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-800', activeBg: 'bg-emerald-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+            { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-800', activeBg: 'bg-blue-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+            { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-800', activeBg: 'bg-amber-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
+            { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-800', activeBg: 'bg-purple-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' }
+          ].map(item => {
+            const isActive = view === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  triggerFeedback(hapticsEnabled, soundEnabled, 'light');
+                  setView(item.id);
+                }}
+                className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}
+              >
+                <div className={`w-14 h-14 rounded-[18px] flex items-center justify-center mb-1 transition-all shadow-sm backdrop-blur-sm border border-white/20 ${isActive ? item.activeBg + ' shadow-md scale-110' : item.inactiveBg}`}>
+                  <item.icon size={24} className={`transition-colors ${isActive ? item.activeColor : item.inactiveColor}`} />
                 </div>
+                <span className={`text-[11px] font-bold transition-colors ${isActive ? item.activeColor : 'text-stone-400'}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
 
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                  <div className="bg-white p-2 rounded-xl border border-stone-100 flex items-center gap-2 min-w-[140px]">
-                    <Calendar size={14} className="text-stone-400" />
-                    <div className="flex flex-col">
-                      <label className="text-[8px] font-bold text-stone-400 uppercase">Start Date</label>
-                      <input type="date" value={pdfStartDate} onChange={e => setPdfStartDate(e.target.value)} className="text-xs font-bold outline-none text-stone-700 bg-transparent" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-100 flex items-center gap-2 min-w-[140px]">
-                    <Calendar size={14} className="text-stone-400" />
-                    <div className="flex flex-col">
-                      <label className="text-[8px] font-bold text-stone-400 uppercase">End Date</label>
-                      <input type="date" value={pdfEndDate} onChange={e => setPdfEndDate(e.target.value)} className="text-xs font-bold outline-none text-stone-700 bg-transparent" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-[24px] shadow-sm mb-6">
-                  <h3 className="font-bold text-stone-700 mb-4 text-sm uppercase tracking-widest flex items-center gap-2"><LayoutList size={16} /> Logbook History</h3>
-
-                  {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).length === 0 ? (
-                    <div className="text-center py-10">
-                      <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4"><BookOpen className="text-stone-200" /></div>
-                      <p className="text-stone-400 font-bold">No entries found.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {fullHistory.filter(l => (!l.type || !['prescription_update', 'vital_update'].includes(l.type)) && (l.hgt || (l.medsTaken && l.medsTaken.length > 0) || (l.insulinDoses && Object.keys(l.insulinDoses).length > 0))).map(log => {
-                        const dateObj = log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000) : new Date(log.timestamp);
-                        const isLocked = !canEdit(log.timestamp);
-                        const isExpanded = expandedLogId === log.id;
-
-                        return (
-                          <div key={log.id} onClick={() => setExpandedLogId(isExpanded ? null : log.id)} className={`bg-stone-50 rounded-[32px] border border-stone-100 relative group animate-in slide-in-from-bottom-2 transition-all cursor-pointer ${isExpanded ? 'p-5 ring-2 ring-emerald-500/20 bg-white shadow-md' : 'p-4 hover:bg-stone-100'}`}>
-
-                            {/* SUMMARY VIEW (Always Visible) */}
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-4">
-                                {/* Date Box */}
-                                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl ${isExpanded ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-stone-500'} transition-colors`}>
-                                  <span className="text-[10px] font-black uppercase leading-none">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</span>
-                                  <span className="text-lg font-black leading-none">{dateObj.getDate()}</span>
-                                </div>
-
-                                {/* Main Value (Sugar) */}
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    {log.hgt ? (
-                                      <span className="text-xl font-black text-stone-800">{log.hgt} <span className="text-xs font-bold text-stone-400">mg/dL</span></span>
-                                    ) : (
-                                      <span className="text-sm font-bold text-stone-400 italic">No glucose logged</span>
-                                    )}
-                                  </div>
-                                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest flex items-center gap-2">
-                                    {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {log.mealStatus && <span>• {log.mealStatus}</span>}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Expansion Indicator */}
-                              <div className={`text-stone-300 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-emerald-500' : ''}`}>
-                                <ChevronDown size={20} />
-                              </div>
-                            </div>
-
-                            {/* EXPANDED DETAILS (Hidden by default) */}
-                            {isExpanded && (
-                              <div className="mt-4 pt-4 border-t border-stone-100 space-y-2 animate-in fade-in slide-in-from-top-1">
-
-                                {/* Meds List */}
-                                {log.medsTaken && log.medsTaken.map(k => {
-                                  const [id, time] = k.split('_');
-                                  const med = prescription.oralMeds.find(m => m.id === id);
-                                  return med ? (
-                                    <div key={k} className="flex items-center gap-3 text-xs text-stone-600 py-1">
-                                      <div className="w-6 flex justify-center"><Pill size={14} className="text-blue-400" /></div>
-                                      <span className="font-bold text-stone-700">{med.name}</span>
-                                      <span className="text-stone-400 text-[10px]">• {time}</span>
-                                    </div>
-                                  ) : null;
-                                })}
-
-                                {/* Insulin List */}
-                                {log.insulinDoses && Object.entries(log.insulinDoses).map(([id, dose]) => {
-                                  const ins = prescription.insulins.find(i => i.id === id);
-                                  return ins ? (
-                                    <div key={id} className="flex items-center gap-3 text-xs text-stone-600 py-1">
-                                      <div className="w-6 flex justify-center"><Syringe size={14} className="text-emerald-500" /></div>
-                                      <span className="font-bold text-stone-700">{ins.name}</span>
-                                      <span className="bg-emerald-100 text-emerald-700 px-1.5 rounded text-[10px] font-black">{dose}u</span>
-                                    </div>
-                                  ) : null;
-                                })}
-
-                                {/* Tags List - Concatenated */}
-                                {log.tags && log.tags.length > 0 && (
-                                  <div className="flex items-center gap-3 text-xs text-stone-500 py-1">
-                                    <div className="w-6 flex justify-center"><Tag size={14} className="text-stone-300" /></div>
-                                    <span>{log.tags.map(t => `${TAG_EMOJIS[t] || ''} ${t}`).join(', ')}</span>
-                                  </div>
-                                )}
-
-                                {/* Edit/Delete Controls (Bottom Row) */}
-                                {!isCaregiverMode && (
-                                  <div className="flex gap-3 justify-end mt-2 pt-2">
-                                    {/* Strict Edit/Delete Window Rules */}
-                                    {/* Strict Edit/Delete Window Rules */}
-                                    {/* Edit Button: Active 0-30m, Disabled/Muted >30m */}
-                                    <button
-                                      disabled={!canEdit(log.timestamp)}
-                                      onClick={(e) => { e.stopPropagation(); handleStartEdit(log); }}
-                                      className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canEdit(log.timestamp)
-                                        ? 'border-stone-200 text-stone-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50'
-                                        : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
-                                    >
-                                      <Edit3 size={12} /> Edit
-                                    </button>
-
-                                    {/* Delete Button: Disabled/Muted 0-30m, Active >30m */}
-                                    <button
-                                      disabled={!canDelete(log.timestamp)}
-                                      onClick={(e) => { e.stopPropagation(); handleDeleteEntry(log.id); }}
-                                      className={`px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 border rounded-lg ${canDelete(log.timestamp)
-                                        ? 'border-stone-200 text-stone-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50'
-                                        : 'border-transparent text-stone-300 opacity-50 cursor-not-allowed'}`}
-                                    >
-                                      <Trash2 size={12} /> Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                            }
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          }
-
-          {/* NAV */}
-          {/* FLOATING FROSTED PILL NAVBAR */}
-          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-white/80 dark:bg-stone-900/85 backdrop-blur-xl px-4 py-3 rounded-[32px] flex justify-evenly items-center z-[100] shadow-[0_12px_40px_rgba(0,0,0,0.2)] border border-white/50 ring-1 ring-white/40">
-            {[
-              { id: 'diary', icon: Edit3, label: 'Diary', activeColor: 'text-emerald-800', activeBg: 'bg-emerald-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
-              { id: 'prescription', icon: Stethoscope, label: 'Rx', activeColor: 'text-blue-800', activeBg: 'bg-blue-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
-              { id: 'history', icon: FileText, label: 'Log', activeColor: 'text-amber-800', activeBg: 'bg-amber-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' },
-              { id: 'profile', icon: User, label: 'Profile', activeColor: 'text-purple-800', activeBg: 'bg-purple-100', inactiveColor: 'text-stone-400', inactiveBg: 'bg-white/70 dark:bg-stone-800/70' }
-            ].map(item => {
-              const isActive = view === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    triggerFeedback(hapticsEnabled, soundEnabled, 'light');
-                    setView(item.id);
-                  }}
-                  className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}
-                >
-                  <div className={`w-14 h-14 rounded-[18px] flex items-center justify-center mb-1 transition-all shadow-sm backdrop-blur-sm border border-white/20 ${isActive ? item.activeBg + ' shadow-md scale-110' : item.inactiveBg}`}>
-                    <item.icon size={24} className={`transition-colors ${isActive ? item.activeColor : item.inactiveColor}`} />
-                  </div>
-                  <span className={`text-[11px] font-bold transition-colors ${isActive ? item.activeColor : 'text-stone-400'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {
+        {
+          expandedGraphData && (
             expandedGraphData && (
-              expandedGraphData && (
-                <Suspense fallback={null}>
-                  <ExpandedGraphModal
-                    {...expandedGraphData}
-                    fullHistory={fullHistory}
-                    onEdit={handleStartEditVital}
-                    onDelete={handleDeleteEntry}
-                    onClose={() => setExpandedGraphData(null)}
-                  />
-                </Suspense>
-              )
+              <Suspense fallback={null}>
+                <ExpandedGraphModal
+                  {...expandedGraphData}
+                  fullHistory={fullHistory}
+                  onEdit={handleStartEditVital}
+                  onDelete={handleDeleteEntry}
+                  onClose={() => setExpandedGraphData(null)}
+                />
+              </Suspense>
             )
-          }
+          )
+        }
 
-          <div className="absolute bottom-1 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24 pointer-events-none">
-            <p className="text-[10px] font-bold text-stone-400 dark:text-stone-600">© Dr Divyansh Kotak</p>
-            <p className="text-[9px] text-stone-300 dark:text-stone-700 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
-          </div>
-        </div >
-        {/* DELETE CONFIRMATION MODAL */}
-        {deleteConfirmState && (
-          <div className="fixed inset-0 z-[9999] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setDeleteConfirmState(null)}>
-            <div className="bg-white dark:bg-stone-800 rounded-[24px] p-6 max-w-sm w-full shadow-2xl border border-stone-100 dark:border-stone-700 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <Trash2 className="text-red-500" size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-center text-stone-800 dark:text-stone-100 mb-2">Delete Record?</h3>
-              <p className="text-stone-500 dark:text-stone-400 text-center mb-8 font-medium leading-relaxed">
-                {deleteConfirmState.message}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setDeleteConfirmState(null)}
-                  className="w-full py-4 rounded-xl font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => deleteConfirmState.onConfirm()}
-                  className="w-full py-4 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all active:scale-95"
-                >
-                  Delete
-                </button>
-              </div>
+        <div className="absolute bottom-1 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24 pointer-events-none">
+          <p className="text-[10px] font-bold text-stone-400 dark:text-stone-600">© Dr Divyansh Kotak</p>
+          <p className="text-[9px] text-stone-300 dark:text-stone-700 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
+        </div>
+      </div >
+        {/* DELETE CONFIRMATION MODAL */ }
+        { deleteConfirmState && (
+        <div className="fixed inset-0 z-[9999] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setDeleteConfirmState(null)}>
+          <div className="bg-white dark:bg-stone-800 rounded-[24px] p-6 max-w-sm w-full shadow-2xl border border-stone-100 dark:border-stone-700 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <Trash2 className="text-red-500" size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-center text-stone-800 dark:text-stone-100 mb-2">Delete Record?</h3>
+            <p className="text-stone-500 dark:text-stone-400 text-center mb-8 font-medium leading-relaxed">
+              {deleteConfirmState.message}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setDeleteConfirmState(null)}
+                className="w-full py-4 rounded-xl font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteConfirmState.onConfirm()}
+                className="w-full py-4 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all active:scale-95"
+              >
+                Delete
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </SecurityGuardian >
+  </SecurityGuardian >
     </GlobalRecoveryBoundary >
   );
 }
