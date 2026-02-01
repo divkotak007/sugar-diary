@@ -1218,9 +1218,9 @@ export default function App() {
 
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
-              <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
-              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
+              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setHighlightField('weight'); setView('profile'); }} />
+              <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
+              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
               {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setView('profile'); }} />}
             </div>
           </div>

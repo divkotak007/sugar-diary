@@ -1,8 +1,7 @@
 import React from 'react';
 
-const StatBadge = ({ emoji, label, value, unit, color, onClick, updated }) => (
-    <button onClick={() => { if (onClick) onClick(); }} className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative ${updated ? 'bg-white dark:bg-stone-800 border-blue-400 shadow-md ring-2 ring-blue-50 dark:ring-blue-900/40' : 'bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600'}`}>
-        {updated && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-stone-800 animate-pulse" />}
+const StatBadge = ({ emoji, label, value, unit, color, onClick }) => (
+    <button onClick={() => { if (onClick) onClick(); }} className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600`}>
         <span className="text-2xl mb-1 filter-none">{emoji}</span>
         <div className="font-bold text-stone-800 dark:text-stone-200 text-lg leading-none">{value || '-'}</div>
         <div className="text-xs text-stone-400 font-bold uppercase mt-1">{label}</div>
