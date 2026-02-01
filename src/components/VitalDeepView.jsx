@@ -44,7 +44,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         return relevantHistory
             .map(log => ({
                 id: log.id,
-                date: safeEpoch(log.timestamp).getTime(),
+                date: safeEpoch(log.timestamp),
                 value: parseFloat(log.snapshot.profile[vitalType])
             }))
             .sort((a, b) => a.date - b.date);
