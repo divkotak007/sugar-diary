@@ -794,10 +794,9 @@ export default function App() {
     if (!log) return;
 
     // 30 Minute Lock Protection
-    const ageSeconds = (Date.now() - getLogTimestamp(log.timestamp)) / 1000;
-    if (ageSeconds < 1800) {
-      return alert(`Action Locked: This entry is only ${Math.round(ageSeconds / 60)} minutes old. Deletion is disabled for the first 30 minutes to prevent accidental deletions.`);
-    }
+    // 30 Minute Lock Protection REMOVED per V2 Governance
+    // const ageSeconds = (Date.now() - getLogTimestamp(log.timestamp)) / 1000;
+    // if (ageSeconds < 1800) { ... }
 
     setDeleteConfirmState({
       id: id,
@@ -2196,6 +2195,19 @@ export default function App() {
               )
             )
           }
+
+          {/* VITAL DEEP VIEW OVERLAY */}
+          {activeVital && (
+            <Suspense fallback={null}>
+              <VitalDeepView
+                vitalType={activeVital}
+                fullHistory={fullHistory}
+                onClose={() => setActiveVital(null)}
+                onSave={handleSaveDeepVital}
+                onDelete={handleDeleteEntry}
+              />
+            </Suspense>
+          )}
 
           <div className="absolute bottom-1 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24 pointer-events-none">
             <p className="text-[10px] font-bold text-stone-400 dark:text-stone-600">© Dr Divyansh Kotak</p>

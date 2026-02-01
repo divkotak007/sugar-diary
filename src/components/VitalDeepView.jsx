@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Save, Trash2, Lock, Edit3, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 import { SimpleTrendGraph, GraphErrorBoundary } from './SimpleTrendGraph';
-import { canEdit, safeEpoch, toInputString, fromInputString, getEpoch } from '../utils/time';
+import { canEdit, safeEpoch, toInputString, fromInputString, getEpoch, isFuture } from '../utils/time';
 
 const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode }) => {
     // STRICT STATE ISOLATION: Managed entirely within this component
@@ -80,6 +80,10 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         }
 
         const timestamp = isManualEdit ? fromInputString(logTime) : getEpoch();
+
+        if (isFuture(timestamp)) {
+            return alert("Future entries are not allowed. Please check the date and time.");
+        }
 
         // Construct payload strictly for this vital
         const payload = {
@@ -243,16 +247,16 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => startEdit(log)}
-                                                        className="p-2 bg-stone-50 text-stone-400 rounded-xl hover:bg-blue-50 hover:text-blue-500 transition-colors"
+                                                        disabled={isLocked}
+                                                        className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-stone-50 text-stone-400 hover:bg-blue-50 hover:text-blue-500'}`}
                                                     >
-                                                        <Edit3 size={16} />
+                                                        {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
                                                     </button>
                                                     <button
                                                         onClick={() => onDelete(log.id)}
-                                                        disabled={isLocked}
-                                                        className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200' : 'bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500'}`}
+                                                        className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
                                                     >
-                                                        {isLocked ? <Lock size={16} /> : <Trash2 size={16} />}
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             )}
