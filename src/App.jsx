@@ -1241,7 +1241,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">{T('diary')}</div>
+                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Sugar-Diary</div>
                   <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
                   <div className="text-xs text-stone-400 flex items-center gap-2">
                     {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
@@ -1468,22 +1468,7 @@ export default function App() {
                   <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
                 </div>
 
-                <div className="space-y-3 mt-8">
-                  <button onClick={handleShareLink} className="w-full flex justify-between items-center p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-bold text-sm hover:bg-emerald-100 transition-all">
-                    <div className="flex items-center gap-2"><Lock size={16} /> {T('share')}</div>
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
 
-                {/* Danger Zone */}
-                <div className="mt-8 pt-6 border-t border-stone-100">
-                  <h4 className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Danger Zone</h4>
-                  <button onClick={handleSoftDelete} className="w-full flex justify-between items-center p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm hover:bg-red-100 transition-all">
-                    <div className="flex items-center gap-2"><Trash2 size={16} /> Delete Account</div>
-                    <ChevronRight size={16} />
-                  </button>
-                  <p className="text-[10px] text-stone-400 mt-2 px-2">Account can be recovered within 30 days of deletion.</p>
-                </div>
 
                 {/* Reminders Toggle - HIDDEN IN CAREGIVER MODE */}
                 {!isCaregiverMode && (
@@ -1931,7 +1916,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-stone-900/10 mt-8 flex justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"><Save size={22} /> Save Prescription</button>}
+                  {!isCaregiverMode && <button onClick={handleSavePrescription} className="w-full bg-stone-900 text-white py-5 rounded-full font-bold text-lg shadow-xl shadow-stone-900/10 mt-8 flex justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"><Save size={22} /> Save Prescription</button>}
                 </div>
 
                 {/* SUBTLE CLINICAL ADVISORY (BOTTOM PLACEMENT) */}
@@ -2180,7 +2165,7 @@ export default function App() {
             </Suspense>
           )}
 
-          <div className="absolute bottom-1 left-0 right-0 text-center opacity-40 hover:opacity-100 transition-opacity pb-24 pointer-events-none">
+          <div className="text-center opacity-40 hover:opacity-100 transition-opacity mt-8 pb-32 pointer-events-none w-full">
             <p className="text-[10px] font-bold text-stone-400 dark:text-stone-600">© Dr Divyansh Kotak</p>
             <p className="text-[9px] text-stone-300 dark:text-stone-700 mt-1">Disclaimer: Information provided is for logging purposes only and is not medical advice.</p>
           </div>

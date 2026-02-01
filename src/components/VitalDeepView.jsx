@@ -169,15 +169,15 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                             <div className="flex gap-3">
                                 {editingLogId ? (
                                     <>
-                                        <button onClick={handleSave} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
+                                        <button onClick={handleSave} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-full font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
                                             <Save size={20} /> Update
                                         </button>
-                                        <button onClick={cancelEdit} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-2xl font-bold hover:bg-stone-200 active:scale-95 transition-all">
+                                        <button onClick={cancelEdit} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-full font-bold hover:bg-stone-200 active:scale-95 transition-all">
                                             Cancel
                                         </button>
                                     </>
                                 ) : (
-                                    <button onClick={handleSave} className={`w-full bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
+                                    <button onClick={handleSave} className={`w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
                                         <Save size={20} /> Save Entry
                                     </button>
                                 )}
