@@ -670,132 +670,121 @@ export default function App() {
   const handleSaveProfile = async (e) => {
     if (e) e.preventDefault();
 
-    // 1. Validation
+    // 1. STRICT CHANGE DETECTION
+    const updatedParams = [];
+    const updatedProfile = { ...profile };
+    let hasStrictChanges = false;
+
+    // Helper to check valid change
+    const checkChange = (key, newValue) => {
+      if (newValue !== undefined && newValue !== '' && newValue !== profile[key]) {
+        updatedProfile[key] = newValue;
+        updatedParams.push(key);
+        hasStrictChanges = true;
+      }
+    };
+
+    if (vitalsForm.weight) checkChange('weight', vitalsForm.weight);
+    if (vitalsForm.hba1c) checkChange('hba1c', vitalsForm.hba1c);
+    if (vitalsForm.creatinine) checkChange('creatinine', vitalsForm.creatinine);
+    if (vitalsForm.dob) {
+      if (vitalsForm.dob !== profile.dob) {
+        updatedProfile.dob = vitalsForm.dob;
+        updatedProfile.age = calculateAge(vitalsForm.dob);
+        // Age/DOB normally doesn't trigger a 'vital_update' log unless explicitly tracking it, but we update profile
+        hasStrictChanges = true;
+      }
+    }
+    if (vitalsForm.gender) checkChange('gender', vitalsForm.gender);
+    if (vitalsForm.pregnancyStatus !== undefined) checkChange('pregnancyStatus', vitalsForm.pregnancyStatus);
+
+    // Instructions check
+    if (vitalsForm.instructions !== undefined && vitalsForm.instructions !== profile.instructions) {
+      updatedProfile.instructions = vitalsForm.instructions;
+      hasStrictChanges = true;
+    }
+
+    if (!hasStrictChanges) return alert("No changes detected to save.");
+
+    // 2. VALIDATION
     if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight");
     if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
 
-    let timestamp = (vitalsLogTime && isManualVitalsEdit) ? fromInputString(vitalsLogTime) : getEpoch();
-    if (editingLog && !isManualVitalsEdit) timestamp = safeEpoch(editingLog.timestamp);
+    // Timestamp Resolution
+    let timestamp;
+    if (editingLog && !isManualVitalsEdit) {
+      timestamp = safeEpoch(editingLog.timestamp);
+    } else {
+      timestamp = (vitalsLogTime && isManualVitalsEdit) ? fromInputString(vitalsLogTime) : getEpoch();
+    }
 
-    // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
+    if (!timestamp || isNaN(timestamp)) return alert("Invalid Date/Time selected.");
+    if (isFuture(timestamp)) return alert("Cannot log vitals in the future.");
+
+    // 3. DUPLICATE CHECK (1 Hour Rule for Vitals)
     if (!editingLog) {
-      const updatedParams = Object.keys(vitalsForm).filter(k => vitalsForm[k] !== '' && vitalsForm[k] !== undefined);
-
-      if (updatedParams.length > 0) {
-        const recent = fullHistory.find(l =>
+      const pertinentParams = updatedParams.filter(p => ['weight', 'hba1c', 'creatinine'].includes(p));
+      if (pertinentParams.length > 0) {
+        const recentVital = fullHistory.find(l =>
           l.type === 'vital_update' &&
-          l.updatedParams?.some(p => updatedParams.includes(p)) &&
+          l.updatedParams?.some(p => pertinentParams.includes(p)) &&
           Math.abs(timestamp - getLogTimestamp(l.timestamp)) < 3600000
         );
-        if (recent) {
-          const pNames = recent.updatedParams.filter(p => updatedParams.includes(p)).join(', ');
-          return alert(`Action Blocked: ${pNames.toUpperCase()} was already recorded in the last hour. Duplicate entries are prevented for safety.`);
+
+        if (recentVital) {
+          // Strict Block for Safety
+          return alert("Safety Notice: Vitals were updated less than 60 minutes ago. Please wait before adding a new entry to prevent duplicates.");
         }
       }
     }
 
-    // 3. Prep Data
-    // INDEPENDENCE & TIME VALIDATION
-    // timestamp already defined above at line 785
-    if (isNaN(timestamp.getTime())) return alert("Invalid Date/Time selected.");
-    if (timestamp > new Date()) return alert("Cannot log vitals in the future.");
-
-    // STRICT GLOBAL TIME SYNC (Phase 13)
-    let finalTimestamp = timestamp;
-    if (!editingLog && !isManualVitalsEdit) {
-      finalTimestamp = getEpoch(); // Force Device Time
-    }
-
-    // Module 1: Vital Duplicate Prevention (60 Minutes)
-    if (!editingLog) {
-      const recentVital = fullHistory.find(l =>
-        l.type === 'vital_update' &&
-        Math.abs(new Date() - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
-      );
-
-      if (recentVital) {
-        // Check if we are actually validating a vital field change?
-        // Simplification: If any vital update exists in last hour, warn user.
-        // This is strict but safe for "Prevent Duplicate Vital Entries".
-        alert("Safety Notice: Vitals were updated less than 60 minutes ago. Please wait before adding a new entry to prevent duplicates.");
-        return;
-      }
-    }
-
-    const updatedParams = [];
-    const updatedProfile = { ...profile };
-    let hasChanges = false;
-
-    // Check Weight
-    if (vitalsForm.weight && vitalsForm.weight !== profile.weight) {
-      updatedProfile.weight = vitalsForm.weight;
-      updatedParams.push('weight');
-      hasChanges = true;
-    }
-
-    // Check HbA1c
-    if (vitalsForm.hba1c && vitalsForm.hba1c !== profile.hba1c) {
-      updatedProfile.hba1c = vitalsForm.hba1c;
-      updatedParams.push('hba1c');
-      hasChanges = true;
-    }
-
-    // Check Creatinine
-    if (vitalsForm.creatinine && vitalsForm.creatinine !== profile.creatinine) {
-      updatedProfile.creatinine = vitalsForm.creatinine;
-      updatedParams.push('creatinine');
-      hasChanges = true;
-    }
-
-    if (vitalsForm.dob) { updatedProfile.dob = vitalsForm.dob; updatedProfile.age = calculateAge(vitalsForm.dob); hasChanges = true; }
-    if (vitalsForm.gender) { updatedProfile.gender = vitalsForm.gender; hasChanges = true; }
-    if (vitalsForm.instructions !== undefined && vitalsForm.instructions !== profile.instructions) {
-      updatedProfile.instructions = vitalsForm.instructions;
-      hasChanges = true;
-    }
-    if (vitalsForm.pregnancyStatus !== undefined && vitalsForm.pregnancyStatus !== profile.pregnancyStatus) {
-      updatedProfile.pregnancyStatus = vitalsForm.pregnancyStatus;
-      hasChanges = true;
-    }
-    // Comorbidities handled separately in state, but need to be saved if changed? 
-    // Actually comorbidities seem to be direct setProfile in the UI code, so we should merge current profile state for them.
-
-    if (!hasChanges && !vitalsForm.instructions) return alert("No changes detected to save.");
-
+    // 4. EXECUTION
     try {
       if (editingLog && editingLog.type === 'vital_update') {
-        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), {
+        const finalUpdate = {
           snapshot: { ...editingLog.snapshot, profile: updatedProfile },
-          updatedParams, // Only update the params that were actually touched in this edit
+          updatedParams,
           timestamp
-        });
+        };
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), finalUpdate);
         alert("Entry Updated.");
-        fetchLogs(true); // Refresh cache
       } else {
-        // Update profile docs
+        // Atomic Update Sequence
+        // A. Update Profile Doc
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: getEpoch() }, { merge: true });
 
-        // Add log entry ONLY for the changed vitals
-        if (updatedParams.length > 0 || hasChanges) {
+        // B. Add Change Log (Only if vital metrics changed)
+        // We log it even if only instructions changed? No, usually only for metrics. 
+        // Logic: if updatedParams has items, we log.
+        if (updatedParams.length > 0) {
           await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
             type: 'vital_update',
             snapshot: { profile: updatedProfile, prescription },
-            updatedParams, // STRICTLY USED for graph filtering
-            timestamp: finalTimestamp, // Use high-precision timestamp
+            updatedParams,
+            timestamp,
             tags: ['Vital Update', ...updatedParams]
           });
-          fetchLogs(true); // Refresh cache
+        } else {
+          alert("Profile Updated."); // Feedback for just instructions/DOB update without log
         }
-
       }
-      setProfile(updatedProfile);
-      setVitalsForm({}); // Clear form completely to prevent cross-contamination
+
+      // Force Refresh
+      await fetchLogs(true);
+      setProfile(updatedProfile); // Optimistic Update
+
+      // 5. RESET STATE (Atomic)
+      setVitalsForm({});
       setUnlockPersonal(false);
       setUnlockComorbidities(false);
-      setVitalsLogTime(getNow());
+      setVitalsLogTime(getNow()); // STRICT: Reset to Device Time
       setIsManualVitalsEdit(false);
       setEditingLog(null);
-    } catch (err) { alert("Save failed: " + err.message); }
+
+    } catch (err) {
+      console.error("Profile Save Error:", err);
+      alert("Save failed: " + err.message);
+    }
   };
 
   const handleDeleteEntry = async (id) => {
@@ -860,43 +849,61 @@ export default function App() {
   }, []);
 
   const handleSaveEntry = async () => {
-    const hasOralMeds = Object.keys(medsTaken).some(k => medsTaken[k]);
-    const hasInsulin = Object.keys(insulinDoses).length > 0;
+    // 1. PREPARE PAYLOAD
+    const safeHgt = hgt ? parseFloat(hgt) : null;
+    const safeMeds = Object.keys(medsTaken).filter(k => medsTaken[k]);
+    const safeInsulin = { ...insulinDoses };
+    const safeTags = [...contextTags];
+    const hasContext = safeTags.length > 0;
+    const hasOralMeds = safeMeds.length > 0;
+    const hasInsulin = Object.keys(safeInsulin).length > 0;
 
-    // Safety: Insulin requires Sugar
-    if (hasInsulin && (!hgt || parseInt(hgt) < 20)) {
+    // 2. STRICT VALIDATION
+    // A. Empty Payload Check
+    if (!safeHgt && !hasOralMeds && !hasInsulin && !hasContext) {
+      return alert("Empty Log: Please enter a Blood Sugar value, Medication, or Context tag before saving.");
+    }
+
+    // B. Numeric Safety
+    if (hgt && isNaN(safeHgt)) return alert("Invalid Blood Sugar Value");
+
+    // C. Safety Block: Insulin requires Sugar
+    if (hasInsulin && (!safeHgt || safeHgt < 20)) {
       return alert("Safety Block: Cannot log insulin without a valid blood sugar reading (> 20 mg/dL).");
     }
 
-    // Legacy duplicate checks removed to resolve ReferenceError
-    // STRICT: Timestamp Logic (UTC Epoch)
-    let timestamp = (isManualLogEdit && logTime) ? fromInputString(logTime) : getEpoch();
-    if (editingLog) {
-      if (isManualLogEdit && logTime) timestamp = fromInputString(logTime);
-      else timestamp = safeEpoch(editingLog.timestamp);
+    // D. Timestamp Logic (Atomic Resolution)
+    let timestamp;
+    if (editingLog && !isManualLogEdit) {
+      // Editing Mode (Preserve original unless manually overridden)
+      timestamp = safeEpoch(editingLog.timestamp);
+    } else {
+      // New Entry OR Editing with Manual Override
+      timestamp = (isManualLogEdit && logTime) ? fromInputString(logTime) : getEpoch();
     }
-    if (!timestamp) return alert("Invalid Log Time.");
+
+    if (!timestamp || isNaN(timestamp)) return alert("Invalid Log Time.");
     if (isFuture(timestamp)) return alert("Cannot log entries in the future.");
 
-    // GRANULAR DUPLICATE CHECKS
+
+    // E. Granular Duplicate Checks (New Entries Only)
+    // Legacy duplicate checks logic preserved but strictly ordered before DB calls
     if (!editingLog) {
-      // 1. Glucose Check (1 Hour Block)
-      if (hgt) {
+      // Glucose Check (1 Hour Block)
+      if (safeHgt) {
         const recentSugar = fullHistory.find(l =>
           !l.type && l.hgt &&
-          Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000
+          Math.abs(timestamp - getLogTimestamp(l.timestamp)) < 3600000
         );
         if (recentSugar) return alert("Action Blocked: Glucose was already logged in the last hour. Please wait before re-checking.");
       }
 
-      // 2. Medication Check (Same Day + Same Slot Block)
-      const medsToCheck = Object.keys(medsTaken).filter(k => medsTaken[k]);
-      if (medsToCheck.length > 0) {
-        const entryDateString = timestamp.toDateString();
-        const duplicateMed = medsToCheck.find(key => {
-          // Check if this specific med slot combination exists in history for TODAY
+      // Medication Check (Same Day + Same Slot Block)
+      if (hasOralMeds) {
+        const entryDateString = new Date(timestamp).toDateString();
+        const duplicateMed = safeMeds.find(key => {
           return fullHistory.some(l => {
-            const lDate = l.timestamp?.seconds ? new Date(l.timestamp.seconds * 1000) : new Date(l.timestamp);
+            const lDate = new Date(getLogTimestamp(l.timestamp));
             return (!l.type) && lDate.toDateString() === entryDateString && (l.medsTaken || []).includes(key);
           });
         });
@@ -908,51 +915,57 @@ export default function App() {
         }
       }
 
-      // 3. Insulin Check (60 Minute Block)
-      if (Object.keys(insulinDoses).length > 0) {
+      // Insulin Check (60 Minute Block)
+      if (hasInsulin) {
         const recentInsulin = fullHistory.find(l =>
           !l.type && l.insulinDoses && Object.keys(l.insulinDoses).length > 0 &&
-          Math.abs(timestamp - (l.timestamp?.seconds * 1000 || new Date(l.timestamp))) < 3600000
+          Math.abs(timestamp - getLogTimestamp(l.timestamp)) < 3600000
         );
         if (recentInsulin) return alert("Action Blocked: Insulin was already logged in the last hour. Please ensure at least 60 minutes between doses.");
       }
     }
 
-    // STRICT: Prevent Empty regular logs
-    const hasContext = contextTags.length > 0;
-
-    if (!hgt && !hasOralMeds && !hasInsulin && !hasContext) {
-      return alert("Empty Log: Please enter a Blood Sugar value, Medication, or Context tag before saving.");
-    }
-
+    // 3. EXECUTION
     const entryData = {
-      hgt: hgt ? parseFloat(hgt) : null,
+      hgt: safeHgt,
       mealStatus,
-      insulinDoses,
-      medsTaken: Object.keys(medsTaken).filter(k => medsTaken[k]),
-      tags: contextTags,
+      insulinDoses: safeInsulin,
+      medsTaken: safeMeds,
+      tags: safeTags,
       timestamp,
-      snapshot: { profile, prescription }
+      snapshot: { profile, prescription } // Snapshot for history
     };
 
     try {
       if (editingLog && !editingLog.type) {
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLog.id), entryData);
-        auditLogger.log(user.uid, 'DATA_UPDATE', { logId: editingLog.id, type: 'diary' }); // AUDIT
+        auditLogger.log(user.uid, 'DATA_UPDATE', { logId: editingLog.id, type: 'diary' });
         alert("Record Updated!");
-        fetchLogs(true); // Refresh list & cache
       } else {
         const ref = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), entryData);
-        auditLogger.log(user.uid, 'DATA_CREATE', { logId: ref.id, type: 'diary' }); // AUDIT
+        auditLogger.log(user.uid, 'DATA_CREATE', { logId: ref.id, type: 'diary' });
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
-        setTimeout(() => fetchLogs(true), 500); // Trigger refresh to update list & cache
       }
-      setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-      setLogTime(getNow()); // Reset to Live Device Time
-      setIsManualLogEdit(false);
-      setEditingLog(null);
-    } catch (err) { alert("Save failed: " + err.message); }
+
+      // Force refresh to ensure UI is in sync
+      await fetchLogs(true);
+    } catch (err) {
+      console.error("Save Error:", err);
+      alert("Save failed: " + err.message);
+      return; // Do not reset state on failure
+    }
+
+    // 4. RESET STATE (Atomic Reset)
+    // Only reachable if try block succeeds
+    setHgt('');
+    setInsulinDoses({});
+    setMedsTaken({});
+    setContextTags([]);
+    setLogTime(getNow()); // STRICT: Always reset to Live Device Time
+    setIsManualLogEdit(false);
+    setEditingLog(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleStartEdit = (log) => {
