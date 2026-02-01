@@ -2,11 +2,11 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 
 // Graph Component (Clickable, No Overflow)
-const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) => {
+const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, height = 100 }) => {
     if (!data || data.length < 2) return (
         <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer active:scale-95 transition-all">
             <div className="flex justify-between items-center mb-4"><span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span><span className="text-xs text-stone-300 font-bold">No Data</span></div>
-            <div className="h-24 bg-stone-50 rounded-xl flex items-center justify-center text-stone-300 text-xs font-bold">Add more entries</div>
+            <div className={`bg-stone-50 rounded-xl flex items-center justify-center text-stone-300 text-xs font-bold`} style={{ height: height - 40 }}>Add more entries</div>
         </div>
     );
 
@@ -14,7 +14,6 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick }) =>
     const visibleData = data.slice(-5);
 
     const padding = 10;
-    const height = 100;
     const width = 300; // Fixed width for viewBox
 
     const vals = visibleData.map(d => d.value);

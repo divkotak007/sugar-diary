@@ -24,15 +24,28 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
 
     // STRICT DATA FILTERING: Filter history locally to ensure zero cross-contamination
     const relevantHistory = useMemo(() => {
+        const uniqueIds = new Set();
         const sorted = [...fullHistory]
             .filter(log => {
-                if (log.type === 'vital_update') {
-                    return log.updatedParams && log.updatedParams.includes(vitalType);
+                // Issue 3: STRICT Cross-Logging Prevention
+                // If it has a type, it MUST be 'vital_update'
+                if (log.type) {
+                    if (log.type === 'vital_update') {
+                        return log.updatedParams && log.updatedParams.includes(vitalType);
+                    }
+                    return false; // Reject 'diary', 'medication', etc.
                 }
-                // Legacy fallback
+
+                // Legacy fallback (only for logs with NO type)
                 return log.snapshot?.profile?.[vitalType] !== undefined &&
                     log.snapshot.profile[vitalType] !== null &&
                     !isNaN(parseFloat(log.snapshot.profile[vitalType]));
+            })
+            .filter(log => {
+                // Issue 2: Deduplication
+                if (uniqueIds.has(log.id)) return false;
+                uniqueIds.add(log.id);
+                return true;
             })
             .sort((a, b) => safeEpoch(b.timestamp) - safeEpoch(a.timestamp));
 
@@ -171,12 +184,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                 {/* ORDER 2: VITAL SPECIFIC CHART */}
                 <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
                     <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-sm font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
-                                <SimpleTrendGraph data={[]} label="" unit="" color="" className="hidden" /> {/* Dummy to force import if needed, or just standard icon */}
-                                {config.emoji} Visual Trend
-                            </h3>
-                        </div>
+                        {/* Issue 4 & 1: No Section Header (Internal Header Used), Explicit Height */}
                         <GraphErrorBoundary>
                             <SimpleTrendGraph
                                 data={chartData}
@@ -185,7 +193,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                 color={config.color}
                                 normalRange={config.normalRange}
                                 onClick={() => { }} // No expansion needed inside deep view
-                                height={250}
+                                height={250} // Explicit Expanded Height
                             />
                         </GraphErrorBoundary>
                     </div>
