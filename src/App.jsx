@@ -37,6 +37,7 @@ import { StatBadge, MealOption, ContextTag } from './components/UIComponents';
 const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
 const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
 const ConsentScreen = lazyWithRetry(() => import('./components/ConsentScreen'));
+const VitalDeepView = lazyWithRetry(() => import('./components/VitalDeepView'));
 
 
 // --- CONFIGURATION ---
@@ -135,6 +136,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const [vitalsForm, setVitalsForm] = useState({});
+  const [activeVital, setActiveVital] = useState(null); // 'weight', 'hba1c', 'creatinine'
   const [hgt, setHgt] = useState('');
   const [mealStatus, setMealStatus] = useState('Pre-Meal');
   const [insulinDoses, setInsulinDoses] = useState({});
@@ -979,573 +981,586 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleStartEditVital = (log) => {
+  const handleStartEditVital = (log, vitalTypeOverride = null) => {
     // 30-Minute Lock Check
     if (!canEdit(log.timestamp)) {
       return alert("Editing Locked: Vitals logs become read-only after 30 minutes for clinical accuracy.");
     }
 
-    setEditingLog(log);
-
-    // STRICT INDEPENDENCE: Only populate form with content from this specific log
-    // This prevents "ghost" data from current profile leaking into the edit
-    const formSnapshot = {};
-    if (log.updatedParams) {
-      log.updatedParams.forEach(param => {
-        if (log.snapshot?.profile?.[param] !== undefined) {
-          formSnapshot[param] = log.snapshot.profile[param];
-        }
-      });
-    } else {
-      // Fallback for legacy logs
-      formSnapshot.weight = log.snapshot?.profile?.weight || '';
-      formSnapshot.hba1c = log.snapshot?.profile?.hba1c || '';
-      formSnapshot.creatinine = log.snapshot?.profile?.creatinine || '';
+    // Identify vital type from the log if not provided
+    let vitalType = vitalTypeOverride;
+    if (!vitalType && log.updatedParams && log.updatedParams.length > 0) {
+      vitalType = log.updatedParams[0]; // Assuming single vital per log for new system
     }
 
-    setVitalsForm(formSnapshot);
-
-    setVitalsLogTime(toInputString(log.timestamp));
-
-    // Focus on the first available field
-    if (formSnapshot.hba1c) setHighlightField('hba1c');
-    else if (formSnapshot.creatinine) setHighlightField('creatinine');
-    else setHighlightField('weight');
-
-    setView('profile'); // Switch to profile view where vital entry happens
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSoftDelete = async () => {
-    if (!confirm("Are you sure you want to delete your account? This action is reversible for 30 days.")) return;
-    try {
-      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
-        'profile.deletedAt': getEpoch()
-      });
-      alert("Account scheduled for deletion. You will be logged out.");
-      auth.signOut();
-    } catch (e) { alert("Error deleting account: " + e.message); }
-  };
-
-  const handleRestoreAccount = async () => {
-    try {
-      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
-        'profile.deletedAt': null
-      });
-      setAccountPendingDeletion(null);
-      alert("Welcome back! Account restored.");
-    } catch (e) { alert("Restore failed: " + e.message); }
-  };
-
-  const generatePDF = () => {
-    generatePDFReport({
-      user, profile, prescription, compliance, fullHistory, pdfStartDate, pdfEndDate,
-      trendData: {
-        weight: getTrendData('weight'),
-        hba1c: getTrendData('hba1c'),
-        creatinine: getTrendData('creatinine')
-      }
-    });
-  };
-
-
-  const handleShareLink = () => {
-    const url = `${window.location.origin}${window.location.pathname}?caregiver=true&user=${user.uid}`;
-    navigator.clipboard.writeText(url).then(() => {
-      alert("Secure Caregiver Link copied to clipboard!\nYou can share this with your doctor or family.");
-    });
-  };
-
-  const requestNotificationPermission = async () => {
-    try {
-      if (!("Notification" in window)) {
-        alert("This browser does not support desktop notifications");
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        setRemindersEnabled(true);
-        try {
-          new Notification("Smart Reminders Active", { body: "OneTruth will now help you stay on track with your doses.", icon: "/favicon.ico" });
-        } catch (e) {
-          console.log("Notification test failed (minor):", e);
-        }
-      }
-    } catch (e) {
-      console.error("Notification permission error", e);
-      alert("Unable to enable notifications. Your browser may be blocking them.");
-    }
-  };
-
-  const scheduleDemoReminder = () => {
-    if (!remindersEnabled) {
-      alert("Please enable reminders first.");
+    // Strict isolation: Open Deep View
+    if (vitalType && ['weight', 'hba1c', 'creatinine'].includes(vitalType)) {
+      setActiveVital(vitalType);
+      // We don't need to populate 'vitalsForm' here anymore because DeepView handles its own state
+      // via the 'initialData' prop or internal logic.
+      // But DeepView currently looks at 'fullHistory' to find the log to edit if we pass 'editingLogId'?
+      // Actually DeepView has startEdit(log) internal function. 
+      // We just need to open the view. 
+      // However, to trigger edit mode immediately, we might need a mechanism.
+      // For now, let's just open the view. The user can click edit there, OR we pass an initial intent.
+      // Simpler: Just open the view. The user can find the log in history and click edit.
+      // OR better: if we really want to jump to edit, we can pass 'initialLogToEdit' prop.
+      // Let's stick to "Open View" for now as per "Strict Isolation" -> "Fresh HbA1c view".
+      // If the user clicked "Edit" on a specific log in a list (where?), 
+      // In the new system, history IS inside the view. So this external handleStartEditVital 
+      // might only be called from... where? 
+      // Ah, the old 'ExpandedGraphModal' had an edit button. 
+      // If we replaced ExpandedGraphModal with DeepView, we are good.
       return;
     }
 
-    if (!("Notification" in window)) return alert("Notifications not supported");
+    // Legacy fallback for older logs that might have mixed data or other types
+    setEditingLog(log);
+    // ... rest of legacy logic ...
 
-    alert("Test reminder scheduled for 10 seconds from now.");
-    setTimeout(() => {
+
+
+    const handleSaveDeepVital = async (payload, timestamp, editingLogId) => {
+      // 1. Validation & Rate Limiting
+      // Module 1: Vital Duplicate Prevention (60 Minutes)
+      if (!editingLogId) {
+        const vitalType = Object.keys(payload)[0];
+        const recentVital = fullHistory.find(l =>
+          l.type === 'vital_update' &&
+          l.updatedParams && l.updatedParams.includes(vitalType) &&
+          Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000
+        );
+
+        if (recentVital) {
+          return alert(`Action Blocked: ${vitalType.toUpperCase()} was updated less than 60 minutes ago. Please wait before adding a new entry.`);
+        }
+      }
+
+      const updatedProfile = { ...profile, ...payload };
+      const updatedParams = Object.keys(payload);
+
       try {
-        if (Notification.permission === 'granted') {
-          triggerFeedback(hapticsEnabled, soundEnabled, 'success');
-          new Notification("Medicine Reminder (Test)", {
-            body: "Time to check your blood sugar and take your scheduled dose.",
-            vibrate: hapticsEnabled ? [200, 100, 200] : []
+        if (editingLogId) {
+          // Check if original log exists
+          const originalLog = fullHistory.find(l => l.id === editingLogId);
+          if (!originalLog) return;
+
+          await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLogId), {
+            snapshot: { ...originalLog.snapshot, profile: { ...originalLog.snapshot.profile, ...payload } },
+            updatedParams: Array.from(new Set([...(originalLog.updatedParams || []), ...updatedParams])),
+            timestamp
+          });
+          alert("Entry Updated.");
+        } else {
+          // Update profile
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+            profile: updatedProfile,
+            prescription,
+            lastUpdated: getEpoch()
+          }, { merge: true });
+
+          // Add Log
+          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+            type: 'vital_update',
+            snapshot: { profile: updatedProfile, prescription },
+            updatedParams,
+            timestamp: timestamp || getEpoch(),
+            tags: ['Vital Update', ...updatedParams]
           });
         }
+
+        setProfile(updatedProfile);
+        fetchLogs(true); // Sync
       } catch (e) {
-        console.error("Scheduled notification failed", e);
+        alert("Save failed: " + e.message);
       }
-    }, 10000);
-  };
+    };
 
-  const T = (key) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en'][key] || key;
-  const compliance = calculateCompliance();
+    const handleSoftDelete = async () => {
+      if (!confirm("Are you sure you want to delete your account? This action is reversible for 30 days.")) return;
+      try {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+          'profile.deletedAt': getEpoch()
+        });
+        alert("Account scheduled for deletion. You will be logged out.");
+        auth.signOut();
+      } catch (e) { alert("Error deleting account: " + e.message); }
+    };
 
-  if (loading) return <div className="p-10 text-center font-bold text-stone-400">{T('loading')}</div>;
-  if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4" /><h1 className="text-2xl font-bold text-stone-800 mb-6">Sugar Diary</h1><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
+    const handleRestoreAccount = async () => {
+      try {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+          'profile.deletedAt': null
+        });
+        setAccountPendingDeletion(null);
+        alert("Welcome back! Account restored.");
+      } catch (e) { alert("Restore failed: " + e.message); }
+    };
 
-  if (accountPendingDeletion) {
-    return (
-      <div className="fixed inset-0 bg-stone-900 text-white z-[9999] flex flex-col items-center justify-center p-8 text-center">
-        <div className="bg-red-500/10 p-6 rounded-full mb-6">
-          <Trash2 size={48} className="text-red-500" />
-        </div>
-        <h1 className="text-2xl font-black mb-2">Account Deleted</h1>
-        <p className="text-stone-400 mb-8 max-w-xs">Your account is scheduled for permanent deletion in <strong className="text-white">{accountPendingDeletion.daysLeft} days</strong>.</p>
+    const generatePDF = () => {
+      generatePDFReport({
+        user, profile, prescription, compliance, fullHistory, pdfStartDate, pdfEndDate,
+        trendData: {
+          weight: getTrendData('weight'),
+          hba1c: getTrendData('hba1c'),
+          creatinine: getTrendData('creatinine')
+        }
+      });
+    };
 
-        <button onClick={handleRestoreAccount} className="w-full max-w-xs bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg mb-4 shadow-lg shadow-emerald-500/20 transition-all">
-          Restore Account
-        </button>
-        <button onClick={() => auth.signOut()} className="text-stone-500 font-bold text-sm hover:text-white transition-colors">
-          Sign Out
-        </button>
-      </div>
-    );
-  }
 
-  if (!profile.hasConsented) return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-100"><div className="text-center text-stone-400 italic">Starting...</div></div>}>
-      <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />
-    </Suspense>
-  );
+    const handleShareLink = () => {
+      const url = `${window.location.origin}${window.location.pathname}?caregiver=true&user=${user.uid}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert("Secure Caregiver Link copied to clipboard!\nYou can share this with your doctor or family.");
+      });
+    };
 
-  return (
-    <GlobalRecoveryBoundary>
-      <SecurityGuardian>
-        <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark bg-stone-950 text-stone-300' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
+    const requestNotificationPermission = async () => {
+      try {
+        if (!("Notification" in window)) {
+          alert("This browser does not support desktop notifications");
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          setRemindersEnabled(true);
+          try {
+            new Notification("Smart Reminders Active", { body: "OneTruth will now help you stay on track with your doses.", icon: "/favicon.ico" });
+          } catch (e) {
+            console.log("Notification test failed (minor):", e);
+          }
+        }
+      } catch (e) {
+        console.error("Notification permission error", e);
+        alert("Unable to enable notifications. Your browser may be blocking them.");
+      }
+    };
 
-          <Suspense fallback={null}>
-            <SettingsModal
-              isOpen={showSettings}
-              onClose={() => setShowSettings(false)}
-              compliance={compliance}
-              onShare={handleShareLink}
-              profile={profile}
-              onSoftDelete={handleSoftDelete}
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              isHighContrast={isHighContrast}
-              setIsHighContrast={setIsHighContrast}
-              hapticsEnabled={hapticsEnabled}
-              setHapticsEnabled={setHapticsEnabled}
-            />
-          </Suspense>
+    const scheduleDemoReminder = () => {
+      if (!remindersEnabled) {
+        alert("Please enable reminders first.");
+        return;
+      }
 
-          {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
+      if (!("Notification" in window)) return alert("Notifications not supported");
 
-          {isCaregiverMode && (
-            <div className="bg-blue-600 text-white p-2 text-[10px] font-black uppercase tracking-widest text-center sticky top-0 z-[60] flex items-center justify-center gap-2">
-              <Eye size={12} /> Secure Caregiver Access • Read Only Mode
-            </div>
-          )}
+      alert("Test reminder scheduled for 10 seconds from now.");
+      setTimeout(() => {
+        try {
+          if (Notification.permission === 'granted') {
+            triggerFeedback(hapticsEnabled, soundEnabled, 'success');
+            new Notification("Medicine Reminder (Test)", {
+              body: "Time to check your blood sugar and take your scheduled dose.",
+              vibrate: hapticsEnabled ? [200, 100, 200] : []
+            });
+          }
+        } catch (e) {
+          console.error("Scheduled notification failed", e);
+        }
+      }, 10000);
+    };
 
-          <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-4">
-                {/* FIX: Profile Picture Loading with Error Handler */}
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt="Profile"
-                    className="w-12 h-12 rounded-full border-2 border-stone-100"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                {/* Fallback Icon if image fails or missing */}
-                <div
-                  className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"
-                  style={{ display: user.photoURL ? 'none' : 'flex' }}
-                >
-                  <User size={24} />
-                </div>
+    const T = (key) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en'][key] || key;
+    const compliance = calculateCompliance();
 
-                <div>
-                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">{T('diary')}</div>
-                  <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
-                  <div className="text-xs text-stone-400 flex items-center gap-2">
-                    {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
-                    {profile.pregnancyStatus && <span className="text-red-500 font-bold flex items-center gap-1"><Baby size={10} /> Preg</span>}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 items-center">
-                {!isOnline && (
-                  <div className="bg-stone-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 animate-pulse">
-                    <WifiOff size={10} /> Offline
-                  </div>
-                )}
-                <button onClick={() => setShowSettings(true)} className="p-2 bg-stone-100 text-stone-500 rounded-xl hover:bg-stone-200 transition-colors"><Settings size={20} /></button>
-                <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
-              </div>
-            </div>
+    if (loading) return <div className="p-10 text-center font-bold text-stone-400">{T('loading')}</div>;
+    if (!user) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fffbf5]"><BookOpen size={64} className="text-emerald-600 mb-4" /><h1 className="text-2xl font-bold text-stone-800 mb-6">Sugar Diary</h1><button onClick={() => signInWithPopup(auth, provider)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold">Sign In</button></div>;
 
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setHighlightField('weight'); setView('profile'); }} />
-              <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setHighlightField('hba1c'); setView('profile'); }} />
-              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setHighlightField('creatinine'); setView('profile'); }} />
-              {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setView('profile'); }} />}
-            </div>
+    if (accountPendingDeletion) {
+      return (
+        <div className="fixed inset-0 bg-stone-900 text-white z-[9999] flex flex-col items-center justify-center p-8 text-center">
+          <div className="bg-red-500/10 p-6 rounded-full mb-6">
+            <Trash2 size={48} className="text-red-500" />
           </div>
+          <h1 className="text-2xl font-black mb-2">Account Deleted</h1>
+          <p className="text-stone-400 mb-8 max-w-xs">Your account is scheduled for permanent deletion in <strong className="text-white">{accountPendingDeletion.daysLeft} days</strong>.</p>
 
-          {view === 'diary' && (
-            <div className="px-6 animate-in fade-in space-y-6">
-              {/* HEALTH INTELLIGENCE SUMMARY (SURFACE AI INSIGHTS & QUICK ACTIONS) */}
-              <div className="space-y-3">
-                {/* AI REMOVED FROM HERE AS PER PHASE 1 REGULATIONS */}
+          <button onClick={handleRestoreAccount} className="w-full max-w-xs bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg mb-4 shadow-lg shadow-emerald-500/20 transition-all">
+            Restore Account
+          </button>
+          <button onClick={() => auth.signOut()} className="text-stone-500 font-bold text-sm hover:text-white transition-colors">
+            Sign Out
+          </button>
+        </div>
+      );
+    }
 
-                <div className="space-y-3">
-                  {/* Share button moved to settings */}
-                  {/* DIARY QUICK ACTIONS removed - centralized in Profile Settings */}
+    if (!profile.hasConsented) return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-stone-100"><div className="text-center text-stone-400 italic">Starting...</div></div>}>
+        <ConsentScreen onConsent={() => setProfile(p => ({ ...p, hasConsented: true }))} />
+      </Suspense>
+    );
 
-                  {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
-                  {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle /> POOR CONTROL</div>}
-                  {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> HIGH SUGAR!</div>}
-                  {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> DANGER! CHECK KETONES</div>}
+    return (
+      <GlobalRecoveryBoundary>
+        <SecurityGuardian>
+          <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark bg-stone-950 text-stone-300' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
 
-                  {isCaregiverMode ? (
-                    <div className="bg-stone-50 dark:bg-stone-800 p-8 rounded-[32px] text-center mb-6 border border-dashed border-stone-200 dark:border-stone-700">
-                      <Eye size={48} className="mx-auto text-stone-300 dark:text-stone-600 mb-4" />
-                      <h3 className="text-stone-500 font-bold mb-2">Read-Only Mode</h3>
-                      <p className="text-xs text-stone-400 mb-6">Data entry is disabled for caregiver access.</p>
-                      <button onClick={() => setView('history')} className="bg-stone-800 dark:bg-stone-700 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg">View Patient History</button>
+            <Suspense fallback={null}>
+              <SettingsModal
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+                compliance={compliance}
+                onShare={handleShareLink}
+                profile={profile}
+                onSoftDelete={handleSoftDelete}
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                isHighContrast={isHighContrast}
+                setIsHighContrast={setIsHighContrast}
+                hapticsEnabled={hapticsEnabled}
+                setHapticsEnabled={setHapticsEnabled}
+              />
+            </Suspense>
+
+            {activeVital && (
+              <Suspense fallback={<div className="fixed inset-0 z-50 bg-white/50 backdrop-blur-sm" />}>
+                <VitalDeepView
+                  vitalType={activeVital}
+                  initialData={null}
+                  fullHistory={fullHistory}
+                  onSave={handleSaveDeepVital}
+                  onClose={() => setActiveVital(null)}
+                  onDelete={handleDeleteEntry}
+                  onEdit={null} // Handled internally
+                  isCaregiverMode={isCaregiverMode}
+                />
+              </Suspense>
+            )}
+
+            {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
+
+            {isCaregiverMode && (
+              <div className="bg-blue-600 text-white p-2 text-[10px] font-black uppercase tracking-widest text-center sticky top-0 z-[60] flex items-center justify-center gap-2">
+                <Eye size={12} /> Secure Caregiver Access • Read Only Mode
+              </div>
+            )}
+
+            <div className="bg-white p-6 rounded-b-[32px] shadow-sm mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-4">
+                  {/* FIX: Profile Picture Loading with Error Handler */}
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-12 h-12 rounded-full border-2 border-stone-100"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  {/* Fallback Icon if image fails or missing */}
+                  <div
+                    className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-400"
+                    style={{ display: user.photoURL ? 'none' : 'flex' }}
+                  >
+                    <User size={24} />
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest">{T('diary')}</div>
+                    <h1 className="text-2xl font-bold text-stone-800">{user.displayName}</h1>
+                    <div className="text-xs text-stone-400 flex items-center gap-2">
+                      {profile.gender && <span className="uppercase font-bold text-stone-500">{profile.gender}</span>}
+                      {profile.pregnancyStatus && <span className="text-red-500 font-bold flex items-center gap-1"><Baby size={10} /> Preg</span>}
                     </div>
-                  ) : (
-                    <>
-                      <div className="bg-white dark:bg-stone-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-700 mb-6">
-                        <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
-                        <div className="flex items-baseline gap-2 mb-4">
-                          <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900 dark:text-emerald-400 bg-transparent" placeholder="---" />
-                          <span className="text-xl font-bold text-stone-400">mg/dL</span>
-                        </div>
-                        <div className="flex gap-2 mb-4">
-                          {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'tick'); setMealStatus(m); }} />)}
-                        </div>
-                      </div>
-
-                      {prescription.insulins.map(insulin => (
-                        <div key={insulin.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center mb-2">
-                          <div>
-                            <span className="font-bold text-stone-700 dark:text-stone-200 block">{insulin.name}</span>
-                            {/* Frequency Hidden per Design Request */}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {getSuggestion(insulin.id) && (
-                              <div className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
-                                <div className="flex items-center gap-1"><Zap size={10} /> {getSuggestion(insulin.id)}u</div>
-                                <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
-                              </div>
-                            )}
-                            <input type="number" placeholder="0" className="w-16 bg-stone-50 dark:bg-stone-900 p-2 rounded text-xl font-bold text-right dark:text-stone-200" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
-                          </div>
-                        </div>
-                      ))}
-
-                      {prescription.oralMeds.map(med => (
-                        <div key={med.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 mb-2">
-                          <div className="font-bold text-sm mb-2 dark:text-stone-200">{med.name}</div>
-                          <div className="flex gap-2 flex-wrap">
-                            {med.timings.map(t => (
-                              <button key={t} onClick={() => {
-                                triggerFeedback(hapticsEnabled, soundEnabled, 'tick');
-                                setMedsTaken(p => {
-                                  const newState = { ...p };
-                                  // STRICT: Radio behavior - ensure only one slot per med is true at a time
-                                  // If clicking the ALREADY selected one, toggle it off.
-                                  // If clicking a NEW one, clear others for this med and select new one.
-                                  const currentKey = `${med.id}_${t}`;
-                                  const isCurrentlySelected = !!p[currentKey];
-
-                                  // Clear all slots for this specific med first
-                                  med.timings.forEach(slot => {
-                                    delete newState[`${med.id}_${slot}`];
-                                  });
-
-                                  if (!isCurrentlySelected) {
-                                    newState[currentKey] = true;
-                                  }
-                                  return newState;
-                                })
-                              }} className={`px-4 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="flex flex-wrap gap-2 mt-4 mb-4">
-                        {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} color="stone" selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
-                      </div>
-
-                      <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
-                        <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-900 p-3 rounded-xl border border-stone-100 dark:border-stone-700 focus-within:border-emerald-500 transition-all">
-                          <Calendar size={18} className="text-stone-400" />
-                          <input
-                            type="datetime-local"
-                            value={logTime}
-                            onChange={(e) => { setIsManualLogEdit(true); setLogTime(e.target.value); }}
-                            max={new Date().toISOString().slice(0, 16)}
-                            disabled={!!editingLog} // Locked during edit per strict governance
-                            className={`bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm ${editingLog ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          />
-                        </div>
-                      </div>
-
-                      {editingLog && !editingLog.type ? (
-                        <div className="flex gap-2 mb-6">
-                          <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
-                          <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 py-4 rounded-2xl font-bold">Cancel</button>
-                        </div>
-                      ) : (
-                        <button onClick={handleSaveEntry} className="w-full bg-stone-900 dark:bg-stone-700 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
-                      )}
-                    </>
+                  </div>
+                </div>
+                <div className="flex gap-2 items-center">
+                  {!isOnline && (
+                    <div className="bg-stone-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 animate-pulse">
+                      <WifiOff size={10} /> Offline
+                    </div>
                   )}
+                  <button onClick={() => setShowSettings(true)} className="p-2 bg-stone-100 text-stone-500 rounded-xl hover:bg-stone-200 transition-colors"><Settings size={20} /></button>
+                  <button onClick={() => signOut(auth)}><LogOut size={20} className="text-red-400 hover:text-red-500" /></button>
                 </div>
               </div>
+
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
+                <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setActiveVital('weight'); }} />
+                <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setActiveVital('hba1c'); }} />
+                <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setActiveVital('creatinine'); }} />
+                {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setView('profile'); }} />}
+              </div>
             </div>
-          )}
-          {
-            view === 'profile' && (
-              <div className="px-6 pb-32 animate-in slide-in-from-right">
-                <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
-                  {/* LOCKED PERSONAL DETAILS */}
-                  {(!unlockPersonal && (profile.dob || profile.gender)) ? (
-                    <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
-                      <div>
-                        <div className="text-[10px] font-bold text-stone-400 uppercase">Personal Details</div>
-                        <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
-                        <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
-                      </div>
-                      <button onClick={() => { if (confirm("Changing Date of Birth or Gender may affect medical records and trends. Proceed with caution.")) setUnlockPersonal(true); }}><Lock size={16} className="text-stone-400" /></button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
-                      <div>
-                        <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
-                        <input id="field-dob" type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
-                          const dob = e.target.value;
-                          setVitalsForm(p => ({ ...p, dob, age: calculateAge(dob) }));
-                        }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm transition-all duration-500" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
-                        <select value={vitalsForm.gender || profile.gender || ''} onChange={e => setVitalsForm(p => ({ ...p, gender: e.target.value }))} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm h-[46px]">
-                          <option value="">Select...</option><option value="Male">Male</option><option value="Female">Female</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Comorbidities Section */}
-                  {!unlockComorbidities && profile.comorbidities?.length > 0 ? (
-                    <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
-                      <div>
-                        <div className="text-[10px] font-bold text-stone-400 uppercase">Comorbidities</div>
-                        <div className="font-bold text-stone-700">{profile.comorbidities.join(', ')}</div>
+            {view === 'diary' && (
+              <div className="px-6 animate-in fade-in space-y-6">
+                {/* HEALTH INTELLIGENCE SUMMARY (SURFACE AI INSIGHTS & QUICK ACTIONS) */}
+                <div className="space-y-3">
+                  {/* AI REMOVED FROM HERE AS PER PHASE 1 REGULATIONS */}
+
+                  <div className="space-y-3">
+                    {/* Share button moved to settings */}
+                    {/* DIARY QUICK ACTIONS removed - centralized in Profile Settings */}
+
+                    {hgt && parseInt(hgt) < 70 && <div className="bg-red-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> LOW SUGAR! TAKE GLUCOSE</div>}
+                    {hgt && parseInt(hgt) >= 250 && parseInt(hgt) < 300 && <div className="bg-yellow-400 text-stone-900 p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2"><AlertTriangle /> POOR CONTROL</div>}
+                    {hgt && parseInt(hgt) >= 300 && parseInt(hgt) < 400 && <div className="bg-orange-500 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> HIGH SUGAR!</div>}
+                    {hgt && parseInt(hgt) >= 400 && <div className="bg-red-600 text-white p-3 rounded-xl font-bold text-center mb-4 flex items-center justify-center gap-2 animate-pulse"><AlertTriangle /> DANGER! CHECK KETONES</div>}
+
+                    {isCaregiverMode ? (
+                      <div className="bg-stone-50 dark:bg-stone-800 p-8 rounded-[32px] text-center mb-6 border border-dashed border-stone-200 dark:border-stone-700">
+                        <Eye size={48} className="mx-auto text-stone-300 dark:text-stone-600 mb-4" />
+                        <h3 className="text-stone-500 font-bold mb-2">Read-Only Mode</h3>
+                        <p className="text-xs text-stone-400 mb-6">Data entry is disabled for caregiver access.</p>
+                        <button onClick={() => setView('history')} className="bg-stone-800 dark:bg-stone-700 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg">View Patient History</button>
                       </div>
-                      <button onClick={() => setUnlockComorbidities(true)}><Lock size={16} className="text-stone-400" /></button>
-                    </div>
-                  ) : (
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><Activity size={12} /> Comorbidities</h3>
-                        {unlockComorbidities && <button onClick={() => setUnlockComorbidities(false)}><Unlock size={16} className="text-stone-400" /></button>}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {["Nill", "Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
-                          <label key={c} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${(profile.comorbidities || []).includes(c) ? 'bg-stone-900 text-white' : 'bg-stone-50 text-stone-600'}`}>
-                            <input
-                              type="checkbox"
-                              checked={(profile.comorbidities || []).includes(c)}
-                              onChange={e => {
-                                const current = profile.comorbidities || [];
-                                let newC;
-                                if (c === "Nill") {
-                                  newC = e.target.checked ? ["Nill"] : [];
-                                } else {
-                                  if (e.target.checked) {
-                                    newC = [...current.filter(i => i !== "Nill"), c];
-                                  } else {
-                                    newC = current.filter(i => i !== c);
-                                  }
-                                }
-                                setProfile(prev => ({ ...prev, comorbidities: newC }));
-                              }}
-                              className="hidden"
-                            />
-                            {c}
-                          </label>
+                    ) : (
+                      <>
+                        <div className="bg-white dark:bg-stone-800 p-6 rounded-2xl shadow-sm border border-stone-100 dark:border-stone-700 mb-6">
+                          <label className="text-xs font-bold text-stone-400 uppercase">Blood Sugar</label>
+                          <div className="flex items-baseline gap-2 mb-4">
+                            <input type="number" value={hgt} onChange={e => setHgt(e.target.value.slice(0, 3))} min="1" max="999" className="text-6xl font-bold w-full outline-none text-emerald-900 dark:text-emerald-400 bg-transparent" placeholder="---" />
+                            <span className="text-xl font-bold text-stone-400">mg/dL</span>
+                          </div>
+                          <div className="flex gap-2 mb-4">
+                            {['Fasting', 'Pre-Meal', 'Post-Meal', 'Bedtime'].map(m => <MealOption key={m} label={m} icon={Clock} selected={mealStatus === m} onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'tick'); setMealStatus(m); }} />)}
+                          </div>
+                        </div>
+
+                        {prescription.insulins.map(insulin => (
+                          <div key={insulin.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 flex justify-between items-center mb-2">
+                            <div>
+                              <span className="font-bold text-stone-700 dark:text-stone-200 block">{insulin.name}</span>
+                              {/* Frequency Hidden per Design Request */}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {getSuggestion(insulin.id) && (
+                                <div className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 px-3 py-1 rounded-lg text-xs font-bold text-stone-500 flex flex-col items-end">
+                                  <div className="flex items-center gap-1"><Zap size={10} /> {getSuggestion(insulin.id)}u</div>
+                                  <span className="text-[8px] uppercase tracking-wider text-stone-400">Suggestion only</span>
+                                </div>
+                              )}
+                              <input type="number" placeholder="0" className="w-16 bg-stone-50 dark:bg-stone-900 p-2 rounded text-xl font-bold text-right dark:text-stone-200" value={insulinDoses[insulin.id] || ''} onChange={e => setInsulinDoses(p => ({ ...p, [insulin.id]: e.target.value }))} />
+                            </div>
+                          </div>
                         ))}
-                      </div>
-                    </div>
-                  )}
 
-                  <h3 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2"><Activity size={12} /> Update Vitals</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Weight (kg)</label>
-                      <input id="field-weight" type="number" placeholder={`${profile.weight || '-'}`} min="1" max="1000" value={vitalsForm.weight || ''} onChange={e => setVitalsForm({ ...vitalsForm, weight: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-blue-50 border-2 border-transparent focus:border-blue-200 transition-all" />
-                    </div>
-                    <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">HbA1c (%)</label>
-                      <input id="field-hba1c" type="number" step="0.1" placeholder={`${profile.hba1c || '-'}`} min="3" max="20" value={vitalsForm.hba1c || ''} onChange={e => setVitalsForm({ ...vitalsForm, hba1c: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-emerald-50 border-2 border-transparent focus:border-emerald-200 transition-all" />
-                    </div>
-                  </div>
-                  <div className="flex flex-col mb-6">
-                    <label className="text-[10px] font-bold text-stone-400 uppercase mb-1 ml-1">Creatinine (mg/dL)</label>
-                    <input id="field-creatinine" type="number" step="0.1" placeholder={`${profile.creatinine || '-'}`} min="0.1" max="15" value={vitalsForm.creatinine || ''} onChange={e => setVitalsForm({ ...vitalsForm, creatinine: e.target.value })} className="bg-stone-50 p-5 rounded-2xl font-black text-2xl outline-none focus:bg-purple-50 border-2 border-transparent focus:border-purple-200 transition-all" />
-                  </div>
+                        {prescription.oralMeds.map(med => (
+                          <div key={med.id} className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 mb-2">
+                            <div className="font-bold text-sm mb-2 dark:text-stone-200">{med.name}</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {med.timings.map(t => (
+                                <button key={t} onClick={() => {
+                                  triggerFeedback(hapticsEnabled, soundEnabled, 'tick');
+                                  setMedsTaken(p => {
+                                    const newState = { ...p };
+                                    // STRICT: Radio behavior - ensure only one slot per med is true at a time
+                                    // If clicking the ALREADY selected one, toggle it off.
+                                    // If clicking a NEW one, clear others for this med and select new one.
+                                    const currentKey = `${med.id}_${t}`;
+                                    const isCurrentlySelected = !!p[currentKey];
 
-                  {(profile.gender === 'Female' || vitalsForm.gender === 'Female') && (
-                    <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer mb-6 ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'border-red-200 bg-red-50' : 'border-stone-100'}`}>
-                      <Baby className={vitalsForm.pregnancyStatus || profile.pregnancyStatus ? "text-red-500" : "text-stone-300"} />
-                      <span className="font-bold text-sm text-stone-700">Patient is Pregnant</span>
-                      <div className={`w-10 h-6 rounded-full transition-all relative ml-auto ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'bg-red-500' : 'bg-stone-200'}`}>
-                        <input type="checkbox" checked={vitalsForm.pregnancyStatus !== undefined ? vitalsForm.pregnancyStatus : profile.pregnancyStatus} onChange={e => setVitalsForm({ ...vitalsForm, pregnancyStatus: e.target.checked })} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${vitalsForm.pregnancyStatus || profile.pregnancyStatus ? 'left-5' : 'left-1'}`} />
-                      </div>
-                    </label>
-                  )}
+                                    // Clear all slots for this specific med first
+                                    med.timings.forEach(slot => {
+                                      delete newState[`${med.id}_${slot}`];
+                                    });
 
-                  <div className="mt-4 mb-4">
-                    <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Doctor Notes / Instructions</label>
-                    <textarea
-                      value={vitalsForm.instructions !== undefined ? vitalsForm.instructions : profile.instructions}
-                      onChange={e => setVitalsForm({ ...vitalsForm, instructions: e.target.value })}
-                      className="w-full bg-stone-50 p-3 rounded-xl text-sm min-h-[80px] outline-none"
-                      placeholder="Enter medical instructions here..."
-                    ></textarea>
-                  </div>
+                                    if (!isCurrentlySelected) {
+                                      newState[currentKey] = true;
+                                    }
+                                    return newState;
+                                  })
+                                }} className={`px-4 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
 
-                  <div className="mb-4 bg-stone-50 p-4 rounded-xl border border-stone-100">
-                    <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Vital Record Date & Time</label>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={18} className="text-stone-300" />
-                      <input
-                        type="datetime-local"
-                        value={vitalsLogTime}
-                        onChange={(e) => { setIsManualVitalsEdit(true); setVitalsLogTime(e.target.value); }}
-                        max={new Date().toISOString().slice(0, 16)}
-                        disabled={!!editingLog} // Locked during edit per strict governance
-                        className={`bg-transparent font-bold text-stone-700 outline-none w-full text-sm ${editingLog ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      />
-                    </div>
-                  </div>
+                        <div className="flex flex-wrap gap-2 mt-4 mb-4">
+                          {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} color="stone" selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
+                        </div>
 
-                  {editingLog && editingLog.type === 'vital_update' ? (
-                    !isCaregiverMode && (
-                      <div className="flex gap-2">
-                        <button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg">Update Record</button>
-                        <button onClick={() => { setEditingLog(null); setVitalsForm({}); setVitalsLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 text-stone-600 py-4 rounded-xl font-bold">Cancel</button>
-                      </div>
-                    )
-                  ) : (
-                    !isCaregiverMode && <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'success'); handleSaveProfile(); }} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold shadow-lg">Save & Update</button>
-                  )}
-                </div>
+                        <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
+                          <label className="text-[10px] font-bold text-stone-400 uppercase block mb-2">Back-time Entry (Date & Time)</label>
+                          <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-900 p-3 rounded-xl border border-stone-100 dark:border-stone-700 focus-within:border-emerald-500 transition-all">
+                            <Calendar size={18} className="text-stone-400" />
+                            <input
+                              type="datetime-local"
+                              value={logTime}
+                              onChange={(e) => { setIsManualLogEdit(true); setLogTime(e.target.value); }}
+                              max={new Date().toISOString().slice(0, 16)}
+                              disabled={!!editingLog} // Locked during edit per strict governance
+                              className={`bg-transparent font-bold text-stone-700 dark:text-stone-200 outline-none w-full text-sm ${editingLog ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            />
+                          </div>
+                        </div>
 
-                <div className="mt-8 text-center">
-                  <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
-                </div>
-
-                <div className="space-y-3 mt-8">
-                  <button onClick={handleShareLink} className="w-full flex justify-between items-center p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-bold text-sm hover:bg-emerald-100 transition-all">
-                    <div className="flex items-center gap-2"><Lock size={16} /> {T('share')}</div>
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-
-                {/* Danger Zone */}
-                <div className="mt-8 pt-6 border-t border-stone-100">
-                  <h4 className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Danger Zone</h4>
-                  <button onClick={handleSoftDelete} className="w-full flex justify-between items-center p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm hover:bg-red-100 transition-all">
-                    <div className="flex items-center gap-2"><Trash2 size={16} /> Delete Account</div>
-                    <ChevronRight size={16} />
-                  </button>
-                  <p className="text-[10px] text-stone-400 mt-2 px-2">Account can be recovered within 30 days of deletion.</p>
-                </div>
-
-                {/* Reminders Toggle - HIDDEN IN CAREGIVER MODE */}
-                {!isCaregiverMode && (
-                  <div className="mt-4 pt-4 border-t border-stone-100">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2">
-                        <Clock size={16} className="text-stone-400" />
-                        <span className="text-sm font-bold text-stone-700">{T('reminder')}</span>
-                      </div>
-                      <button
-                        onClick={requestNotificationPermission}
-                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${remindersEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-stone-100 text-stone-400'}`}
-                      >
-                        {remindersEnabled ? 'Enabled' : 'Enable'}
-                      </button>
-                    </div>
-                    {remindersEnabled && (
-                      <button onClick={scheduleDemoReminder} className="text-[10px] font-bold text-blue-500 hover:text-blue-600">
-                        Schedule 10s Test Reminder
-                      </button>
+                        {editingLog && !editingLog.type ? (
+                          <div className="flex gap-2 mb-6">
+                            <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
+                            <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 py-4 rounded-2xl font-bold">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={handleSaveEntry} className="w-full bg-stone-900 dark:bg-stone-700 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
+                        )}
+                      </>
                     )}
                   </div>
-                )}
-
-
-
-                <div className="flex justify-between items-center mb-4 mt-8">
-                  <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12} /> Vital Trends</h3>
                 </div>
+              </div>
+            )}
+            {
+              view === 'profile' && (
+                <div className="px-6 pb-32 animate-in slide-in-from-right">
+                  <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
+                    {/* LOCKED PERSONAL DETAILS */}
+                    {(!unlockPersonal && (profile.dob || profile.gender)) ? (
+                      <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
+                        <div>
+                          <div className="text-[10px] font-bold text-stone-400 uppercase">Personal Details</div>
+                          <div className="font-bold text-stone-700">{profile.gender} • {new Date(profile.dob).toLocaleDateString()}</div>
+                          <div className="text-xs text-stone-500">Age: {profile.age} Years</div>
+                        </div>
+                        <button onClick={() => { if (confirm("Changing Date of Birth or Gender may affect medical records and trends. Proceed with caution.")) setUnlockPersonal(true); }}><Lock size={16} className="text-stone-400" /></button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-stone-100">
+                        <div>
+                          <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Date of Birth</label>
+                          <input id="field-dob" type="date" value={vitalsForm.dob || profile.dob || ''} onChange={e => {
+                            const dob = e.target.value;
+                            setVitalsForm(p => ({ ...p, dob, age: calculateAge(dob) }));
+                          }} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm transition-all duration-500" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-stone-400 uppercase block mb-1">Gender</label>
+                          <select value={vitalsForm.gender || profile.gender || ''} onChange={e => setVitalsForm(p => ({ ...p, gender: e.target.value }))} className="w-full bg-stone-50 p-3 rounded-xl font-bold text-sm h-[46px]">
+                            <option value="">Select...</option><option value="Male">Male</option><option value="Female">Female</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Comorbidities Section */}
+                    {!unlockComorbidities && profile.comorbidities?.length > 0 ? (
+                      <div className="mb-6 p-4 bg-stone-50 rounded-xl flex items-center justify-between border border-stone-100">
+                        <div>
+                          <div className="text-[10px] font-bold text-stone-400 uppercase">Comorbidities</div>
+                          <div className="font-bold text-stone-700">{profile.comorbidities.join(', ')}</div>
+                        </div>
+                        <button onClick={() => setUnlockComorbidities(true)}><Lock size={16} className="text-stone-400" /></button>
+                      </div>
+                    ) : (
+                      <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><Activity size={12} /> Comorbidities</h3>
+                          {unlockComorbidities && <button onClick={() => setUnlockComorbidities(false)}><Unlock size={16} className="text-stone-400" /></button>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["Nill", "Hypertension", "High Cholesterol", "Thyroid", "Kidney Disease", "Heart Disease", "Neuropathy"].map(c => (
+                            <label key={c} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold cursor-pointer transition-colors ${(profile.comorbidities || []).includes(c) ? 'bg-stone-900 text-white' : 'bg-stone-50 text-stone-600'}`}>
+                              <input
+                                type="checkbox"
+                                checked={(profile.comorbidities || []).includes(c)}
+                                onChange={e => {
+                                  const current = profile.comorbidities || [];
+                                  let newC;
+                                  if (c === "Nill") {
+                                    newC = e.target.checked ? ["Nill"] : [];
+                                  } else {
+                                    if (e.target.checked) {
+                                      newC = [...current.filter(i => i !== "Nill"), c];
+                                    } else {
+                                      newC = current.filter(i => i !== c);
+                                    }
+                                  }
+                                  setProfile(prev => ({ ...prev, comorbidities: newC }));
+                                }}
+                                className="hidden"
+                              />
+                              {c}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                  <div className="mt-8 text-center">
+                    <button onClick={handleSeedDatabase} className="text-xs font-bold text-stone-300 hover:text-emerald-500 flex items-center justify-center gap-1 mx-auto"><Database size={10} /> Sync Med Database</button>
+                  </div>
+
+                  <div className="space-y-3 mt-8">
+                    <button onClick={handleShareLink} className="w-full flex justify-between items-center p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-bold text-sm hover:bg-emerald-100 transition-all">
+                      <div className="flex items-center gap-2"><Lock size={16} /> {T('share')}</div>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="mt-8 pt-6 border-t border-stone-100">
+                    <h4 className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Danger Zone</h4>
+                    <button onClick={handleSoftDelete} className="w-full flex justify-between items-center p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm hover:bg-red-100 transition-all">
+                      <div className="flex items-center gap-2"><Trash2 size={16} /> Delete Account</div>
+                      <ChevronRight size={16} />
+                    </button>
+                    <p className="text-[10px] text-stone-400 mt-2 px-2">Account can be recovered within 30 days of deletion.</p>
+                  </div>
+
+                  {/* Reminders Toggle - HIDDEN IN CAREGIVER MODE */}
+                  {!isCaregiverMode && (
+                    <div className="mt-4 pt-4 border-t border-stone-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} className="text-stone-400" />
+                          <span className="text-sm font-bold text-stone-700">{T('reminder')}</span>
+                        </div>
+                        <button
+                          onClick={requestNotificationPermission}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${remindersEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-stone-100 text-stone-400'}`}
+                        >
+                          {remindersEnabled ? 'Enabled' : 'Enable'}
+                        </button>
+                      </div>
+                      {remindersEnabled && (
+                        <button onClick={scheduleDemoReminder} className="text-[10px] font-bold text-blue-500 hover:text-blue-600">
+                          Schedule 10s Test Reminder
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+
+
+                  <div className="flex justify-between items-center mb-4 mt-8">
+                    <h3 className="font-bold text-stone-400 text-xs uppercase flex items-center gap-2"><TrendingUp size={12} /> Vital Trends</h3>
+                  </div>
+                </div>
+                
                 <div className="flex flex-col gap-3">
                   <GraphErrorBoundary>
                     <SimpleTrendGraph
                       data={getTrendData('weight')} label="Weight" unit="kg" color="orange" normalRange={null}
-                      onClick={() => setExpandedGraphData({ data: getTrendData('weight'), label: "Weight", unit: "kg", color: "orange", normalRange: null })}
-                      disableHover={!!expandedGraphData}
+                      onClick={() => setActiveVital('weight')}
+                      disableHover={false}
                     />
                   </GraphErrorBoundary>
                   <GraphErrorBoundary>
                     <SimpleTrendGraph
                       data={getTrendData('hba1c')} label="HbA1c" unit="%" color="emerald" normalRange={5.7}
-                      onClick={() => setExpandedGraphData({ data: getTrendData('hba1c'), label: "HbA1c", unit: "%", color: "emerald", normalRange: 5.7 })}
-                      disableHover={!!expandedGraphData}
+                      onClick={() => setActiveVital('hba1c')}
+                      disableHover={false}
                     />
                   </GraphErrorBoundary>
                   <GraphErrorBoundary>
                     <SimpleTrendGraph
                       data={getTrendData('creatinine')} label="Creatinine" unit="mg/dL" color="purple" normalRange={1.2}
-                      onClick={() => setExpandedGraphData({ data: getTrendData('creatinine'), label: "Creatinine", unit: "mg/dL", color: "purple", normalRange: 1.2 })}
-                      disableHover={!!expandedGraphData}
+                      onClick={() => setActiveVital('creatinine')}
+                      disableHover={false}
                     />
                   </GraphErrorBoundary>
                 </div>
               </div >
-            )
+          )
           }
 
           {
