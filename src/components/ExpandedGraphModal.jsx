@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, X, TrendingUp, ScrollText, ChevronDown, ChevronUp, Edit3, Trash2, Lock, BookOpen } from 'lucide-react';
 import { canEdit, safeEpoch } from '../utils/time';
+import { sortLogsDes, getLogTimestamp } from '../utils/timeUtils';
 
 const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fullHistory, onEdit, onDelete }) => {
     const containerRef = useRef(null);
@@ -64,11 +65,9 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
 
             // Strict Fallback: Do not show generic logs unless they are graph points
             return false;
-        })
-        .sort((a, b) => {
-            // Fix: Use strict safeEpoch for comparison
-            return safeEpoch(b.timestamp) - safeEpoch(a.timestamp);
         });
+
+    const sortedRelevantLogs = sortLogsDes(relevantLogs);
 
     return (
         <div className="fixed inset-0 z-[100] bg-white overflow-y-auto animate-in fade-in flex flex-col">
@@ -126,8 +125,8 @@ const ExpandedGraphModal = ({ data, color, label, unit, normalRange, onClose, fu
 
                 {isLogOpen && (
                     <div className="p-6 space-y-3 animate-in slide-in-from-bottom duration-300 max-h-[400px] overflow-y-auto">
-                        {relevantLogs.map((log) => {
-                            const dateObj = new Date(safeEpoch(log.timestamp));
+                        {sortedRelevantLogs.map((log) => {
+                            const dateObj = new Date(getLogTimestamp(log.timestamp));
                             const isLocked = !canEdit(log.timestamp);
 
                             return (
