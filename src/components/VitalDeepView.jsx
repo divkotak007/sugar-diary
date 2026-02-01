@@ -18,6 +18,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
             case 'weight': return { label: 'Weight', unit: 'kg', color: 'orange', min: 20, max: 300, step: 0.1, emoji: '⚖️' };
             case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 3.0, max: 18.0, step: 0.1, emoji: '🩸', normalRange: 5.7 };
             case 'creatinine': return { label: 'Creatinine', unit: 'mg/dL', color: 'purple', min: 0.2, max: 15.0, step: 0.01, emoji: '🧪', normalRange: 1.2 };
+            case 'est_hba1c': return { label: 'Est. HbA1c', unit: '%', color: 'stone', min: 0, max: 20, step: 0.1, emoji: '🎯', normalRange: 5.7 };
             default: return { label: 'Unknown', unit: '', color: 'stone', min: 0, max: 100, step: 1, emoji: '❓' };
         }
     }, [vitalType]);
@@ -133,7 +134,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
 
             <div className="p-6 space-y-8 pb-32">
                 {/* ORDER 1: VITAL UPDATE INPUT */}
-                {!isCaregiverMode && (
+                {(!isCaregiverMode && vitalType !== 'est_hba1c') && (
                     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                         <div className={`bg-white p-6 rounded-[32px] shadow-sm border border-${config.color}-100 ring-4 ring-transparent focus-within:ring-${config.color}-50 transition-all`}>
                             <div className="flex justify-between items-center mb-4">
@@ -203,75 +204,125 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                     </div>
                 </section>
 
-                {/* ORDER 3: VITAL LOG / HISTORY */}
-                <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
-                    <div className="bg-stone-50 rounded-[32px] border border-stone-100 overflow-hidden">
-                        <button
-                            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                            className="w-full flex justify-between items-center p-6 bg-stone-100/50 hover:bg-stone-100 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <ScrollText size={20} className="text-stone-400" />
-                                <span className="font-bold text-stone-600 uppercase text-xs tracking-widest">History Log</span>
-                                <span className="bg-stone-200 text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{relevantHistory.length}</span>
-                            </div>
-                            {isHistoryOpen ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-400" />}
-                        </button>
-
-                        {isHistoryOpen && (
-                            <div className="p-4 space-y-3">
-                                {relevantHistory.map(log => {
-                                    const dateObj = new Date(safeEpoch(log.timestamp));
-                                    const isLocked = !canEdit(log.timestamp);
-                                    const logVal = log.snapshot.profile[vitalType];
-
-                                    return (
-                                        <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-center min-w-[50px]">
-                                                    <div className="text-[10px] font-black text-stone-300 uppercase">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
-                                                    <div className="text-lg font-black text-stone-700 leading-none">{dateObj.getDate()}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-baseline gap-1">
-                                                        <span className={`text-xl font-black text-${config.color}-600`}>{logVal}</span>
-                                                        <span className="text-[10px] font-bold text-stone-400">{config.unit}</span>
-                                                    </div>
-                                                    <div className="text-[10px] text-stone-400 font-medium">
-                                                        {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {!isCaregiverMode && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => startEdit(log)}
-                                                        disabled={isLocked}
-                                                        className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-stone-50 text-stone-400 hover:bg-blue-50 hover:text-blue-500'}`}
-                                                    >
-                                                        {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => onDelete(log.id)}
-                                                        className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                                {relevantHistory.length === 0 && (
-                                    <div className="text-center py-8 text-stone-400 text-xs font-medium italic">
-                                        No history available yet.
+                {/* B3: Est. HbA1c INFO CARD */}
+                {vitalType === 'est_hba1c' && (
+                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+                        <div className="bg-white rounded-[32px] shadow-sm border border-stone-100 overflow-hidden">
+                            <details className="group open:pb-4" open>
+                                <summary className="flex justify-between items-center p-6 cursor-pointer list-none select-none active:bg-stone-50 transition-colors">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-stone-700">What is Estimated HbA1c?</h3>
+                                        <p className="text-xs text-stone-400 mt-1">Educational Information</p>
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </section>
+                                    <ChevronDown className="text-stone-400 group-open:rotate-180 transition-transform" />
+                                </summary>
+
+                                <div className="px-6 space-y-6">
+                                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                        <h4 className="text-xs font-black text-blue-500 uppercase tracking-widest mb-2">Meaning</h4>
+                                        <p className="text-sm text-stone-600 leading-relaxed">
+                                            Estimated HbA1c (eST HbA1c) is an approximate value derived from your blood sugar readings. It is <strong>not</strong> a lab test.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="text-xs font-black text-stone-400 uppercase tracking-widest mb-2">How it is estimated</h4>
+                                        <p className="text-sm text-stone-600 leading-relaxed">
+                                            Average blood sugar values over time are mathematically converted to an HbA1c-equivalent number for easier understanding using the GMI formula.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-stone-50 p-4 rounded-xl border border-dashed border-stone-200">
+                                        <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Formula (Reference Only)</h4>
+                                        <div className="font-mono text-center text-lg text-stone-500 mb-2">(28.7 × Avg Glucose) − 46.7</div>
+                                        <p className="text-[10px] text-stone-400 italic text-center">
+                                            Shown only for education. This formula is not editable and does not drive app calculations.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-start gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100 text-amber-800">
+                                        <div className="mt-1"><ScrollText size={16} /></div>
+                                        <div className="text-xs font-medium leading-relaxed">
+                                            <strong>Important Note:</strong> eST HbA1c is an estimate and may differ from lab-measured HbA1c. Always rely on lab reports for clinical decisions.
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </section>
+                )}
+
+                {/* ORDER 3: VITAL LOG / HISTORY */}
+                {vitalType !== 'est_hba1c' && (
+                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
+                        <div className="bg-stone-50 rounded-[32px] border border-stone-100 overflow-hidden">
+                            <button
+                                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                                className="w-full flex justify-between items-center p-6 bg-stone-100/50 hover:bg-stone-100 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <ScrollText size={20} className="text-stone-400" />
+                                    <span className="font-bold text-stone-600 uppercase text-xs tracking-widest">History Log</span>
+                                    <span className="bg-stone-200 text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{relevantHistory.length}</span>
+                                </div>
+                                {isHistoryOpen ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-400" />}
+                            </button>
+
+                            {isHistoryOpen && (
+                                <div className="p-4 space-y-3">
+                                    {relevantHistory.map(log => {
+                                        const dateObj = new Date(safeEpoch(log.timestamp));
+                                        const isLocked = !canEdit(log.timestamp);
+                                        const logVal = log.snapshot.profile[vitalType];
+
+                                        return (
+                                            <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-center min-w-[50px]">
+                                                        <div className="text-[10px] font-black text-stone-300 uppercase">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
+                                                        <div className="text-lg font-black text-stone-700 leading-none">{dateObj.getDate()}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className={`text-xl font-black text-${config.color}-600`}>{logVal}</span>
+                                                            <span className="text-[10px] font-bold text-stone-400">{config.unit}</span>
+                                                        </div>
+                                                        <div className="text-[10px] text-stone-400 font-medium">
+                                                            {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {!isCaregiverMode && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => startEdit(log)}
+                                                            disabled={isLocked}
+                                                            className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-stone-50 text-stone-400 hover:bg-blue-50 hover:text-blue-500'}`}
+                                                        >
+                                                            {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onDelete(log.id)}
+                                                            className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    {relevantHistory.length === 0 && (
+                                        <div className="text-center py-8 text-stone-400 text-xs font-medium italic">
+                                            No history available yet.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
             </div>
         </div>
     );

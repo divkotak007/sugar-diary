@@ -793,14 +793,11 @@ export default function App() {
     const log = fullHistory.find(l => l.id === id);
     if (!log) return;
 
-    // 30 Minute Lock Protection
     // 30 Minute Lock Protection REMOVED per V2 Governance
-    // const ageSeconds = (Date.now() - getLogTimestamp(log.timestamp)) / 1000;
-    // if (ageSeconds < 1800) { ... }
 
     setDeleteConfirmState({
       id: id,
-      message: "Are you sure you want to permanently delete this record? This action cannot be undone.",
+      message: "This action cannot be undone.",
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', id));
@@ -1294,7 +1291,7 @@ export default function App() {
               <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" updated={latestVitals.lastUpdated.includes('weight')} onClick={() => { setActiveVital('weight'); }} />
               <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" updated={latestVitals.lastUpdated.includes('hba1c')} onClick={() => { setActiveVital('hba1c'); }} />
               <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" updated={latestVitals.lastUpdated.includes('creatinine')} onClick={() => { setActiveVital('creatinine'); }} />
-              {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setView('profile'); }} />}
+              {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />}
             </div>
           </div>
 
@@ -2221,7 +2218,7 @@ export default function App() {
               <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <Trash2 className="text-red-500" size={24} />
               </div>
-              <h3 className="text-xl font-bold text-center text-stone-800 dark:text-stone-100 mb-2">Delete Record?</h3>
+              <h3 className="text-xl font-bold text-center text-stone-800 dark:text-stone-100 mb-2">Delete entry?</h3>
               <p className="text-stone-500 dark:text-stone-400 text-center mb-8 font-medium leading-relaxed">
                 {deleteConfirmState.message}
               </p>
