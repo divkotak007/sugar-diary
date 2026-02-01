@@ -261,6 +261,9 @@ export const FREQUENCY_RULES = {
     "SOS": ["As Needed"]
 };
 
+export const FREQUENCY_ORDER = ["Morning", "Afternoon", "Evening", "Night"];
+
+
 export const NORMAL_RANGES = {
     glucose: { fasting: { min: 70, max: 100, unit: "mg/dL" }, postMeal: { min: 70, max: 140, unit: "mg/dL" } },
     hba1c: { target: 7.0, preDiabetes: 5.7, unit: "%" },

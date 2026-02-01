@@ -16,9 +16,9 @@ const MealOption = ({ label, icon: Icon, selected, onClick }) => (
     </button>
 );
 
-const ContextTag = ({ label, icon: Icon, selected, onClick, color = 'stone' }) => (
-    <button onClick={onClick} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-200 text-[10px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 border-${color}-400 text-${color}-900 dark:text-${color}-400 shadow-sm scale-95 ring-1 ring-${color}-200 dark:ring-${color}-900` : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 hover:border-stone-300'}`}>
-        <Icon size={14} /> {label}
+const ContextTag = ({ label, selected, onClick, color = 'stone' }) => (
+    <button onClick={onClick} className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 text-[11px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 text-${color}-900 dark:text-${color}-400 shadow-none scale-95` : 'bg-stone-50 dark:bg-stone-800 text-stone-400 dark:text-stone-500 shadow-sm hover:bg-stone-100'}`}>
+        {label}
     </button>
 );
 

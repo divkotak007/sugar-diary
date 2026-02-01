@@ -16,7 +16,7 @@ import {
   AlertTriangle, CheckCircle2, Eye, Unlock, Baby, Volume2, VolumeX, LayoutList,
   Save, Syringe, ScrollText, ShieldAlert, RefreshCw, WifiOff, Tag
 } from 'lucide-react';
-import { getPrescriptionAlerts, FREQUENCY_RULES } from './data/medications.js';
+import { getPrescriptionAlerts, FREQUENCY_RULES, FREQUENCY_ORDER } from './data/medications.js';
 import { generateAllInsights } from './services/aiInsights.js';
 import { calculateGMI } from './utils/graphCalculations.js';
 import { sortLogsDes, getLogTimestamp } from './utils/timeUtils.js';
@@ -28,6 +28,7 @@ import { auditLogger } from './services/auditLogger.js';
 import { feedback } from './utils/feedback.js';
 import { performanceSentinel } from './utils/performanceSentinel.js';
 import { lazyWithRetry } from './utils/lazyWithRetry.js';
+import { syncRemindersWithPrescription, checkAndTriggerReminders, requestNotificationPermission as reqNotify } from './services/reminderService.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { generatePDFReport } from './services/pdfGenerator';
@@ -146,6 +147,7 @@ export default function App() {
   const [contextTags, setContextTags] = useState([]);
   const [fullHistory, setFullHistory] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
+  const [reminders, setReminders] = useState(() => JSON.parse(localStorage.getItem('start_reminders') || '[]'));
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
@@ -184,52 +186,19 @@ export default function App() {
 
 
   // Background Reminder Logic
+  // Background Reminder Logic (C3: Service-Based)
   useEffect(() => {
     if (!remindersEnabled || isCaregiverMode) return;
 
-    const checkReminders = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      const minute = now.getMinutes();
+    // Persist reminders to local storage whenever they change
+    localStorage.setItem('start_reminders', JSON.stringify(reminders));
 
-      // Simple mapping of rough times to medication slots
-      const slots = {
-        8: 'Morning',
-        9: 'Breakfast',
-        13: 'Lunch',
-        16: 'Afternoon',
-        19: 'Evening',
-        20: 'Dinner',
-        22: 'Bedtime',
-      };
+    const interval = setInterval(() => {
+      checkAndTriggerReminders(reminders);
+    }, 60000); // Check every minute
 
-      const currentSlot = slots[hour];
-      if (currentSlot && minute === 0) { // Only notify at the start of the hour
-        // Check if any med is due in this slot
-        const medsDue = [
-          ...prescription.oralMeds.filter(m => m.timings.includes(currentSlot)).map(m => m.name),
-          ...prescription.insulins.filter(i => {
-            const f = i.frequency;
-            if (f === 'Before Meals') return ['Breakfast', 'Lunch', 'Dinner'].includes(currentSlot);
-            if (f === 'Bedtime') return currentSlot === 'Bedtime';
-            if (f === 'Once Daily') return currentSlot === 'Morning';
-            return false;
-          }).map(i => i.name)
-        ];
-
-        if (medsDue.length > 0 && Notification.permission === 'granted') {
-          new Notification(`Medicine Due: ${currentSlot}`, {
-            body: `You have ${medsDue.length} meds scheduled: ${medsDue.slice(0, 2).join(', ')}${medsDue.length > 2 ? '...' : ''}`,
-            icon: '/favicon.ico'
-          });
-          triggerFeedback(hapticsEnabled, soundEnabled, 'medium');
-        }
-      }
-    };
-
-    const interval = setInterval(checkReminders, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, [remindersEnabled, prescription, hapticsEnabled, isCaregiverMode]);
+  }, [reminders, remindersEnabled, isCaregiverMode]);
 
   // Derive latest vitals dynamically from history for profile summary
   const getLatestVitals = () => {
@@ -829,6 +798,11 @@ export default function App() {
     try {
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: getEpoch() }, { merge: true });
       await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
+
+      // C3: Sync Reminders
+      const synced = syncRemindersWithPrescription(prescription, reminders);
+      setReminders(synced);
+
       alert("Prescription Saved."); setView('diary');
       fetchLogs(true); // Refresh cache
     } catch (err) { alert("Save failed: " + err.message); }
@@ -1933,13 +1907,13 @@ export default function App() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {['Morning', 'Afternoon', 'Evening', 'Night'].map(t => (
+                          {FREQUENCY_ORDER.map(t => (
                             <button key={t} onClick={() => {
                               const newMeds = [...prescription.oralMeds];
                               if (newMeds[idx].timings.includes(t)) {
                                 newMeds[idx].timings = newMeds[idx].timings.filter(x => x !== t);
                               } else {
-                                newMeds[idx].timings = [...newMeds[idx].timings, t];
+                                newMeds[idx].timings = [...newMeds[idx].timings, t].sort((a, b) => FREQUENCY_ORDER.indexOf(a) - FREQUENCY_ORDER.indexOf(b));
                               }
                               setPrescription({ ...prescription, oralMeds: newMeds });
                             }} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${med.timings.includes(t) ? 'bg-stone-700 text-white border-stone-700' : 'bg-transparent text-stone-600 border-stone-300 hover:border-stone-400'}`}>
