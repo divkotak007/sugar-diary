@@ -15,9 +15,9 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     // Vital Configuration
     const config = useMemo(() => {
         switch (vitalType) {
-            case 'weight': return { label: 'Weight', unit: 'kg', color: 'orange', min: 1, max: 1000, step: 0.1, emoji: '⚖️' };
-            case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 3, max: 20, step: 0.1, emoji: '🩸', normalRange: 5.7 };
-            case 'creatinine': return { label: 'Creatinine', unit: 'mg/dL', color: 'purple', min: 0.1, max: 15, step: 0.01, emoji: '🧪', normalRange: 1.2 };
+            case 'weight': return { label: 'Weight', unit: 'kg', color: 'orange', min: 20, max: 300, step: 0.1, emoji: '⚖️' };
+            case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 3.0, max: 18.0, step: 0.1, emoji: '🩸', normalRange: 5.7 };
+            case 'creatinine': return { label: 'Creatinine', unit: 'mg/dL', color: 'purple', min: 0.2, max: 15.0, step: 0.01, emoji: '🧪', normalRange: 1.2 };
             default: return { label: 'Unknown', unit: '', color: 'stone', min: 0, max: 100, step: 1, emoji: '❓' };
         }
     }, [vitalType]);
@@ -76,7 +76,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         if (!value) return alert("Please enter a value.");
         const numVal = parseFloat(value);
         if (isNaN(numVal) || numVal < config.min || numVal > config.max) {
-            return alert(`Invalid ${config.label}. Must be between ${config.min} and ${config.max}.`);
+            return alert(`Invalid ${config.label}. Must be between ${config.min} and ${config.max} ${config.unit}.`);
         }
 
         const timestamp = isManualEdit ? fromInputString(logTime) : getEpoch();
@@ -116,7 +116,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     };
 
     return (
-        <div className="fixed inset-0 z-[60] bg-[#fffbf5] animate-in slide-in-from-right duration-300 overflow-y-auto">
+        <div className="fixed inset-x-0 bottom-0 top-[10vh] z-[60] bg-[#fffbf5] rounded-t-[32px] shadow-2xl animate-in slide-in-from-bottom duration-500 overflow-y-auto border-t border-white/50">
             {/* HEADER */}
             <div className={`sticky top-0 z-20 bg-[#fffbf5]/80 backdrop-blur-md px-6 py-4 border-b border-${config.color}-100 flex justify-between items-center`}>
                 <div className="flex items-center gap-3">
