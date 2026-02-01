@@ -675,7 +675,8 @@ export default function App() {
     if (vitalsForm.weight && (parseFloat(vitalsForm.weight) < 1 || parseFloat(vitalsForm.weight) > 1000)) return alert("Invalid Weight");
     if (vitalsForm.hba1c && (parseFloat(vitalsForm.hba1c) < 3 || parseFloat(vitalsForm.hba1c) > 20)) return alert("Invalid HbA1c");
 
-    const timestamp = vitalsLogTime ? fromInputString(vitalsLogTime) : getEpoch();
+    let timestamp = (vitalsLogTime && isManualVitalsEdit) ? fromInputString(vitalsLogTime) : getEpoch();
+    if (editingLog && !isManualVitalsEdit) timestamp = safeEpoch(editingLog.timestamp);
 
     // 2. Duplicate Check (1 Hour Rule - Specific for vital type)
     if (!editingLog) {
@@ -702,15 +703,10 @@ export default function App() {
     if (isNaN(timestamp.getTime())) return alert("Invalid Date/Time selected.");
     if (timestamp > new Date()) return alert("Cannot log vitals in the future.");
 
-    // STRICT: Real-time Default Rule
-    // If not editing, and user hasn't explicitly set a back-time (vitalsLogTime matches simple slice), force NOW
-    // to ensure seconds/ms integrity.
+    // STRICT GLOBAL TIME SYNC (Phase 13)
     let finalTimestamp = timestamp;
-    if (!editingLog) {
-      const now = getEpoch();
-      const inputTime = fromInputString(vitalsLogTime);
-      // If input matches current minute (user didn't change it much) or is default, prefer high-precision NOW
-      if (Math.abs(now - inputTime) < 60000) finalTimestamp = now;
+    if (!editingLog && !isManualVitalsEdit) {
+      finalTimestamp = getEpoch(); // Force Device Time
     }
 
     // Module 1: Vital Duplicate Prevention (60 Minutes)
@@ -799,7 +795,8 @@ export default function App() {
       setVitalsForm({}); // Clear form completely to prevent cross-contamination
       setUnlockPersonal(false);
       setUnlockComorbidities(false);
-      setVitalsLogTime(new Date().toISOString().slice(0, 16));
+      setVitalsLogTime(getNow());
+      setIsManualVitalsEdit(false);
       setEditingLog(null);
     } catch (err) { alert("Save failed: " + err.message); }
   };
@@ -876,7 +873,11 @@ export default function App() {
 
     // Legacy duplicate checks removed to resolve ReferenceError
     // STRICT: Timestamp Logic (UTC Epoch)
-    const timestamp = logTime ? fromInputString(logTime) : getEpoch(); // Returns Number
+    let timestamp = (isManualLogEdit && logTime) ? fromInputString(logTime) : getEpoch();
+    if (editingLog) {
+      if (isManualLogEdit && logTime) timestamp = fromInputString(logTime);
+      else timestamp = safeEpoch(editingLog.timestamp);
+    }
     if (!timestamp) return alert("Invalid Log Time.");
     if (isFuture(timestamp)) return alert("Cannot log entries in the future.");
 
@@ -951,7 +952,8 @@ export default function App() {
         setTimeout(() => fetchLogs(true), 500); // Trigger refresh to update list & cache
       }
       setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]);
-      setLogTime(toInputString(getEpoch())); // Reset to current time
+      setLogTime(getNow()); // Reset to Live Device Time
+      setIsManualLogEdit(false);
       setEditingLog(null);
     } catch (err) { alert("Save failed: " + err.message); }
   };
@@ -971,7 +973,7 @@ export default function App() {
     setMedsTaken(medsMap);
     setContextTags(log.tags || []);
     // When editing, we treat it as a manual override so sync doesn't overwrite it
-    setIsManualLogEdit(true);
+    // Manual Flag NOT set here to preserve original timestamp precision unless user strictly touches input
     setLogTime(toInputString(log.timestamp));
     setView('diary');
     window.scrollTo({ top: 0, behavior: 'smooth' });
