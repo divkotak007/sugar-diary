@@ -58,6 +58,8 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         if (isSaving) return; // Prevent double click
 
         if (!value) return alert("Please enter a value.");
+        if (!config) return alert("System Error: Limit configuration missing.");
+
         let numVal = parseFloat(value);
 
         // C2: Limit Enforcement (Clamp on Save)
