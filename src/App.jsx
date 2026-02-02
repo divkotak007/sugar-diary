@@ -29,6 +29,7 @@ import { feedback } from './utils/feedback.js';
 import { performanceSentinel } from './utils/performanceSentinel.js';
 import { lazyWithRetry } from './utils/lazyWithRetry.js';
 import { syncRemindersWithPrescription, checkAndTriggerReminders, requestNotificationPermission as reqNotify } from './services/reminderService.js';
+import { useVitalLogs } from './hooks/useVitalLogs.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { generatePDFReport } from './services/pdfGenerator';
@@ -191,7 +192,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
 
 
-  // Background Reminder Logic
   // Background Reminder Logic (C3: Service-Based)
   useEffect(() => {
     if (!remindersEnabled || isCaregiverMode) return;
@@ -206,43 +206,53 @@ export default function App() {
     return () => clearInterval(interval);
   }, [reminders, remindersEnabled, isCaregiverMode]);
 
+  // V2: ISOLATED VITAL HOOKS (Group V)
+  // Each vital has its own listener, completely independent of the main log stream
+  const weightLogs = useVitalLogs(user?.uid, 'weight');
+  const hba1cLogs = useVitalLogs(user?.uid, 'hba1c');
+  const creatinineLogs = useVitalLogs(user?.uid, 'creatinine');
+  // Est. HbA1c is derived, so no log hook needed (it's read only or hybrid)
+
   // Derive latest vitals dynamically from history for profile summary
+  // V3 ADAPTER: Now aggregates from specific hooks + legacy fullHistory fallback (optional)
   const getLatestVitals = () => {
     const sorted = sortLogsDes(fullHistory);
 
     const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: [] };
 
     // Most recent non-null records for each
-    const w = sorted.find(l => l.snapshot?.profile?.weight)?.snapshot?.profile?.weight;
-    const a = sorted.find(l => l.snapshot?.profile?.hba1c)?.snapshot?.profile?.hba1c;
-    const c = sorted.find(l => l.snapshot?.profile?.creatinine)?.snapshot?.profile?.creatinine;
+  // V3 ADAPTER: Aggregates from specific hooks (Primary Source) + Legacy Fallback not needed for new view, but for profile card we use the hook data.
+  const getLatestVitals = () => {
+    // Hooks return logs sorted desc, so [0] is latest
+    const wLog = weightLogs.logs[0];
+    const aLog = hba1cLogs.logs[0];
+    const cLog = creatinineLogs.logs[0];
 
-    if (w) result.weight = w;
-    if (a) result.hba1c = a;
-    if (c) result.creatinine = c;
-
-    // Determine which were updated in the ABSOLUTE latest log for indicator
-    const latest = sorted.find(l => l.type === 'vital_update');
-    if (latest) {
-      result.lastUpdated = latest.updatedParams || [];
-    }
-
-    return result;
+    return {
+      weight: wLog ? wLog.value : (profile.weight || ''), // Fallback to profile only if no logs (for migration continuity if needed, or just empty)
+      hba1c: aLog ? aLog.value : (profile.hba1c || ''),
+      creatinine: cLog ? cLog.value : (profile.creatinine || ''),
+      lastUpdated: [
+         wLog ? 'weight' : null,
+         aLog ? 'hba1c' : null,
+         cLog ? 'creatinine' : null
+      ].filter(Boolean)
+    };
   };
 
   const latestVitals = getLatestVitals();
 
   useEffect(() => {
-    // Re-calculate alerts whenever profile (comorbidities/age etc.) or prescription changes
-    if (!profile || !prescription) return;
+    // Re-calculate alerts whenever logs or prescription changes
+    if (!prescription) return;
 
-    // Construct simplified profile object for alert check logic
+    // Use latest vital values for alerts
     const alertProfile = {
       isElderly: parseInt(profile.age) > 65,
-      hasRenalImpairment: (profile.comorbidities || []).includes('Kidney Disease') || (profile.creatinine && parseFloat(profile.creatinine) > 1.3),
+      hasRenalImpairment: (profile.comorbidities || []).includes('Kidney Disease') || (latestVitals.creatinine && parseFloat(latestVitals.creatinine) > 1.3),
       hasHeartFailure: (profile.comorbidities || []).includes('Heart Disease'),
       isPregnant: profile.pregnancyStatus,
-      hasObesity: profile.weight && parseFloat(profile.weight) > 100
+      hasObesity: latestVitals.weight && parseFloat(latestVitals.weight) > 100
     };
 
     const alerts = getPrescriptionAlerts(prescription, alertProfile);
