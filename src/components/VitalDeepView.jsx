@@ -16,7 +16,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     const config = useMemo(() => {
         switch (vitalType) {
             case 'weight': return { label: 'Weight', unit: 'kg', color: 'orange', min: 20, max: 300, step: 0.1, emoji: '⚖️' };
-            case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 3.0, max: 18.0, step: 0.1, emoji: '🩸', normalRange: 5.7 };
+            case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 4.0, max: 18.0, step: 0.1, emoji: '🩸', normalRange: 5.7 };
             case 'creatinine': return { label: 'Creatinine', unit: 'mg/dL', color: 'purple', min: 0.2, max: 15.0, step: 0.01, emoji: '🧪', normalRange: 1.2 };
             case 'est_hba1c': return { label: 'Est. HbA1c', unit: '%', color: 'stone', min: 0, max: 20, step: 0.1, emoji: '🎯', normalRange: 5.7 };
             default: return { label: 'Unknown', unit: '', color: 'stone', min: 0, max: 100, step: 1, emoji: '❓' };
@@ -137,7 +137,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                     {/* ORDER 1: VITAL UPDATE INPUT */}
                     {(!isCaregiverMode && vitalType !== 'est_hba1c') && (
                         <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                            <div className={`bg-white p-6 rounded-[32px] shadow-sm border border-${config.color}-100 ring-4 ring-transparent focus-within:ring-${config.color}-50 transition-all`}>
+                            <div className={`bg-white p-6 rounded-[24px] shadow-sm border border-${config.color}-100 transition-all`}>
                                 <div className="flex justify-between items-center mb-4">
                                     <label className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2">
                                         {editingLogId ? <Edit3 size={12} className="text-emerald-500" /> : <Calendar size={12} />}
@@ -187,23 +187,26 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                         </section>
                     )}
 
-                    {/* ORDER 2: VITAL SPECIFIC CHART */}
-                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100">
-                            {/* Issue 4 & 1: No Section Header (Internal Header Used), Explicit Height */}
-                            <GraphErrorBoundary>
-                                <SimpleTrendGraph
-                                    data={chartData}
-                                    label={config.label}
-                                    unit={config.unit}
-                                    color={config.color}
-                                    normalRange={config.normalRange}
-                                    onClick={() => { }} // No expansion needed inside deep view
-                                    height={250} // Explicit Expanded Height
-                                />
-                            </GraphErrorBoundary>
-                        </div>
-                    </section>
+                    {/* ORDER 2: VITAL SPECIFIC CHART (HIDDEN FOR EST_HBA1C) */}
+                    {vitalType !== 'est_hba1c' && (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+                            {/* B2: Scrollable Graph Container */}
+                            <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100">
+                                <GraphErrorBoundary>
+                                    <SimpleTrendGraph
+                                        data={chartData}
+                                        label={config.label}
+                                        unit={config.unit}
+                                        color={config.color}
+                                        normalRange={config.normalRange}
+                                        onClick={() => { }}
+                                        height={250}
+                                        scrollable={true}
+                                    />
+                                </GraphErrorBoundary>
+                            </div>
+                        </section>
+                    )}
 
                     {/* B3: Est. HbA1c INFO CARD */}
                     {vitalType === 'est_hba1c' && (

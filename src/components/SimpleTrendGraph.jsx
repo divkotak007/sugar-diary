@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 
 // Graph Component (Clickable, No Overflow)
-const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, height = 100 }) => {
+const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, height = 100, scrollable = false }) => {
     if (!data || data.length < 2) return (
         <div onClick={onClick} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm cursor-pointer active:scale-95 transition-all">
             <div className="flex justify-between items-center mb-4"><span className="text-xs font-bold uppercase text-stone-500 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span><span className="text-xs text-stone-300 font-bold">No Data</span></div>
@@ -10,11 +10,13 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, heig
         </div>
     );
 
-    // CORRECTION: Keep small chart to MAX 5 dots only
-    const visibleData = data.slice(-5);
+    // B2: Scrollable Graph Logic
+    const visibleData = scrollable ? data : data.slice(-5);
 
+    // Dynamic Width for scrollable mode (40px per point) or fixed 300px
     const padding = 10;
-    const width = 300; // Fixed width for viewBox
+    const computedWidth = scrollable ? Math.max(300, visibleData.length * 40) : 300;
+    const width = computedWidth;
 
     const vals = visibleData.map(d => d.value);
     let min = Math.min(...vals) * 0.98;
@@ -39,13 +41,13 @@ const SimpleTrendGraph = ({ data, label, unit, color, normalRange, onClick, heig
         <div
             onClick={onClick}
             aria-label={`${label} progress trend chart`}
-            className="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-all z-0"
+            className={`bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-sm relative cursor-pointer active:scale-95 transition-all z-0 ${scrollable ? 'overflow-x-auto' : 'overflow-hidden'}`}
         >
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 sticky left-0">
                 <span className="text-xs font-bold uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1"><TrendingUp size={12} /> {label} Trend</span>
                 <span className={`text-sm font-bold text-${color}-600 dark:text-${color}-400`}>{data[data.length - 1].value} {unit}</span>
             </div>
-            <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-hidden pointer-events-none">
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible pointer-events-none">
                 {/* Grid lines */}
                 {[0.2, 0.4, 0.6, 0.8].map(ratio => (
                     <line key={ratio} x1={padding} y1={height * ratio} x2={width - 2 * padding} y2={height * ratio} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4" />
