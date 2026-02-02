@@ -24,13 +24,13 @@ export const feedback = {
 
         try {
             switch (type) {
-                case 'selection': window.navigator.vibrate(5); break; // Very subtle for tiles
-                case 'light': window.navigator.vibrate(10); break;
-                case 'medium': window.navigator.vibrate(40); break;
-                case 'heavy': window.navigator.vibrate([50, 50, 50]); break;
-                case 'success': window.navigator.vibrate([10, 30, 10]); break;
-                case 'error': window.navigator.vibrate([50, 100, 50, 100]); break;
-                default: window.navigator.vibrate(20);
+                case 'selection': window.navigator.vibrate(2); break; // Ultra subtle (Tick)
+                case 'light': window.navigator.vibrate(5); break;     // Crisp click
+                case 'medium': window.navigator.vibrate(15); break;    // Solid tap
+                case 'heavy': window.navigator.vibrate([20, 30, 20]); break; // Force
+                case 'success': window.navigator.vibrate([5, 50]); break; // Quick double
+                case 'error': window.navigator.vibrate([40, 50, 40]); break;
+                default: window.navigator.vibrate(10);
             }
         } catch (e) { /* ignore */ }
     },

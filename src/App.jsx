@@ -802,14 +802,32 @@ export default function App() {
     }
 
     try {
-      // P3: Prescription-Driven Reminder Sync
+      // P3 & R: Prescription-Driven Reminder Sync
       const synced = syncRemindersWithPrescription(prescription, reminders);
+
+      // R2 Logic: Permission Policy
+      // Trigger request ONLY if we went from 0 reminders to >0 (Newly Created)
+      // AND permissions haven't been asked/granted yet.
+      const isFirstCreation = reminders.length === 0 && synced.length > 0;
+
+      if (isFirstCreation) {
+        try {
+          // Force enable on first creation
+          setRemindersEnabled(true);
+          // Request Permission
+          const granted = await requestNotificationPermission();
+          if (!granted) {
+            alert("Please enable notifications to receive medication reminders.");
+          }
+        } catch (e) { console.warn("Permission req failed", e); }
+      }
+
       setReminders(synced);
+
+      // Persist enabled state
+      if (isFirstCreation) localStorage.setItem('reminders_enabled', 'true');
       localStorage.setItem('start_reminders', JSON.stringify(synced));
 
-      if (remindersEnabled) {
-        reqNotify();
-      }
 
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
         profile,
@@ -1390,6 +1408,7 @@ export default function App() {
                                   if (!isCurrentlySelected) {
                                     newState[currentKey] = true;
                                   }
+                                  triggerFeedback(hapticsEnabled, soundEnabled, 'selection');
                                   return newState;
                                 })
                               }} className={`px-4 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${medsTaken[`${med.id}_${t}`] ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-500 text-emerald-800 dark:text-emerald-400' : 'bg-stone-50 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}>{t}</button>
@@ -1399,7 +1418,7 @@ export default function App() {
                       ))}
 
                       <div className="flex flex-wrap gap-2 mt-4 mb-4">
-                        {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} color="stone" selected={contextTags.includes(t)} onClick={() => { setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
+                        {Object.keys(TAG_EMOJIS).map(t => <ContextTag key={t} label={`${TAG_EMOJIS[t]} ${t}`} icon={Thermometer} color="stone" selected={contextTags.includes(t)} onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'selection'); setContextTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }} />)}
                       </div>
 
                       <div className="mb-6 bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700">
@@ -1419,11 +1438,11 @@ export default function App() {
 
                       {editingLog && !editingLog.type ? (
                         <div className="flex gap-2 mb-6">
-                          <button onClick={handleSaveEntry} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
-                          <button onClick={() => { setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 py-4 rounded-2xl font-bold">Cancel</button>
+                          <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'success'); handleSaveEntry(); }} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2"><Save /> Update Record</button>
+                          <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'light'); setEditingLog(null); setHgt(''); setInsulinDoses({}); setMedsTaken({}); setContextTags([]); setLogTime(new Date().toISOString().slice(0, 16)); }} className="flex-1 bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 py-4 rounded-2xl font-bold">Cancel</button>
                         </div>
                       ) : (
-                        <button onClick={handleSaveEntry} className="w-full bg-stone-900 dark:bg-stone-700 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
+                        <button onClick={() => { triggerFeedback(hapticsEnabled, soundEnabled, 'success'); handleSaveEntry(); }} className="w-full bg-stone-900 dark:bg-stone-700 text-white py-4 rounded-2xl font-bold shadow-lg flex justify-center gap-2 mb-6"><Save /> Save Entry</button>
                       )}
                     </>
                   )}

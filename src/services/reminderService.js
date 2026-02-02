@@ -31,22 +31,17 @@ export const syncRemindersWithPrescription = (prescription, existingReminders = 
     // Insulins
     (prescription.insulins || []).forEach(ins => {
         if (ins.frequency && REMINDER_MAPPING[ins.frequency]) {
-            // For simplicity in this version, we map single-frequency insulins to their default time.
-            // If multi-dose (e.g. Twice Daily), REMINDER_MAPPING should handle it or we iterate.
-            // Looking at REMINDER_MAPPING, "Twice Daily" -> ["Morning", "Evening"].
-            // Wait, REMINDER_MAPPING values are OBJECTS { hour: 8, minute: 0 }. 
-            // We need to check if FREQUENCY_RULES has the mapping to timings first?
-            // Actually `data/medications.js` has FREQUENCY_RULES. 
-            // Let's assume input frequency maps to text labels in FREQUENCY_RULES, then to REMINDER_MAPPING.
-
-            // BUT, `ins.frequency` is likely string "Twice Daily".
-            // We need to know which actual times that implies.
-            // Let's use a safe fallback:
-
-            const timings = (typeof FREQUENCY_RULES !== 'undefined' && FREQUENCY_RULES[ins.frequency])
-                ? FREQUENCY_RULES[ins.frequency]
-                : [ins.frequency]; // Fallback if it's a direct timing like "Bedtime"
-
+            // Direct mapping
+            potentialReminders.push({
+                type: 'insulin',
+                sourceId: ins.id,
+                name: ins.name,
+                timingLabel: ins.frequency,
+                defaultTime: REMINDER_MAPPING[ins.frequency]
+            });
+        } else if (typeof FREQUENCY_RULES !== 'undefined' && FREQUENCY_RULES[ins.frequency]) {
+            // Rule based mapping
+            const timings = FREQUENCY_RULES[ins.frequency];
             timings.forEach(t => {
                 if (REMINDER_MAPPING[t]) {
                     potentialReminders.push({
@@ -61,31 +56,35 @@ export const syncRemindersWithPrescription = (prescription, existingReminders = 
         }
     });
 
-    // 2. Reconcile with existing
-    const syncedReminders = potentialReminders.map(pot => {
-        // Construct unique ID for this reminder slot
-        const reminderId = `${pot.sourceId}_${pot.timingLabel}`;
+    // 2. Reconcile with existing (STRICT ORPHAN CLEANUP)
+    // Only reminders matching generated IDs are kept. User override on time is preserved.
 
-        // Find existing to preserve user override
-        const existing = existingReminders.find(r => r.id === reminderId);
+    // Map existing by ID for fast lookup
+    const existingMap = new Map(existingReminders.map(r => [r.id, r]));
+
+    const syncedReminders = potentialReminders.map(pot => {
+        const reminderId = `${pot.sourceId}_${pot.timingLabel}`;
+        const existing = existingMap.get(reminderId);
 
         if (existing) {
+            // Update label, Keep time
             return {
                 ...existing,
-                label: `Take ${pot.name}`, // Update label in case name changed
-                // Time is NOT updated if it exists (preserves override)
+                label: `Take ${pot.name}`,
+                medId: pot.sourceId
             };
         } else {
-            // Create new
+            // Create New
             const d = new Date();
             d.setHours(pot.defaultTime.hour, pot.defaultTime.minute, 0, 0);
             return {
                 id: reminderId,
                 label: `Take ${pot.name}`,
-                time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // HH:mm
+                time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
                 enabled: true,
                 medId: pot.sourceId,
-                timingLabel: pot.timingLabel
+                timingLabel: pot.timingLabel,
+                created: Date.now()
             };
         }
     });

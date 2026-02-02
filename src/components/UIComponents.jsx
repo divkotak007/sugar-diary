@@ -17,7 +17,7 @@ const MealOption = ({ label, icon: Icon, selected, onClick }) => (
 );
 
 const ContextTag = ({ label, selected, onClick, color = 'stone' }) => (
-    <button onClick={() => { if (onClick) { if (navigator.vibrate) navigator.vibrate(10); onClick(); } }} className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 text-[11px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 text-${color}-900 dark:text-${color}-400 scale-95` : 'bg-stone-50 dark:bg-stone-800 text-stone-400 dark:text-stone-500 hover:bg-stone-100'}`}>
+    <button onClick={onClick} className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 text-[11px] font-bold uppercase touch-manipulation ${selected ? `bg-${color}-100 dark:bg-${color}-900/40 text-${color}-900 dark:text-${color}-400 scale-95` : 'bg-stone-50 dark:bg-stone-800 text-stone-400 dark:text-stone-500 hover:bg-stone-100'}`}>
         {label}
     </button>
 );

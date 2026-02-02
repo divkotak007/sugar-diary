@@ -2,7 +2,7 @@ import React from 'react';
 import { Settings, X, Sun, Moon, Zap, Smartphone, Volume2, Lock, Trash2, Clock } from 'lucide-react';
 import { feedback } from '../utils/feedback';
 
-const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled, remindersEnabled, setRemindersEnabled }) => {
+const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled, remindersEnabled, setRemindersEnabled, reminders, onUpdateReminder }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
@@ -75,14 +75,39 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                         </div>
 
                         {/* P3: Reminders Toggle */}
-                        <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${remindersEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-stone-100 text-stone-400'}`}><Clock size={18} /></div>
-                                <span className="font-bold text-stone-700 dark:text-stone-300">Medication Reminders</span>
+                        <div className="flex flex-col gap-4 p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${remindersEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-stone-100 text-stone-400'}`}><Clock size={18} /></div>
+                                    <span className="font-bold text-stone-700 dark:text-stone-300">Medication Reminders</span>
+                                </div>
+                                <button onClick={() => { feedback.trigger(hapticsEnabled, soundEnabled, 'light'); setRemindersEnabled(!remindersEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${remindersEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                                    <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${remindersEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
+                                </button>
                             </div>
-                            <button onClick={() => { feedback.trigger(hapticsEnabled, soundEnabled, 'light'); setRemindersEnabled(!remindersEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${remindersEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
-                                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${remindersEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
-                            </button>
+
+                            {/* R3: Active Reminders List */}
+                            {remindersEnabled && reminders && reminders.length > 0 && (
+                                <div className="bg-stone-50 dark:bg-stone-800/50 rounded-2xl p-4 space-y-3 animate-in slide-in-from-top-2">
+                                    <div className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">Schedule</div>
+                                    {reminders.map(rem => (
+                                        <div key={rem.id} className="flex items-center justify-between bg-white dark:bg-stone-800 p-3 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
+                                            <span className="text-xs font-bold text-stone-600 dark:text-stone-300 truncate max-w-[60%]">
+                                                {rem.label}
+                                            </span>
+                                            <input
+                                                type="time"
+                                                value={rem.time}
+                                                onChange={(e) => onUpdateReminder(rem.id, e.target.value)}
+                                                className="bg-stone-100 dark:bg-stone-900 border-none rounded-lg px-2 py-1 text-xs font-bold text-stone-800 dark:text-stone-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+                                    ))}
+                                    <p className="text-[9px] text-stone-400 italic text-center pt-2">
+                                        Note: Reminders are auto-synced with your prescription.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
