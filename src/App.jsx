@@ -214,13 +214,6 @@ export default function App() {
   // Est. HbA1c is derived, so no log hook needed (it's read only or hybrid)
 
   // Derive latest vitals dynamically from history for profile summary
-  // V3 ADAPTER: Now aggregates from specific hooks + legacy fullHistory fallback (optional)
-  const getLatestVitals = () => {
-    const sorted = sortLogsDes(fullHistory);
-
-    const result = { weight: profile.weight, hba1c: profile.hba1c, creatinine: profile.creatinine, lastUpdated: [] };
-
-    // Most recent non-null records for each
   // V3 ADAPTER: Aggregates from specific hooks (Primary Source) + Legacy Fallback not needed for new view, but for profile card we use the hook data.
   const getLatestVitals = () => {
     // Hooks return logs sorted desc, so [0] is latest
@@ -233,9 +226,9 @@ export default function App() {
       hba1c: aLog ? aLog.value : (profile.hba1c || ''),
       creatinine: cLog ? cLog.value : (profile.creatinine || ''),
       lastUpdated: [
-         wLog ? 'weight' : null,
-         aLog ? 'hba1c' : null,
-         cLog ? 'creatinine' : null
+        wLog ? 'weight' : null,
+        aLog ? 'hba1c' : null,
+        cLog ? 'creatinine' : null
       ].filter(Boolean)
     };
   };
@@ -2227,15 +2220,35 @@ export default function App() {
             )
           }
 
-          {/* VITAL DEEP VIEW OVERLAY */}
+          {/* VITAL DEEP VIEW OVERLAY (Decoupled V5) */}
           {activeVital && (
             <Suspense fallback={null}>
               <VitalDeepView
                 vitalType={activeVital}
-                fullHistory={fullHistory}
+                // V5: Pass strictly isolated logs
+                fullHistory={
+                  activeVital === 'weight' ? weightLogs.logs :
+                    activeVital === 'hba1c' ? hba1cLogs.logs :
+                      activeVital === 'creatinine' ? creatinineLogs.logs :
+                        [] // Est. HbA1c or others have no logs
+                }
                 onClose={() => setActiveVital(null)}
-                onSave={handleSaveDeepVital}
-                onDelete={handleDeleteEntry}
+                // V5: Strict Type-Specific Save
+                onSave={async (payload, timestamp, editId) => {
+                  // Ensure payload has single key matching vitalType (Legacy compatibility or just value)
+                  const val = Object.values(payload)[0];
+                  if (activeVital === 'weight') return await weightLogs.addLog(val, timestamp);
+                  if (activeVital === 'hba1c') return await hba1cLogs.addLog(val, timestamp);
+                  if (activeVital === 'creatinine') return await creatinineLogs.addLog(val, timestamp);
+                  return false;
+                }}
+                // V5: Strict Type-Specific Delete
+                onDelete={async (id) => {
+                  if (activeVital === 'weight') return await weightLogs.deleteLog(id);
+                  if (activeVital === 'hba1c') return await hba1cLogs.deleteLog(id);
+                  if (activeVital === 'creatinine') return await creatinineLogs.deleteLog(id);
+                  return false;
+                }}
               />
             </Suspense>
           )}

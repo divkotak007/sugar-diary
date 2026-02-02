@@ -26,35 +26,12 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         }
     }, [vitalType]);
 
-    // STRICT DATA FILTERING: Filter history locally to ensure zero cross-contamination
+    // V4: PASS-THROUGH LOGS (Decoupled)
+    // The parent now passes strictly isolated logs. No filtering needed.
     const relevantHistory = useMemo(() => {
-        const uniqueIds = new Set();
-        const sorted = [...fullHistory]
-            .filter(log => {
-                // Issue 3: STRICT Cross-Logging Prevention
-                // If it has a type, it MUST be 'vital_update'
-                if (log.type) {
-                    if (log.type === 'vital_update') {
-                        return log.updatedParams && log.updatedParams.includes(vitalType);
-                    }
-                    return false; // Reject 'diary', 'medication', etc.
-                }
-
-                // Legacy fallback (only for logs with NO type)
-                return log.snapshot?.profile?.[vitalType] !== undefined &&
-                    log.snapshot.profile[vitalType] !== null &&
-                    !isNaN(parseFloat(log.snapshot.profile[vitalType]));
-            })
-            .filter(log => {
-                // Issue 2: Deduplication
-                if (uniqueIds.has(log.id)) return false;
-                uniqueIds.add(log.id);
-                return true;
-            })
-            .sort((a, b) => safeEpoch(b.timestamp) - safeEpoch(a.timestamp));
-
-        return sorted;
-    }, [fullHistory, vitalType]);
+        return fullHistory || []; // Renamed prop to 'logs' in V5 step, but keeping compatible for now.
+        // Actually, let's assume 'fullHistory' prop now receives the isolated logs array
+    }, [fullHistory]);
 
     // Prepare Chart Data
     const chartData = useMemo(() => {
