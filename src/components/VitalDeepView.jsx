@@ -4,7 +4,7 @@ import { SimpleTrendGraph, GraphErrorBoundary } from './SimpleTrendGraph';
 import { canEdit, safeEpoch, toInputString, fromInputString, getEpoch, isFuture } from '../utils/time';
 import { VITAL_LIMITS } from '../data/vitalLimits';
 
-const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode }) => {
+const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode, extraValue }) => {
     // STRICT STATE ISOLATION: Managed entirely within this component
     // No shared state with parent for form inputs
     const [value, setValue] = useState('');
