@@ -2122,6 +2122,7 @@ export default function App() {
                   onClick={() => {
                     triggerFeedback(hapticsEnabled, soundEnabled, 'light');
                     setView(item.id);
+                    setActiveVital(null); // A2: Auto-collapse Deep View on nav change
                   }}
                   className={`relative group flex flex-col items-center justify-center transition-all duration-300 ${isActive ? '-translate-y-1' : 'opacity-70 hover:opacity-100'}`}
                 >

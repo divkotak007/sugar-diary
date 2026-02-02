@@ -117,212 +117,214 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     };
 
     return (
-        <div className="fixed inset-x-0 bottom-0 top-[10vh] z-[60] bg-[#fffbf5] rounded-t-[32px] shadow-2xl animate-in slide-in-from-bottom duration-500 overflow-y-auto border-t border-white/50">
-            {/* HEADER */}
-            <div className={`sticky top-0 z-20 bg-[#fffbf5]/80 backdrop-blur-md px-6 py-4 border-b border-${config.color}-100 flex justify-between items-center`}>
-                <div className="flex items-center gap-3">
-                    <span className="text-3xl">{config.emoji}</span>
-                    <div>
-                        <h2 className={`text-2xl font-black text-${config.color}-700 tracking-tight leading-none`}>{config.label}</h2>
-                        <span className={`text-xs font-bold text-${config.color}-400 uppercase tracking-widest`}>Deep View</span>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/20 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-lg h-[85%] bg-[#fffbf5]/90 backdrop-blur-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-white/50 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                {/* HEADER */}
+                <div className={`relative z-20 bg-white/50 px-6 py-4 border-b border-${config.color}-100 flex justify-between items-center flex-shrink-0`}>
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl">{config.emoji}</span>
+                        <div>
+                            <h2 className={`text-2xl font-black text-${config.color}-700 tracking-tight leading-none`}>{config.label}</h2>
+                            <span className={`text-xs font-bold text-${config.color}-400 uppercase tracking-widest`}>Deep View</span>
+                        </div>
                     </div>
+                    <button onClick={onClose} className="p-3 bg-white/80 rounded-full hover:bg-stone-100 transition-colors shadow-sm">
+                        <X size={24} className="text-stone-600" />
+                    </button>
                 </div>
-                <button onClick={onClose} className="p-3 bg-stone-100 rounded-full hover:bg-stone-200 transition-colors">
-                    <X size={24} className="text-stone-600" />
-                </button>
-            </div>
 
-            <div className="p-6 space-y-8 pb-32">
-                {/* ORDER 1: VITAL UPDATE INPUT */}
-                {(!isCaregiverMode && vitalType !== 'est_hba1c') && (
-                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                        <div className={`bg-white p-6 rounded-[32px] shadow-sm border border-${config.color}-100 ring-4 ring-transparent focus-within:ring-${config.color}-50 transition-all`}>
-                            <div className="flex justify-between items-center mb-4">
-                                <label className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2">
-                                    {editingLogId ? <Edit3 size={12} className="text-emerald-500" /> : <Calendar size={12} />}
-                                    {editingLogId ? "Editing Record" : "New Entry"}
-                                </label>
-                                <div className="flex items-center gap-2 opacity-50 focus-within:opacity-100 transition-opacity">
+                <div className="p-6 space-y-8 pb-32 overflow-y-auto flex-1">
+                    {/* ORDER 1: VITAL UPDATE INPUT */}
+                    {(!isCaregiverMode && vitalType !== 'est_hba1c') && (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                            <div className={`bg-white p-6 rounded-[32px] shadow-sm border border-${config.color}-100 ring-4 ring-transparent focus-within:ring-${config.color}-50 transition-all`}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <label className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-2">
+                                        {editingLogId ? <Edit3 size={12} className="text-emerald-500" /> : <Calendar size={12} />}
+                                        {editingLogId ? "Editing Record" : "New Entry"}
+                                    </label>
+                                    <div className="flex items-center gap-2 opacity-50 focus-within:opacity-100 transition-opacity">
+                                        <input
+                                            type="datetime-local"
+                                            value={logTime}
+                                            onChange={(e) => { setLogTime(e.target.value); setIsManualEdit(true); }}
+                                            className="text-xs font-bold text-stone-500 bg-transparent outline-none text-right"
+                                            disabled={!!editingLogId}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-baseline gap-2 mb-6">
                                     <input
-                                        type="datetime-local"
-                                        value={logTime}
-                                        onChange={(e) => { setLogTime(e.target.value); setIsManualEdit(true); }}
-                                        className="text-xs font-bold text-stone-500 bg-transparent outline-none text-right"
-                                        disabled={!!editingLogId}
+                                        type="number"
+                                        value={value}
+                                        onChange={(e) => setValue(e.target.value)}
+                                        placeholder="---"
+                                        step={config.step}
+                                        className={`w-full text-6xl font-black text-${config.color}-600 placeholder-${config.color}-200 bg-transparent outline-none`}
+                                        autoFocus
                                     />
+                                    <span className="text-xl font-bold text-stone-400">{config.unit}</span>
                                 </div>
-                            </div>
 
-                            <div className="flex items-baseline gap-2 mb-6">
-                                <input
-                                    type="number"
-                                    value={value}
-                                    onChange={(e) => setValue(e.target.value)}
-                                    placeholder="---"
-                                    step={config.step}
-                                    className={`w-full text-6xl font-black text-${config.color}-600 placeholder-${config.color}-200 bg-transparent outline-none`}
-                                    autoFocus
-                                />
-                                <span className="text-xl font-bold text-stone-400">{config.unit}</span>
-                            </div>
-
-                            <div className="flex gap-3">
-                                {editingLogId ? (
-                                    <>
-                                        <button onClick={handleSave} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-full font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
-                                            <Save size={20} /> Update
+                                <div className="flex gap-3">
+                                    {editingLogId ? (
+                                        <>
+                                            <button onClick={handleSave} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-full font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
+                                                <Save size={20} /> Update
+                                            </button>
+                                            <button onClick={cancelEdit} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-full font-bold hover:bg-stone-200 active:scale-95 transition-all">
+                                                Cancel
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={handleSave} className={`w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
+                                            <Save size={20} /> Save Entry
                                         </button>
-                                        <button onClick={cancelEdit} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-full font-bold hover:bg-stone-200 active:scale-95 transition-all">
-                                            Cancel
-                                        </button>
-                                    </>
-                                ) : (
-                                    <button onClick={handleSave} className={`w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
-                                        <Save size={20} /> Save Entry
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </section>
-                )}
-
-                {/* ORDER 2: VITAL SPECIFIC CHART */}
-                <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100">
-                        {/* Issue 4 & 1: No Section Header (Internal Header Used), Explicit Height */}
-                        <GraphErrorBoundary>
-                            <SimpleTrendGraph
-                                data={chartData}
-                                label={config.label}
-                                unit={config.unit}
-                                color={config.color}
-                                normalRange={config.normalRange}
-                                onClick={() => { }} // No expansion needed inside deep view
-                                height={250} // Explicit Expanded Height
-                            />
-                        </GraphErrorBoundary>
-                    </div>
-                </section>
-
-                {/* B3: Est. HbA1c INFO CARD */}
-                {vitalType === 'est_hba1c' && (
-                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                        <div className="bg-white rounded-[32px] shadow-sm border border-stone-100 overflow-hidden">
-                            <details className="group open:pb-4" open>
-                                <summary className="flex justify-between items-center p-6 cursor-pointer list-none select-none active:bg-stone-50 transition-colors">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-stone-700">What is Estimated HbA1c?</h3>
-                                        <p className="text-xs text-stone-400 mt-1">Educational Information</p>
-                                    </div>
-                                    <ChevronDown className="text-stone-400 group-open:rotate-180 transition-transform" />
-                                </summary>
-
-                                <div className="px-6 space-y-6">
-                                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                                        <h4 className="text-xs font-black text-blue-500 uppercase tracking-widest mb-2">Meaning</h4>
-                                        <p className="text-sm text-stone-600 leading-relaxed">
-                                            Estimated HbA1c (eST HbA1c) is an approximate value derived from your blood sugar readings. It is <strong>not</strong> a lab test.
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <h4 className="text-xs font-black text-stone-400 uppercase tracking-widest mb-2">How it is estimated</h4>
-                                        <p className="text-sm text-stone-600 leading-relaxed">
-                                            Average blood sugar values over time are mathematically converted to an HbA1c-equivalent number for easier understanding using the GMI formula.
-                                        </p>
-                                    </div>
-
-                                    <div className="bg-stone-50 p-4 rounded-xl border border-dashed border-stone-200">
-                                        <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Formula (Reference Only)</h4>
-                                        <div className="font-mono text-center text-lg text-stone-500 mb-2">(28.7 × Avg Glucose) − 46.7</div>
-                                        <p className="text-[10px] text-stone-400 italic text-center">
-                                            Shown only for education. This formula is not editable and does not drive app calculations.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-start gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100 text-amber-800">
-                                        <div className="mt-1"><ScrollText size={16} /></div>
-                                        <div className="text-xs font-medium leading-relaxed">
-                                            <strong>Important Note:</strong> eST HbA1c is an estimate and may differ from lab-measured HbA1c. Always rely on lab reports for clinical decisions.
-                                        </div>
-                                    </div>
-                                </div>
-                            </details>
-                        </div>
-                    </section>
-                )}
-
-                {/* ORDER 3: VITAL LOG / HISTORY */}
-                {vitalType !== 'est_hba1c' && (
-                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
-                        <div className="bg-stone-50 rounded-[32px] border border-stone-100 overflow-hidden">
-                            <button
-                                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                                className="w-full flex justify-between items-center p-6 bg-stone-100/50 hover:bg-stone-100 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <ScrollText size={20} className="text-stone-400" />
-                                    <span className="font-bold text-stone-600 uppercase text-xs tracking-widest">History Log</span>
-                                    <span className="bg-stone-200 text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{relevantHistory.length}</span>
-                                </div>
-                                {isHistoryOpen ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-400" />}
-                            </button>
-
-                            {isHistoryOpen && (
-                                <div className="p-4 space-y-3">
-                                    {relevantHistory.map(log => {
-                                        const dateObj = new Date(safeEpoch(log.timestamp));
-                                        const isLocked = !canEdit(log.timestamp);
-                                        const logVal = log.snapshot.profile[vitalType];
-
-                                        return (
-                                            <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-center min-w-[50px]">
-                                                        <div className="text-[10px] font-black text-stone-300 uppercase">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
-                                                        <div className="text-lg font-black text-stone-700 leading-none">{dateObj.getDate()}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-baseline gap-1">
-                                                            <span className={`text-xl font-black text-${config.color}-600`}>{logVal}</span>
-                                                            <span className="text-[10px] font-bold text-stone-400">{config.unit}</span>
-                                                        </div>
-                                                        <div className="text-[10px] text-stone-400 font-medium">
-                                                            {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {!isCaregiverMode && (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => startEdit(log)}
-                                                            disabled={isLocked}
-                                                            className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-stone-50 text-stone-400 hover:bg-blue-50 hover:text-blue-500'}`}
-                                                        >
-                                                            {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => onDelete(log.id)}
-                                                            className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                    {relevantHistory.length === 0 && (
-                                        <div className="text-center py-8 text-stone-400 text-xs font-medium italic">
-                                            No history available yet.
-                                        </div>
                                     )}
                                 </div>
-                            )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* ORDER 2: VITAL SPECIFIC CHART */}
+                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+                        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100">
+                            {/* Issue 4 & 1: No Section Header (Internal Header Used), Explicit Height */}
+                            <GraphErrorBoundary>
+                                <SimpleTrendGraph
+                                    data={chartData}
+                                    label={config.label}
+                                    unit={config.unit}
+                                    color={config.color}
+                                    normalRange={config.normalRange}
+                                    onClick={() => { }} // No expansion needed inside deep view
+                                    height={250} // Explicit Expanded Height
+                                />
+                            </GraphErrorBoundary>
                         </div>
                     </section>
-                )}
+
+                    {/* B3: Est. HbA1c INFO CARD */}
+                    {vitalType === 'est_hba1c' && (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+                            <div className="bg-white rounded-[32px] shadow-sm border border-stone-100 overflow-hidden">
+                                <details className="group open:pb-4" open>
+                                    <summary className="flex justify-between items-center p-6 cursor-pointer list-none select-none active:bg-stone-50 transition-colors">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-stone-700">What is Estimated HbA1c?</h3>
+                                            <p className="text-xs text-stone-400 mt-1">Educational Information</p>
+                                        </div>
+                                        <ChevronDown className="text-stone-400 group-open:rotate-180 transition-transform" />
+                                    </summary>
+
+                                    <div className="px-6 space-y-6">
+                                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                            <h4 className="text-xs font-black text-blue-500 uppercase tracking-widest mb-2">Meaning</h4>
+                                            <p className="text-sm text-stone-600 leading-relaxed">
+                                                Estimated HbA1c (eST HbA1c) is an approximate value derived from your blood sugar readings. It is <strong>not</strong> a lab test.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-xs font-black text-stone-400 uppercase tracking-widest mb-2">How it is estimated</h4>
+                                            <p className="text-sm text-stone-600 leading-relaxed">
+                                                Average blood sugar values over time are mathematically converted to an HbA1c-equivalent number for easier understanding using the GMI formula.
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-stone-50 p-4 rounded-xl border border-dashed border-stone-200">
+                                            <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">Formula (Reference Only)</h4>
+                                            <div className="font-mono text-center text-lg text-stone-500 mb-2">(28.7 × Avg Glucose) − 46.7</div>
+                                            <p className="text-[10px] text-stone-400 italic text-center">
+                                                Shown only for education. This formula is not editable and does not drive app calculations.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-start gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100 text-amber-800">
+                                            <div className="mt-1"><ScrollText size={16} /></div>
+                                            <div className="text-xs font-medium leading-relaxed">
+                                                <strong>Important Note:</strong> eST HbA1c is an estimate and may differ from lab-measured HbA1c. Always rely on lab reports for clinical decisions.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* ORDER 3: VITAL LOG / HISTORY */}
+                    {vitalType !== 'est_hba1c' && (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
+                            <div className="bg-stone-50 rounded-[32px] border border-stone-100 overflow-hidden">
+                                <button
+                                    onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                                    className="w-full flex justify-between items-center p-6 bg-stone-100/50 hover:bg-stone-100 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <ScrollText size={20} className="text-stone-400" />
+                                        <span className="font-bold text-stone-600 uppercase text-xs tracking-widest">History Log</span>
+                                        <span className="bg-stone-200 text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full">{relevantHistory.length}</span>
+                                    </div>
+                                    {isHistoryOpen ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-400" />}
+                                </button>
+
+                                {isHistoryOpen && (
+                                    <div className="p-4 space-y-3">
+                                        {relevantHistory.map(log => {
+                                            const dateObj = new Date(safeEpoch(log.timestamp));
+                                            const isLocked = !canEdit(log.timestamp);
+                                            const logVal = log.snapshot.profile[vitalType];
+
+                                            return (
+                                                <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-center min-w-[50px]">
+                                                            <div className="text-[10px] font-black text-stone-300 uppercase">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</div>
+                                                            <div className="text-lg font-black text-stone-700 leading-none">{dateObj.getDate()}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-baseline gap-1">
+                                                                <span className={`text-xl font-black text-${config.color}-600`}>{logVal}</span>
+                                                                <span className="text-[10px] font-bold text-stone-400">{config.unit}</span>
+                                                            </div>
+                                                            <div className="text-[10px] text-stone-400 font-medium">
+                                                                {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {!isCaregiverMode && (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => startEdit(log)}
+                                                                disabled={isLocked}
+                                                                className={`p-2 rounded-xl transition-colors ${isLocked ? 'bg-stone-50 text-stone-200 cursor-not-allowed' : 'bg-stone-50 text-stone-400 hover:bg-blue-50 hover:text-blue-500'}`}
+                                                            >
+                                                                {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onDelete(log.id)}
+                                                                className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {relevantHistory.length === 0 && (
+                                            <div className="text-center py-8 text-stone-400 text-xs font-medium italic">
+                                                No history available yet.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+                </div>
             </div>
         </div>
     );
