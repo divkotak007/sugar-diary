@@ -1018,18 +1018,38 @@ export default function App() {
   };
 
   const handleSaveDeepVital = async (payload, timestamp, editingLogId) => {
-    // 1. Validation & Rate Limiting
-    // Module 1: Vital Duplicate Prevention (60 Minutes)
+    // 1. Strict Idempotency & Rate Limiting (D1)
+    // "One Click One Write" & "Duplicate Prevention Guard"
+
+    // Module 1: Exact Duplicate Prevention (Idempotency Key)
+    // We check if a log with THIS timestamp and THIS vital type already exists.
+    // This catches "double clicks" that race past the UI layer.
+    const vitalType = Object.keys(payload)[0];
+
     if (!editingLogId) {
-      const vitalType = Object.keys(payload)[0];
+      // Check for EXACT match on timestamp + type (Idempotency)
+      // OR Check for recent update (Rate limit)
+      const duplicate = fullHistory.find(l =>
+        l.type === 'vital_update' &&
+        l.updatedParams && l.updatedParams.includes(vitalType) &&
+        l.timestamp === timestamp
+      );
+
+      if (duplicate) {
+        console.warn("Duplicate write prevented by Idempotency Guard");
+        return true; // Pretend success to stop UI retry, but do nothing.
+      }
+
+      // Module 2: 60 Minute Rate Limit (User Rule)
       const recentVital = fullHistory.find(l =>
         l.type === 'vital_update' &&
         l.updatedParams && l.updatedParams.includes(vitalType) &&
-        Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000
+        Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000 // 60 mins
       );
 
       if (recentVital) {
-        return alert(`Action Blocked: ${vitalType.toUpperCase()} was updated less than 60 minutes ago. Please wait before adding a new entry.`);
+        alert(`Action Blocked: ${vitalType.toUpperCase()} was updated less than 60 minutes ago. Please wait before adding a new entry.`);
+        return false; // Fail, allow UI to handle (UI stays open)
       }
     }
 
@@ -1040,7 +1060,7 @@ export default function App() {
       if (editingLogId) {
         // Check if original log exists
         const originalLog = fullHistory.find(l => l.id === editingLogId);
-        if (!originalLog) return;
+        if (!originalLog) return false;
 
         await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLogId), {
           snapshot: { ...originalLog.snapshot, profile: { ...originalLog.snapshot.profile, ...payload } },
@@ -1049,7 +1069,7 @@ export default function App() {
         });
         alert("Entry Updated.");
       } else {
-        // Update profile
+        // Update profile (Atomic Sequence)
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
           profile: updatedProfile,
           prescription,
@@ -1068,8 +1088,11 @@ export default function App() {
 
       setProfile(updatedProfile);
       fetchLogs(true); // Sync
+      return true; // Success signal
     } catch (e) {
+      console.error("Vital Save Error:", e);
       alert("Save failed: " + e.message);
+      return false; // Failure signal
     }
   };
 

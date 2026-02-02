@@ -12,6 +12,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     const [isManualEdit, setIsManualEdit] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(true);
     const [editingLogId, setEditingLogId] = useState(null);
+    const [isSaving, setIsSaving] = useState(false); // D2: UI Lock
 
     // Vital Configuration (C2: Centralized Limits)
     const config = useMemo(() => {
@@ -75,7 +76,9 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         }
     }, [initialData]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (isSaving) return; // Prevent double click
+
         if (!value) return alert("Please enter a value.");
         let numVal = parseFloat(value);
 
@@ -107,13 +110,25 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
             [vitalType]: numVal.toString() // Store as string for consistency with existing app
         };
 
-        onSave(payload, timestamp, editingLogId);
+        setIsSaving(true);
+        // D1: Expect boolean return from parent
+        const success = await onSave(payload, timestamp, editingLogId);
 
-        // Reset after save
-        setValue('');
-        setEditingLogId(null);
-        setIsManualEdit(false);
-        setLogTime(toInputString(new Date()));
+        if (success) {
+            // Reset after save
+            setValue('');
+            setEditingLogId(null);
+            setIsManualEdit(false);
+            setLogTime(toInputString(new Date()));
+            setIsSaving(false);
+            onClose(); // Auto-close on success? Usually deep view stays open or closes? 
+            // Previous logic didn't close, it just reset. 
+            // Let's keep it resetting but unlocked.
+            // WAIT, user might want to close. Let's auto-close if it's a NEW entry? 
+            // No, existing behavior was "Reset". Let's stick to Reset unless requested.
+        } else {
+            setIsSaving(false); // Re-enable on failure
+        }
     };
 
     const startEdit = (log) => {
@@ -191,16 +206,16 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                 <div className="flex gap-3">
                                     {editingLogId ? (
                                         <>
-                                            <button onClick={handleSave} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-full font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
-                                                <Save size={20} /> Update
+                                            <button onClick={handleSave} disabled={isSaving} className={`flex-1 bg-${config.color}-600 text-white py-4 rounded-full font-bold shadow-lg shadow-${config.color}-200 hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                {isSaving ? <span className="animate-pulse">Updating...</span> : <><Save size={20} /> Update</>}
                                             </button>
-                                            <button onClick={cancelEdit} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-full font-bold hover:bg-stone-200 active:scale-95 transition-all">
+                                            <button onClick={cancelEdit} disabled={isSaving} className="px-6 bg-stone-100 text-stone-500 py-4 rounded-full font-bold hover:bg-stone-200 active:scale-95 transition-all">
                                                 Cancel
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={handleSave} className={`w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2`}>
-                                            <Save size={20} /> Save Entry
+                                        <button onClick={handleSave} disabled={isSaving} className={`w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                            {isSaving ? <span className="animate-pulse">Saving...</span> : <><Save size={20} /> Save Entry</>}
                                         </button>
                                     )}
                                 </div>
