@@ -138,6 +138,14 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                     </button>
                 </div>
 
+                {/* RESTORE: Est. HbA1c Big Value Display */}
+                {extraValue && (
+                    <div className="bg-white/50 px-6 py-4 flex flex-col items-center justify-center border-b border-stone-100">
+                        <div className="text-5xl font-black text-stone-800 tracking-tighter">{extraValue}%</div>
+                        <div className="text-xs font-bold text-stone-400 uppercase tracking-widest mt-1">Estimated Current</div>
+                    </div>
+                )}
+
                 <div className="p-6 space-y-8 pb-32 overflow-y-auto flex-1">
                     {/* ORDER 1: VITAL UPDATE INPUT */}
                     {(!isCaregiverMode && vitalType !== 'est_hba1c') && (

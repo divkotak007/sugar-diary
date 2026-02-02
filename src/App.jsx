@@ -30,6 +30,7 @@ import { performanceSentinel } from './utils/performanceSentinel.js';
 import { lazyWithRetry } from './utils/lazyWithRetry.js';
 import { syncRemindersWithPrescription, checkAndTriggerReminders, requestNotificationPermission as reqNotify } from './services/reminderService.js';
 import { useVitalLogs } from './hooks/useVitalLogs.js';
+import { runVitalMigration } from './services/migrationService.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
 import { generatePDFReport } from './services/pdfGenerator';
