@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Calendar, Save, Trash2, Lock, Edit3, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 import { SimpleTrendGraph, GraphErrorBoundary } from './SimpleTrendGraph';
 import { canEdit, safeEpoch, toInputString, fromInputString, getEpoch, isFuture } from '../utils/time';
+import { VITAL_LIMITS } from '../data/vitalLimits';
 
 const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode }) => {
     // STRICT STATE ISOLATION: Managed entirely within this component
@@ -12,14 +13,15 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
     const [isHistoryOpen, setIsHistoryOpen] = useState(true);
     const [editingLogId, setEditingLogId] = useState(null);
 
-    // Vital Configuration
+    // Vital Configuration (C2: Centralized Limits)
     const config = useMemo(() => {
+        const limits = VITAL_LIMITS[vitalType] || { min: 0, max: 100, unit: '', step: 1 };
         switch (vitalType) {
-            case 'weight': return { label: 'Weight', unit: 'kg', color: 'orange', min: 20, max: 300, step: 0.1, emoji: '⚖️' };
-            case 'hba1c': return { label: 'HbA1c', unit: '%', color: 'emerald', min: 4.0, max: 18.0, step: 0.1, emoji: '🩸', normalRange: 5.7 };
-            case 'creatinine': return { label: 'Creatinine', unit: 'mg/dL', color: 'purple', min: 0.2, max: 15.0, step: 0.01, emoji: '🧪', normalRange: 1.2 };
-            case 'est_hba1c': return { label: 'Est. HbA1c', unit: '%', color: 'stone', min: 0, max: 20, step: 0.1, emoji: '🎯', normalRange: 5.7 };
-            default: return { label: 'Unknown', unit: '', color: 'stone', min: 0, max: 100, step: 1, emoji: '❓' };
+            case 'weight': return { ...limits, label: 'Weight', color: 'orange', emoji: '⚖️' };
+            case 'hba1c': return { ...limits, label: 'HbA1c', color: 'emerald', emoji: '🩸', normalRange: 5.7 };
+            case 'creatinine': return { ...limits, label: 'Creatinine', color: 'purple', emoji: '🧪', normalRange: 1.2 };
+            case 'est_hba1c': return { ...limits, label: 'Est. HbA1c', color: 'stone', emoji: '🎯', normalRange: 5.7 };
+            default: return { ...limits, label: 'Unknown', color: 'stone', emoji: '❓' };
         }
     }, [vitalType]);
 
@@ -75,8 +77,22 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
 
     const handleSave = () => {
         if (!value) return alert("Please enter a value.");
-        const numVal = parseFloat(value);
-        if (isNaN(numVal) || numVal < config.min || numVal > config.max) {
+        let numVal = parseFloat(value);
+
+        // C2: Limit Enforcement (Clamp on Save)
+        if (isNaN(numVal)) return alert("Invalid number.");
+
+        // Auto-clamp if strictly outside (User Rule: "on_user_input_below_min" -> auto_clamp)
+        if (numVal < config.min) {
+            numVal = config.min;
+            // Optional: Notify user of clamp? Or silent? Rule says "silent_correction_allowed"
+        }
+        if (numVal > config.max) {
+            numVal = config.max;
+        }
+
+        // Double check after clamp (Should be safe)
+        if (numVal < config.min || numVal > config.max) {
             return alert(`Invalid ${config.label}. Must be between ${config.min} and ${config.max} ${config.unit}.`);
         }
 
@@ -88,7 +104,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
 
         // Construct payload strictly for this vital
         const payload = {
-            [vitalType]: value
+            [vitalType]: numVal.toString() // Store as string for consistency with existing app
         };
 
         onSave(payload, timestamp, editingLogId);
@@ -158,7 +174,12 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                     <input
                                         type="number"
                                         value={value}
-                                        onChange={(e) => setValue(e.target.value)}
+                                        onChange={(e) => {
+                                            // C2: Immediate Max Clamping
+                                            let v = e.target.value;
+                                            if (parseFloat(v) > config.max) v = config.max.toString();
+                                            setValue(v);
+                                        }}
                                         placeholder="---"
                                         step={config.step}
                                         className={`w-full text-6xl font-black text-${config.color}-600 placeholder-${config.color}-200 bg-transparent outline-none`}
