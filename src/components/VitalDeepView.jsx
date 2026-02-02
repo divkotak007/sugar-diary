@@ -39,7 +39,8 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
             .map(log => ({
                 id: log.id,
                 date: safeEpoch(log.timestamp),
-                value: parseFloat(log.snapshot.profile[vitalType])
+                // V5: Schema Update - Use 'value' or legacy fallback
+                value: log.value !== undefined ? parseFloat(log.value) : parseFloat(log.snapshot?.profile?.[vitalType] || 0)
             }))
             .sort((a, b) => a.date - b.date);
     }, [relevantHistory, vitalType]);
@@ -98,18 +99,14 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
             setIsManualEdit(false);
             setLogTime(toInputString(new Date()));
             setIsSaving(false);
-            onClose(); // Auto-close on success? Usually deep view stays open or closes? 
-            // Previous logic didn't close, it just reset. 
-            // Let's keep it resetting but unlocked.
-            // WAIT, user might want to close. Let's auto-close if it's a NEW entry? 
-            // No, existing behavior was "Reset". Let's stick to Reset unless requested.
         } else {
             setIsSaving(false); // Re-enable on failure
         }
     };
 
     const startEdit = (log) => {
-        const val = log.snapshot.profile[vitalType];
+        // V5: Schema Update
+        const val = log.value !== undefined ? log.value : log.snapshot?.profile?.[vitalType];
         setValue(val);
         setLogTime(toInputString(log.timestamp));
         setEditingLogId(log.id);
@@ -290,7 +287,8 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                         {relevantHistory.map(log => {
                                             const dateObj = new Date(safeEpoch(log.timestamp));
                                             const isLocked = !canEdit(log.timestamp);
-                                            const logVal = log.snapshot.profile[vitalType];
+                                            // V5: Schema Update
+                                            const logVal = log.value !== undefined ? log.value : log.snapshot?.profile?.[vitalType];
 
                                             return (
                                                 <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
