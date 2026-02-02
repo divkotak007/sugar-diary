@@ -148,6 +148,12 @@ export default function App() {
   const [fullHistory, setFullHistory] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
   const [reminders, setReminders] = useState(() => JSON.parse(localStorage.getItem('start_reminders') || '[]'));
+  // P3: Global toggle for reminders
+  const [remindersEnabled, setRemindersEnabled] = useState(() => localStorage.getItem('reminders_enabled') !== 'false');
+
+  useEffect(() => {
+    localStorage.setItem('reminders_enabled', remindersEnabled);
+  }, [remindersEnabled]);
 
   const [pdfStartDate, setPdfStartDate] = useState('');
   const [pdfEndDate, setPdfEndDate] = useState('');
@@ -180,7 +186,7 @@ export default function App() {
   // State for Chart Expansion
   const [estimatedHbA1c, setEstimatedHbA1c] = useState(null);
   const [isCaregiverMode, setIsCaregiverMode] = useState(false);
-  const [remindersEnabled, setRemindersEnabled] = useState(false);
+
   const [accountPendingDeletion, setAccountPendingDeletion] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -796,12 +802,24 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile, prescription, lastUpdated: getEpoch() }, { merge: true });
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
-
-      // C3: Sync Reminders
+      // P3: Prescription-Driven Reminder Sync
       const synced = syncRemindersWithPrescription(prescription, reminders);
       setReminders(synced);
+      localStorage.setItem('start_reminders', JSON.stringify(synced));
+
+      if (remindersEnabled) {
+        reqNotify();
+      }
+
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
+        profile,
+        prescription,
+        // Storing reminders in profile doc for redundancy/cloud sync
+        reminders: synced,
+        lastUpdated: getEpoch()
+      }, { merge: true });
+
+      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), { type: 'prescription_update', snapshot: { prescription }, timestamp: serverTimestamp(), tags: ['Rx Change', 'Audit'] });
 
       alert("Prescription Saved."); setView('diary');
       fetchLogs(true); // Refresh cache
@@ -1190,6 +1208,10 @@ export default function App() {
               setIsHighContrast={setIsHighContrast}
               hapticsEnabled={hapticsEnabled}
               setHapticsEnabled={setHapticsEnabled}
+              soundEnabled={soundEnabled}
+              setSoundEnabled={setSoundEnabled}
+              remindersEnabled={remindersEnabled}
+              setRemindersEnabled={setRemindersEnabled}
             />
           </Suspense>
 

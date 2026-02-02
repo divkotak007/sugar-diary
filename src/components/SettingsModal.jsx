@@ -1,8 +1,8 @@
 import React from 'react';
-import { Settings, X, Sun, Moon, Zap, Smartphone, Volume2, Lock, Trash2 } from 'lucide-react';
+import { Settings, X, Sun, Moon, Zap, Smartphone, Volume2, Lock, Trash2, Clock } from 'lucide-react';
 import { feedback } from '../utils/feedback';
 
-const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled }) => {
+const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled, remindersEnabled, setRemindersEnabled }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
@@ -71,6 +71,17 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                             </div>
                             <button onClick={() => { feedback.trigger(hapticsEnabled, soundEnabled, 'light'); setSoundEnabled(!soundEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${soundEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
                                 <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${soundEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        {/* P3: Reminders Toggle */}
+                        <div className="flex items-center justify-between p-1 border-t border-stone-50 dark:border-stone-800 pt-4">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${remindersEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-stone-100 text-stone-400'}`}><Clock size={18} /></div>
+                                <span className="font-bold text-stone-700 dark:text-stone-300">Medication Reminders</span>
+                            </div>
+                            <button onClick={() => { feedback.trigger(hapticsEnabled, soundEnabled, 'light'); setRemindersEnabled(!remindersEnabled); }} className={`w-14 h-8 rounded-full transition-all relative flex items-center px-1 ${remindersEnabled ? 'bg-emerald-500' : 'bg-stone-300'}`}>
+                                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${remindersEnabled ? 'translate-x-[24px]' : 'translate-x-0'}`} />
                             </button>
                         </div>
                     </div>

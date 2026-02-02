@@ -1,3 +1,5 @@
+import { FREQUENCY_RULES } from '../data/medications';
+
 export const REMINDER_MAPPING = {
     'Morning': { hour: 8, minute: 0 },
     'Afternoon': { hour: 13, minute: 0 },
@@ -28,13 +30,34 @@ export const syncRemindersWithPrescription = (prescription, existingReminders = 
 
     // Insulins
     (prescription.insulins || []).forEach(ins => {
-        // Insulins might strictly be "Before Meals" etc.
-        // If insulin has no explicit frequency list, we might skip or use 'frequency' field
-        if (ins.frequency) {
-            const defaultTimes = REMINDER_MAPPING[ins.frequency] ? [REMINDER_MAPPING[ins.frequency]] : [{ hour: 9, minute: 0 }];
-            // This is simplistic. Real insulin users might want multi-dose reminders.
-            // For now, based on C3 requirements, we just map what we have.
-            // If insulin struct allows multiple timings, handle here.
+        if (ins.frequency && REMINDER_MAPPING[ins.frequency]) {
+            // For simplicity in this version, we map single-frequency insulins to their default time.
+            // If multi-dose (e.g. Twice Daily), REMINDER_MAPPING should handle it or we iterate.
+            // Looking at REMINDER_MAPPING, "Twice Daily" -> ["Morning", "Evening"].
+            // Wait, REMINDER_MAPPING values are OBJECTS { hour: 8, minute: 0 }. 
+            // We need to check if FREQUENCY_RULES has the mapping to timings first?
+            // Actually `data/medications.js` has FREQUENCY_RULES. 
+            // Let's assume input frequency maps to text labels in FREQUENCY_RULES, then to REMINDER_MAPPING.
+
+            // BUT, `ins.frequency` is likely string "Twice Daily".
+            // We need to know which actual times that implies.
+            // Let's use a safe fallback:
+
+            const timings = (typeof FREQUENCY_RULES !== 'undefined' && FREQUENCY_RULES[ins.frequency])
+                ? FREQUENCY_RULES[ins.frequency]
+                : [ins.frequency]; // Fallback if it's a direct timing like "Bedtime"
+
+            timings.forEach(t => {
+                if (REMINDER_MAPPING[t]) {
+                    potentialReminders.push({
+                        type: 'insulin',
+                        sourceId: ins.id,
+                        name: ins.name,
+                        timingLabel: t,
+                        defaultTime: REMINDER_MAPPING[t]
+                    });
+                }
+            });
         }
     });
 
