@@ -2241,6 +2241,8 @@ export default function App() {
                 }
                 // UNIFY GRAPH: Pass exact same data source as Profile Graph
                 graphData={getTrendData(activeVital)}
+                // RESTORE: Pass calculated Est HbA1c value
+                extraValue={activeVital === 'est_hba1c' ? estimatedHbA1c : null}
                 onClose={() => setActiveVital(null)}
                 // V5: Strict Type-Specific Save
                 onSave={async (payload, timestamp, editId) => {
