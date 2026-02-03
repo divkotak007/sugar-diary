@@ -616,11 +616,15 @@ export default function App() {
 
     // 2. Legacy Logs
     // Filter strictly for existence of this vital in the snapshot
-    const legacyLogs = fullHistory.filter(l =>
-      l.snapshot?.profile?.[metric] !== undefined &&
-      l.snapshot.profile[metric] !== null &&
-      !isNaN(parseFloat(l.snapshot.profile[metric]))
-    );
+    const legacyLogs = fullHistory.filter(log => {
+      // MATCH TREND LOGIC EXACTLY
+      if (log.type === 'vital_update') {
+        return log.updatedParams && log.updatedParams.includes(metric);
+      }
+      return log.snapshot?.profile?.[metric] !== undefined &&
+        log.snapshot.profile[metric] !== null &&
+        !isNaN(parseFloat(log.snapshot.profile[metric]));
+    });
 
     // 3. Merge & Sort by Time Descending
     return [...isolatedLogs, ...legacyLogs].sort((a, b) => {
