@@ -579,13 +579,13 @@ export default function App() {
     // useVitalLogs returns { id, value, timestamp (millis), ... }
     const normIsolated = isolatedLogs.map(l => ({
       id: l.id,
-      date: l.timestamp, // timestamp is usually millis from hook? Check hook. Hook says: doc.data().timestamp.toMillis()
+      date: safeEpoch(l.timestamp), // Use robust safeEpoch
       value: parseFloat(l.value)
     }));
 
     const normLegacy = legacyEntries.map(l => ({
       id: l.id,
-      date: getLogTimestamp(l.timestamp),
+      date: safeEpoch(l.timestamp), // Use robust safeEpoch
       value: parseFloat(l.snapshot.profile[metric])
     }));
 
