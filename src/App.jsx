@@ -557,8 +557,14 @@ export default function App() {
   };
 
   const getTrendData = (metric) => {
-    // 1. Extract all valid entries for this metric (Strict Independence Rule)
-    const allEntries = fullHistory
+    // 1. Get Isolated Logs for this metric (New Architecture)
+    const isolatedLogs =
+      metric === 'weight' ? weightLogs.logs :
+        metric === 'hba1c' ? hba1cLogs.logs :
+          metric === 'creatinine' ? creatinineLogs.logs : [];
+
+    // 2. Extract legacy entries from fullHistory (Old Architecture)
+    const legacyEntries = fullHistory
       .filter(log => {
         // Only include if this specific vital was actually updated in this log
         if (log.type === 'vital_update') {
@@ -566,15 +572,28 @@ export default function App() {
         }
         // For older legacy logs or other types, check existence (graceful fallback)
         return log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric]));
-      })
-      .map(log => ({
-        id: log.id,
-        date: getLogTimestamp(log.timestamp),
-        value: parseFloat(log.snapshot.profile[metric])
-      }))
+      });
+
+    // 3. Merge and Map to standard format
+    // Note: isolatedLogs are already formatted as objects, but we need to normalize key names if they differ.
+    // useVitalLogs returns { id, value, timestamp (millis), ... }
+    const normIsolated = isolatedLogs.map(l => ({
+      id: l.id,
+      date: l.timestamp, // timestamp is usually millis from hook? Check hook. Hook says: doc.data().timestamp.toMillis()
+      value: parseFloat(l.value)
+    }));
+
+    const normLegacy = legacyEntries.map(l => ({
+      id: l.id,
+      date: getLogTimestamp(l.timestamp),
+      value: parseFloat(l.snapshot.profile[metric])
+    }));
+
+    // 4. Combine and Sort
+    const allEntries = [...normIsolated, ...normLegacy]
       .sort((a, b) => a.date - b.date);
 
-    // 2. Strict filtering: Only keep points where the value actually CHANGED
+    // 5. Strict filtering: Only keep points where the value actually CHANGED
     const uniqueChanges = [];
     allEntries.forEach((entry, i) => {
       if (i === 0 || entry.value !== uniqueChanges[uniqueChanges.length - 1].value) {
@@ -1260,20 +1279,7 @@ export default function App() {
             />
           </Suspense>
 
-          {activeVital && (
-            <Suspense fallback={<div className="fixed inset-0 z-50 bg-white/50 backdrop-blur-sm" />}>
-              <VitalDeepView
-                vitalType={activeVital}
-                initialData={null}
-                fullHistory={fullHistory}
-                onSave={handleSaveDeepVital}
-                onClose={() => setActiveVital(null)}
-                onDelete={handleDeleteEntry}
-                onEdit={null} // Handled internally
-                isCaregiverMode={isCaregiverMode}
-              />
-            </Suspense>
-          )}
+
 
           {showSuccess && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"><div className="bg-white p-8 rounded-3xl shadow-xl"><CheckCircle2 className="text-emerald-500 w-16 h-16 mx-auto" /><h3 className="font-bold mt-2">Saved!</h3></div></div>}
 
@@ -2233,6 +2239,8 @@ export default function App() {
                       activeVital === 'creatinine' ? creatinineLogs.logs :
                         [] // Est. HbA1c or others have no logs
                 }
+                // UNIFY GRAPH: Pass exact same data source as Profile Graph
+                graphData={getTrendData(activeVital)}
                 onClose={() => setActiveVital(null)}
                 // V5: Strict Type-Specific Save
                 onSave={async (payload, timestamp, editId) => {

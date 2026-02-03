@@ -4,7 +4,7 @@ import { SimpleTrendGraph, GraphErrorBoundary } from './SimpleTrendGraph';
 import { canEdit, safeEpoch, toInputString, fromInputString, getEpoch, isFuture } from '../utils/time';
 import { VITAL_LIMITS } from '../data/vitalLimits';
 
-const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode, extraValue }) => {
+const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, onDelete, onEdit, isCaregiverMode, extraValue, graphData }) => {
     // STRICT STATE ISOLATION: Managed entirely within this component
     // No shared state with parent for form inputs
     const [value, setValue] = useState('');
@@ -33,8 +33,10 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         // Actually, let's assume 'fullHistory' prop now receives the isolated logs array
     }, [fullHistory]);
 
-    // Prepare Chart Data
+    // Prepare Chart Data (Unified Source of Truth)
     const chartData = useMemo(() => {
+        if (graphData) return graphData; // Priority 1: Use Prop from Parent (Profile Source)
+
         return relevantHistory
             .map(log => ({
                 id: log.id,
@@ -43,7 +45,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                 value: log.value !== undefined ? parseFloat(log.value) : parseFloat(log.snapshot?.profile?.[vitalType] || 0)
             }))
             .sort((a, b) => a.date - b.date);
-    }, [relevantHistory, vitalType]);
+    }, [relevantHistory, vitalType, graphData]);
 
     // Handle Edit Mode from History
     useEffect(() => {
