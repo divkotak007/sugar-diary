@@ -604,6 +604,32 @@ export default function App() {
     return uniqueChanges;
   };
 
+  // V5-RESTORE: Helper to get merged history (Legacy + Isolated) for Deep View List
+  const getMergedVitalHistory = (metric) => {
+    if (!metric) return [];
+
+    // 1. New Isolated Logs
+    const isolatedLogs =
+      metric === 'weight' ? weightLogs.logs :
+        metric === 'hba1c' ? hba1cLogs.logs :
+          metric === 'creatinine' ? creatinineLogs.logs : [];
+
+    // 2. Legacy Logs
+    // Filter strictly for existence of this vital in the snapshot
+    const legacyLogs = fullHistory.filter(l =>
+      l.snapshot?.profile?.[metric] !== undefined &&
+      l.snapshot.profile[metric] !== null &&
+      !isNaN(parseFloat(l.snapshot.profile[metric]))
+    );
+
+    // 3. Merge & Sort by Time Descending
+    return [...isolatedLogs, ...legacyLogs].sort((a, b) => {
+      const tA = safeEpoch(a.timestamp);
+      const tB = safeEpoch(b.timestamp);
+      return tB - tA;
+    });
+  };
+
   const getSugarTrend = () => {
     return fullHistory
       .filter(l => l.hgt && !isNaN(parseFloat(l.hgt)))
@@ -2233,12 +2259,7 @@ export default function App() {
               <VitalDeepView
                 vitalType={activeVital}
                 // V5: Pass strictly isolated logs
-                fullHistory={
-                  activeVital === 'weight' ? weightLogs.logs :
-                    activeVital === 'hba1c' ? hba1cLogs.logs :
-                      activeVital === 'creatinine' ? creatinineLogs.logs :
-                        [] // Est. HbA1c or others have no logs
-                }
+                fullHistory={getMergedVitalHistory(activeVital)}
                 // UNIFY GRAPH: Pass exact same data source as Profile Graph
                 graphData={getTrendData(activeVital)}
                 // RESTORE: Pass calculated Est HbA1c value
