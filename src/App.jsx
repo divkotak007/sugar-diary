@@ -780,23 +780,14 @@ export default function App() {
         alert("Entry Updated.");
       } else {
         // Atomic Update Sequence
-        // A. Update Profile Doc
+        // A. Update Profile Doc (For backward compatibility with profile display)
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), { profile: updatedProfile, prescription, lastUpdated: getEpoch() }, { merge: true });
 
-        // B. Add Change Log (Only if vital metrics changed)
-        // We log it even if only instructions changed? No, usually only for metrics. 
-        // Logic: if updatedParams has items, we log.
-        if (updatedParams.length > 0) {
-          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
-            type: 'vital_update',
-            snapshot: { profile: updatedProfile, prescription },
-            updatedParams,
-            timestamp,
-            tags: ['Vital Update', ...updatedParams]
-          });
-        } else {
-          alert("Profile Updated."); // Feedback for just instructions/DOB update without log
-        }
+        // ISOLATION ENFORCEMENT: NO LONGER creating legacy vital_update logs
+        // Vitals are now written EXCLUSIVELY through isolated hooks (useVitalLogs)
+        // Profile vital fields are updated here for display/summary purposes only
+
+        alert("Profile Updated.");
       }
 
       // Force Refresh
@@ -1088,84 +1079,11 @@ export default function App() {
     // ... rest of legacy logic ...
   };
 
-  const handleSaveDeepVital = async (payload, timestamp, editingLogId) => {
-    // 1. Strict Idempotency & Rate Limiting (D1)
-    // "One Click One Write" & "Duplicate Prevention Guard"
 
-    // Module 1: Exact Duplicate Prevention (Idempotency Key)
-    // We check if a log with THIS timestamp and THIS vital type already exists.
-    // This catches "double clicks" that race past the UI layer.
-    const vitalType = Object.keys(payload)[0];
-
-    if (!editingLogId) {
-      // Check for EXACT match on timestamp + type (Idempotency)
-      // OR Check for recent update (Rate limit)
-      const duplicate = fullHistory.find(l =>
-        l.type === 'vital_update' &&
-        l.updatedParams && l.updatedParams.includes(vitalType) &&
-        l.timestamp === timestamp
-      );
-
-      if (duplicate) {
-        console.warn("Duplicate write prevented by Idempotency Guard");
-        return true; // Pretend success to stop UI retry, but do nothing.
-      }
-
-      // Module 2: 60 Minute Rate Limit (User Rule)
-      const recentVital = fullHistory.find(l =>
-        l.type === 'vital_update' &&
-        l.updatedParams && l.updatedParams.includes(vitalType) &&
-        Math.abs(timestamp - safeEpoch(l.timestamp)) < 3600000 // 60 mins
-      );
-
-      if (recentVital) {
-        alert(`Action Blocked: ${vitalType.toUpperCase()} was updated less than 60 minutes ago. Please wait before adding a new entry.`);
-        return false; // Fail, allow UI to handle (UI stays open)
-      }
-    }
-
-    const updatedProfile = { ...profile, ...payload };
-    const updatedParams = Object.keys(payload);
-
-    try {
-      if (editingLogId) {
-        // Check if original log exists
-        const originalLog = fullHistory.find(l => l.id === editingLogId);
-        if (!originalLog) return false;
-
-        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'logs', editingLogId), {
-          snapshot: { ...originalLog.snapshot, profile: { ...originalLog.snapshot.profile, ...payload } },
-          updatedParams: Array.from(new Set([...(originalLog.updatedParams || []), ...updatedParams])),
-          timestamp
-        });
-        alert("Entry Updated.");
-      } else {
-        // Update profile (Atomic Sequence)
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), {
-          profile: updatedProfile,
-          prescription,
-          lastUpdated: getEpoch()
-        }, { merge: true });
-
-        // Add Log
-        await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
-          type: 'vital_update',
-          snapshot: { profile: updatedProfile, prescription },
-          updatedParams,
-          timestamp: timestamp || getEpoch(),
-          tags: ['Vital Update', ...updatedParams]
-        });
-      }
-
-      setProfile(updatedProfile);
-      fetchLogs(true); // Sync
-      return true; // Success signal
-    } catch (e) {
-      console.error("Vital Save Error:", e);
-      alert("Save failed: " + e.message);
-      return false; // Failure signal
-    }
-  };
+  // REMOVED: handleSaveDeepVital
+  // This legacy function was creating dual writes to the main logs collection.
+  // Vital saves now go EXCLUSIVELY through isolated hooks (useVitalLogs).
+  // VitalDeepView onSave handlers call weightLogs.addLog, hba1cLogs.addLog, etc. directly.
 
   const handleSoftDelete = async () => {
     if (!confirm("Are you sure you want to delete your account? This action is reversible for 30 days.")) return;

@@ -34,10 +34,15 @@ export const useVitalLogs = (userId, vitalType) => {
         }
 
         setLoading(true);
-        const ref = collection(db, 'users', userId, collectionName);
+
+        // FIX: Use correct collection path matching app architecture
+        // Changed from: db, 'users', userId, collectionName
+        // To: db, 'artifacts', appId, 'users', userId, collectionName
+        const appId = 'sugar_diary_v1'; // Match the appId constant from App.jsx
+        const ref = collection(db, 'artifacts', appId, 'users', userId, collectionName);
         const q = query(ref, orderBy('timestamp', 'desc'));
 
-        console.log(`[VitalGap] Subscribing to isolated channel: ${collectionName}`);
+        console.log(`[VitalGap] Subscribing to isolated channel: artifacts/${appId}/users/${userId}/${collectionName}`);
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({
@@ -66,7 +71,8 @@ export const useVitalLogs = (userId, vitalType) => {
         if (isNaN(numericValue)) throw new Error("Invalid Value");
 
         try {
-            await addDoc(collection(db, 'users', userId, collectionName), {
+            const appId = 'sugar_diary_v1'; // Match the appId constant
+            await addDoc(collection(db, 'artifacts', appId, 'users', userId, collectionName), {
                 value: numericValue,
                 unit: getUnit(vitalType),
                 timestamp: new Date(timestampEpoch), // Store as Firestore Timestamp
@@ -85,7 +91,8 @@ export const useVitalLogs = (userId, vitalType) => {
     const deleteLog = async (logId) => {
         if (!userId || !collectionName || !logId) return false;
         try {
-            await deleteDoc(doc(db, 'users', userId, collectionName, logId));
+            const appId = 'sugar_diary_v1'; // Match the appId constant
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, collectionName, logId));
             auditLogger.log('vital_delete', { vital: vitalType, id: logId });
             return true;
         } catch (e) {
