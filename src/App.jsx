@@ -548,7 +548,8 @@ export default function App() {
     let scaleDose = 0;
 
     if (insulin.slidingScale && insulin.slidingScale.length > 0) {
-      const rule = insulin.slidingScale.find(r => current >= parseFloat(r.min) && current < parseFloat(r.max));
+      // FIX: Add safety check 'r &&' to prevent crash if rule is null/undefined
+      const rule = insulin.slidingScale.find(r => r && current >= parseFloat(r.min || 0) && current < parseFloat(r.max || 0));
       if (rule) scaleDose = parseFloat(rule.dose || 0);
     }
 

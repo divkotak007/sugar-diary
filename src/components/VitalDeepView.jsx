@@ -68,7 +68,8 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
         if (isNaN(numVal)) return alert("Invalid number.");
 
         // Auto-clamp if strictly outside (User Rule: "on_user_input_below_min" -> auto_clamp)
-        if (numVal < config.min) {
+        // FIX: Added safety check for config.min existence
+        if (config?.min !== undefined && numVal < config.min) {
             numVal = config.min;
             // Optional: Notify user of clamp? Or silent? Rule says "silent_correction_allowed"
         }
