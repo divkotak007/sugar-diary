@@ -37,6 +37,7 @@ import { generatePDFReport } from './services/pdfGenerator';
 import { SecurityGuardian, GlobalRecoveryBoundary } from './components/SecurityComponents';
 import { SimpleTrendGraph, GraphErrorBoundary } from './components/SimpleTrendGraph';
 import { StatBadge, MealOption, ContextTag } from './components/UIComponents';
+import CalendarSugarView from './components/CalendarSugarView';
 
 const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
 const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
@@ -1426,6 +1427,8 @@ export default function App() {
           {
             view === 'profile' && (
               <div className="px-6 pb-32 animate-in slide-in-from-right">
+                {/* CALENDAR SUGAR VIEW - READ-ONLY VISUALIZATION */}
+                <CalendarSugarView logs={fullHistory.filter(l => l.hgt && !l.type)} />
                 <div className="bg-white p-6 rounded-[24px] shadow-sm border border-stone-100 mb-6">
                   {/* LOCKED PERSONAL DETAILS */}
                   {(!unlockPersonal && (profile.dob || profile.gender)) ? (
