@@ -45,7 +45,8 @@ export const validateGlucose = (value) => {
 
     const thresholds = DANGER_THRESHOLDS.glucose;
 
-    if (numValue < thresholds.requiresConfirmation.min || numValue > thresholds.requiresConfirmation.max) {
+    // FIX: Added safety check for requiresConfirmation existence
+    if (thresholds.requiresConfirmation && (numValue < thresholds.requiresConfirmation.min || numValue > thresholds.requiresConfirmation.max)) {
         return createResult(
             VALIDATION_STATUS.REQUIRES_CONFIRMATION,
             `This value (${numValue} mg/dL) is extreme. Please confirm this is correct.`,

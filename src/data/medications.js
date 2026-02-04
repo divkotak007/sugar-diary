@@ -272,7 +272,13 @@ export const NORMAL_RANGES = {
 };
 
 export const DANGER_THRESHOLDS = {
-    glucose: { low: 70, high: 250, criticalHigh: 400 },
+    glucose: {
+        low: 70,
+        high: 250,
+        criticalHigh: 400,
+        // FIX: Added requiresConfirmation to prevent crash in schemaValidation.js
+        requiresConfirmation: { min: 40, max: 500 }
+    },
     hba1c: { high: 8.0, critical: 10.0 },
     creatinine: { high: 1.4, critical: 2.5 }
 };
