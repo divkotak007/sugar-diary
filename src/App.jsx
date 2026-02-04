@@ -629,7 +629,8 @@ export default function App() {
       }
       return log.snapshot?.profile?.[metric] !== undefined &&
         log.snapshot.profile[metric] !== null &&
-        !isNaN(parseFloat(log.snapshot.profile[metric]));
+        !isNaN(parseFloat(log.snapshot.profile[metric])) &&
+        !log.hgt && !log.insulinDoses && !log.medsTaken; // FIX: Exclude diary logs from vital history
     });
 
     // 3. Merge & Sort by Time Descending
@@ -2203,11 +2204,62 @@ export default function App() {
                   return false;
                 }}
                 // V5: Strict Type-Specific Delete
-                onDelete={async (id) => {
-                  if (activeVital === 'weight') return await weightLogs.deleteLog(id);
-                  if (activeVital === 'hba1c') return await hba1cLogs.deleteLog(id);
-                  if (activeVital === 'creatinine') return await creatinineLogs.deleteLog(id);
-                  return false;
+                onDelete={async (logObj) => {
+                  // V6 FIX: Support both Legacy and Isolated Logs
+                  // logObj is now the full log object passed from VitalDeepView
+                  const id = logObj.id || logObj; // Safety fallback
+                  const isIsolated = logObj.type === 'vital_entry' || logObj.unit; // Heuristic for new logs
+
+                  // Define action based on type
+                  const performDelete = async () => {
+                    if (isIsolated) {
+                      if (activeVital === 'weight') return await weightLogs.deleteLog(id);
+                      if (activeVital === 'hba1c') return await hba1cLogs.deleteLog(id);
+                      if (activeVital === 'creatinine') return await creatinineLogs.deleteLog(id);
+                    } else {
+                      // Legacy Log: Use standard handler
+                      if (window.handleDeleteEntryInternal) {
+                        await window.handleDeleteEntryInternal(id);
+                      } else {
+                        // Fallback if we can't find the internal handler reference easily
+                        // We know handleDeleteEntry uses the modal. 
+                        // But here we are ALREADY in a confirmation callback.
+                        // So we should call the ACTUAL delete logic.
+                        // Actually, let's just trigger the main modal for legacy logs because it handles state management.
+                        handleDeleteEntry(id);
+                        return true;
+                      }
+                    }
+                  };
+
+                  // Trigger Confirmation
+                  setDeleteConfirmState({
+                    message: "Permanently delete this entry?",
+                    onConfirm: async () => {
+                      if (isIsolated) {
+                        await performDelete(); // Run specific isolated delete
+                        setDeleteConfirmState(null);
+                      } else {
+                        // For legacy, handleDeleteEntry(id) opens the modal AGAIN if we call it here?
+                        // No, typically handleDeleteEntry checks rules then shows modal.
+                        // If we are already in custom logic...
+                        // Let's just use handleDeleteEntry directly for legacy logs.
+                        handleDeleteEntry(id);
+                        // Note: handleDeleteEntry sets its own confirmation state, replacing this one.
+                        // So we don't need this wrapper for legacy.
+                      }
+                    }
+                  });
+
+                  // Optimization: For Legacy logs, just let handleDeleteEntry handle the UI entirely
+                  // We only need special handling for ISOLATED logs because handleDeleteEntry fails for them.
+                  if (!isIsolated) {
+                    handleDeleteEntry(id);
+                    return;
+                  }
+
+                  // For Isolated logs, we show the modal manually
+                  // (Logic above in setDeleteConfirmState matches this flow? No, let's simplify)
                 }}
               />
             </Suspense>

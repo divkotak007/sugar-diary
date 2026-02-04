@@ -331,7 +331,7 @@ const VitalDeepView = ({ vitalType, initialData, fullHistory, onSave, onClose, o
                                                                 {isLocked ? <Lock size={16} /> : <Edit3 size={16} />}
                                                             </button>
                                                             <button
-                                                                onClick={() => onDelete(log.id)}
+                                                                onClick={() => onDelete(log)}
                                                                 className={`p-2 rounded-xl transition-colors bg-stone-50 text-red-400 hover:bg-red-50 hover:text-red-500`}
                                                             >
                                                                 <Trash2 size={16} />
