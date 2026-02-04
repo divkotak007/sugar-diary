@@ -1,34 +1,36 @@
 import React, { useRef } from 'react';
 
 const StatBadge = ({ emoji, label, value, unit, color, onClick }) => {
-    const lastTapRef = useRef(0);
+    const timerRef = useRef(null);
 
-    const handleTap = () => {
-        if (!onClick) return;
+    const handleStart = () => {
+        timerRef.current = setTimeout(() => {
+            if (navigator.vibrate) navigator.vibrate(200); // Strong haptic
+            if (onClick) onClick();
+        }, 800); // Long press duration
+    };
 
-        const now = Date.now();
-        const timeSinceLastTap = now - lastTapRef.current;
-
-        // Double-tap detection: 300ms window
-        if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-            // Double tap detected
-            onClick();
-            lastTapRef.current = 0; // Reset to prevent triple-tap
-        } else {
-            // First tap, wait for potential second tap
-            lastTapRef.current = now;
+    const handleEnd = () => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
         }
     };
 
     return (
         <button
-            onClick={handleTap}
-            className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600`}
+            onMouseDown={handleStart}
+            onMouseUp={handleEnd}
+            onMouseLeave={handleEnd}
+            onTouchStart={handleStart}
+            onTouchEnd={handleEnd}
+            onContextMenu={(e) => e.preventDefault()} // Prevent context menu
+            className={`flex-shrink-0 p-4 rounded-2xl border-2 flex flex-col items-center min-w-[85px] transition-all relative bg-white dark:bg-stone-800 border-stone-100 dark:border-stone-700 hover:border-stone-200 dark:hover:border-stone-600 active:scale-95 duration-200`}
         >
-            <span className="text-2xl mb-1 filter-none">{emoji}</span>
-            <div className="font-bold text-stone-800 dark:text-stone-200 text-lg leading-none">{value || '-'}</div>
-            <div className="text-xs text-stone-400 font-bold uppercase mt-1">{label}</div>
-            {unit && <div className="text-[10px] text-stone-300 dark:text-stone-500 font-bold">{unit}</div>}
+            <span className="text-2xl mb-1 filter-none select-none">{emoji}</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 text-lg leading-none select-none">{value || '-'}</div>
+            <div className="text-xs text-stone-400 font-bold uppercase mt-1 select-none">{label}</div>
+            {unit && <div className="text-[10px] text-stone-300 dark:text-stone-500 font-bold select-none">{unit}</div>}
         </button>
     );
 };

@@ -1158,7 +1158,7 @@ export default function App() {
 
   const scheduleDemoReminder = () => {
     if (!remindersEnabled) {
-      alert("Please enable reminders first.");
+      alert("Please enable reminders first via Settings.");
       return;
     }
 
@@ -1169,9 +1169,14 @@ export default function App() {
       try {
         if (Notification.permission === 'granted') {
           triggerFeedback(hapticsEnabled, soundEnabled, 'success');
-          new Notification("Medicine Reminder (Test)", {
-            body: "Time to check your blood sugar and take your scheduled dose.",
-            vibrate: hapticsEnabled ? [200, 100, 200] : []
+          // AESTHETIC DESIGN UPDATE
+          new Notification("⚡ Sugar Diary Reminder", {
+            body: "It's time to check your glucose levels. Stay consistent for better health! 🌱",
+            icon: "/favicon.ico",
+            badge: "/favicon.ico",
+            vibrate: [500, 200, 500], // Strong haptics
+            requireInteraction: true, // Keep until user dismisses
+            tag: 'sugar-reminder'
           });
         }
       } catch (e) {
@@ -1503,27 +1508,8 @@ export default function App() {
 
 
                 {/* Reminders Toggle - HIDDEN IN CAREGIVER MODE */}
-                {!isCaregiverMode && (
-                  <div className="mt-4 pt-4 border-t border-stone-100">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2">
-                        <Clock size={16} className="text-stone-400" />
-                        <span className="text-sm font-bold text-stone-700">{T('reminder')}</span>
-                      </div>
-                      <button
-                        onClick={requestNotificationPermission}
-                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all ${remindersEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-stone-100 text-stone-400'}`}
-                      >
-                        {remindersEnabled ? 'Enabled' : 'Enable'}
-                      </button>
-                    </div>
-                    {remindersEnabled && (
-                      <button onClick={scheduleDemoReminder} className="text-[10px] font-bold text-blue-500 hover:text-blue-600">
-                        Schedule 10s Test Reminder
-                      </button>
-                    )}
-                  </div>
-                )}
+                {/* Reminders Toggle - MOVED TO SETTINGS PER USER REQUEST */}
+
 
 
 
