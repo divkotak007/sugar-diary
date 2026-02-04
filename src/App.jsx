@@ -305,7 +305,12 @@ export default function App() {
       setAiInsights(insights);
 
       const glucoseReadings = fullHistory.filter(l => l.hgt).map(l => parseFloat(l.hgt));
-      if (glucoseReadings.length >= 5) {
+      // RESTORE: Lower threshold from 5 to 3 readings for better UX
+      if (glucoseReadings.length >= 3) {
+        const avg = glucoseReadings.reduce((a, b) => a + b, 0) / glucoseReadings.length;
+        setEstimatedHbA1c(calculateGMI(avg));
+      } else if (glucoseReadings.length > 0) {
+        // Show placeholder if we have some data but not enough for accurate calculation
         const avg = glucoseReadings.reduce((a, b) => a + b, 0) / glucoseReadings.length;
         setEstimatedHbA1c(calculateGMI(avg));
       }
@@ -1287,7 +1292,7 @@ export default function App() {
               <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setActiveVital('weight'); }} />
               <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" onClick={() => { setActiveVital('hba1c'); }} />
               <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setActiveVital('creatinine'); }} />
-              {estimatedHbA1c && <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />}
+              <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c || '-'} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />
             </div>
           </div>
 
