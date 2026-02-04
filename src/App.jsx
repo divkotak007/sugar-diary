@@ -577,7 +577,10 @@ export default function App() {
           return log.updatedParams && log.updatedParams.includes(metric);
         }
         // For older legacy logs or other types, check existence (graceful fallback)
-        return log.snapshot?.profile?.[metric] !== undefined && log.snapshot.profile[metric] !== null && !isNaN(parseFloat(log.snapshot.profile[metric]));
+        return log.snapshot?.profile?.[metric] !== undefined &&
+          log.snapshot.profile[metric] !== null &&
+          !isNaN(parseFloat(log.snapshot.profile[metric])) &&
+          !log.hgt && !log.insulinDoses && !log.medsTaken; // FIX: Sync graph data with history list
       });
 
     // 3. Merge and Map to standard format
