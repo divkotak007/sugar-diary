@@ -23,7 +23,8 @@ export const CLINICAL_CONSTANTS = {
     CRITICAL_HIGH: 400,     // Critical high (DKA risk)
 
     // Insulin Safety Limits
-    MAX_BOLUS_UNITS: 15,           // Maximum single bolus dose
+    ABSOLUTE_MAX_DOSE: 50,         // CRITICAL: Absolute maximum (data entry error protection)
+    MAX_BOLUS_UNITS: 15,           // Maximum single bolus dose (warning threshold)
     MAX_DAILY_TOTAL: 100,          // Maximum total daily insulin
     MIN_DOSE_INTERVAL_HOURS: 2,    // Minimum time between rapid doses
     MIN_DOSE_INCREMENT: 0.5,       // Minimum dose increment
@@ -156,6 +157,13 @@ export const calculateCOB = (mealLogs, currentTime = Date.now()) => {
  */
 export const isSafeToDose = (currentHGT, iob, proposedDose, options = {}) => {
     const checks = {
+        // CRITICAL: Absolute maximum dose (data entry error protection)
+        absoluteMax: {
+            passed: proposedDose <= CLINICAL_CONSTANTS.ABSOLUTE_MAX_DOSE,
+            level: 'critical',
+            message: `🛑 CRITICAL: Dose (${proposedDose}u) exceeds absolute maximum (${CLINICAL_CONSTANTS.ABSOLUTE_MAX_DOSE}u). This is likely a data entry error.`
+        },
+
         // CRITICAL: Hypoglycemia
         hypo: {
             passed: currentHGT > CLINICAL_CONSTANTS.HYPO_THRESHOLD,

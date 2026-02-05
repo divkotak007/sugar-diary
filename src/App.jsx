@@ -54,10 +54,10 @@ const VitalDeepView = lazyWithRetry(() => import('./components/VitalDeepView'));
 
 
 // --- PHASE 0 FEATURE FLAGS ---
-// All features OFF by default for zero regression
+// CRITICAL SAFETY: Some checks are ALWAYS ON regardless of flags
 const FEATURE_FLAGS = {
-  ENABLE_SAFETY_CHECKS: false,    // Clinical safety module (IOB, safety gates)
-  ENABLE_VALIDATION: false,       // Input validation with Zod
+  ENABLE_SAFETY_CHECKS: true,     // Clinical safety module (IOB, safety gates) - NOW ON BY DEFAULT
+  ENABLE_VALIDATION: true,        // Input validation with Zod - NOW ON BY DEFAULT
   ENABLE_CLEANUP_TOOL: false,     // Data deduplication tool
   SHOW_IOB_INDICATOR: false,      // IOB indicator on dashboard
 };
@@ -964,6 +964,25 @@ export default function App() {
 
     if (!timestamp || isNaN(timestamp)) return alert("Invalid Log Time.");
     if (isFuture(timestamp)) return alert("Cannot log entries in the future.");
+
+    // === EMERGENCY SAFETY CHECKS (ALWAYS ON) ===
+    // These checks run REGARDLESS of feature flags for critical safety
+    if (hasInsulin) {
+      const proposedDose = Object.values(safeInsulin).reduce((sum, val) => sum + parseFloat(val || 0), 0);
+
+      // CRITICAL: Absolute maximum dose (cannot be overridden)
+      const ABSOLUTE_MAX_DOSE = 50; // No human should ever take more than 50u in one dose
+      if (proposedDose > ABSOLUTE_MAX_DOSE) {
+        return alert(`🛑 CRITICAL SAFETY BLOCK:\n\nDose (${proposedDose}u) exceeds absolute maximum (${ABSOLUTE_MAX_DOSE}u).\n\nThis is likely a data entry error. Please verify your dose.\n\nIf you truly need more than ${ABSOLUTE_MAX_DOSE}u, contact your healthcare provider.`);
+      }
+
+      // CRITICAL: Extremely high dose warning (last chance)
+      if (proposedDose > 20) {
+        const confirmed = confirm(`⚠️ EXTREMELY HIGH DOSE WARNING:\n\nYou entered ${proposedDose} units of insulin.\n\nThis is an unusually high dose. Most people use 3-10 units per dose.\n\nIs this correct?\n\nClick OK only if you are CERTAIN this is the right dose.`);
+        if (!confirmed) return;
+      }
+    }
+    // === END EMERGENCY CHECKS ===
 
     // === PHASE 0: SAFETY & VALIDATION CHECKS (Optional) ===
     if (FEATURE_FLAGS.ENABLE_VALIDATION && safeHgt) {
