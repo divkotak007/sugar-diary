@@ -181,4 +181,3 @@ export const ValidationBadge = ({ isValid, errorCount = 0, warningCount = 0 }) =
 };
 
 export default ValidationFeedback;
-export { InlineValidation, ValidationBadge };
