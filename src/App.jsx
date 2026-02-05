@@ -994,6 +994,7 @@ export default function App() {
       });
 
       if (!validation.valid) {
+        console.error('Validation failed:', validation.errors);
         const errorMsg = validation.errors.map(e => e.message).join('\n');
         return alert(`Validation Failed:\n${errorMsg}`);
       }

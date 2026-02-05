@@ -31,7 +31,8 @@ export const sugarLogSchema = z.object({
             return date >= sevenDaysAgo;
         }, 'Cannot log readings older than 7 days'),
 
-    context: z.enum(['fasting', 'post-meal', 'random', 'bedtime']).optional(),
+    // Allow any string for context/mealStatus (flexible for different app versions)
+    context: z.string().optional(),
 
     mealStatus: z.string().optional(),
 
