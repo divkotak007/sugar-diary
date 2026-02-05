@@ -39,11 +39,28 @@ import { SimpleTrendGraph, GraphErrorBoundary } from './components/SimpleTrendGr
 import { StatBadge, MealOption, ContextTag } from './components/UIComponents';
 import CalendarSugarView from './components/CalendarSugarView';
 
+// Phase 0: Safety & Validation Components
+import IOBIndicator from './components/IOBIndicator';
+import SafetyGate from './components/SafetyGate';
+import ValidationFeedback, { InlineValidation } from './components/ValidationFeedback';
+import DataCleanupTool from './components/DataCleanupTool';
+import { calculateIOB, isSafeToDose, canDoseAgain } from './safety/clinical';
+import { validateSugarLog, validateInsulinLog } from './validation/schemas';
+
 const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
 const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
 const ConsentScreen = lazyWithRetry(() => import('./components/ConsentScreen'));
 const VitalDeepView = lazyWithRetry(() => import('./components/VitalDeepView'));
 
+
+// --- PHASE 0 FEATURE FLAGS ---
+// All features OFF by default for zero regression
+const FEATURE_FLAGS = {
+  ENABLE_SAFETY_CHECKS: false,    // Clinical safety module (IOB, safety gates)
+  ENABLE_VALIDATION: false,       // Input validation with Zod
+  ENABLE_CLEANUP_TOOL: false,     // Data deduplication tool
+  SHOW_IOB_INDICATOR: false,      // IOB indicator on dashboard
+};
 
 // --- CONFIGURATION ---
 const firebaseConfig = (typeof window !== 'undefined' && window.__firebase_config) ?
@@ -947,6 +964,61 @@ export default function App() {
 
     if (!timestamp || isNaN(timestamp)) return alert("Invalid Log Time.");
     if (isFuture(timestamp)) return alert("Cannot log entries in the future.");
+
+    // === PHASE 0: SAFETY & VALIDATION CHECKS (Optional) ===
+    if (FEATURE_FLAGS.ENABLE_VALIDATION && safeHgt) {
+      const validation = validateSugarLog({
+        hgt: safeHgt,
+        timestamp: new Date(timestamp),
+        context: mealStatus,
+        tags: safeTags
+      });
+
+      if (!validation.valid) {
+        const errorMsg = validation.errors.map(e => e.message).join('\n');
+        return alert(`Validation Failed:\n${errorMsg}`);
+      }
+    }
+
+    if (FEATURE_FLAGS.ENABLE_SAFETY_CHECKS && hasInsulin && safeHgt) {
+      // Calculate current IOB from insulin logs
+      const insulinLogs = fullHistory
+        .filter(l => !l.type && l.insulinDoses && Object.keys(l.insulinDoses).length > 0)
+        .map(l => ({
+          timestamp: getLogTimestamp(l.timestamp),
+          insulinDoses: l.insulinDoses
+        }));
+
+      const currentIOB = calculateIOB(insulinLogs);
+
+      // Calculate proposed dose
+      const proposedDose = Object.values(safeInsulin).reduce((sum, val) => sum + parseFloat(val || 0), 0);
+
+      // Run safety checks
+      const safetyCheck = isSafeToDose(safeHgt, currentIOB, proposedDose);
+      const timeCheck = canDoseAgain(insulinLogs);
+
+      // Block if critical warnings
+      if (safetyCheck.criticalWarnings.length > 0) {
+        const warnings = safetyCheck.criticalWarnings.join('\n');
+        return alert(`🛑 SAFETY BLOCK:\n\n${warnings}\n\nThis dose cannot proceed for your safety.`);
+      }
+
+      // Block if time interval not met
+      if (!timeCheck.can) {
+        return alert(`⏱️ TIME BLOCK:\n\nMinimum interval not met. Please wait ${timeCheck.waitMinutes} more minutes before next dose.\n\nLast dose: ${timeCheck.lastDoseTime?.toLocaleTimeString()}`);
+      }
+
+      // Show warnings but allow proceed
+      if (safetyCheck.warnings.length > 0) {
+        const warnings = safetyCheck.warnings.join('\n');
+        const proceed = confirm(`⚠️ SAFETY WARNING:\n\n${warnings}\n\nCurrent IOB: ${currentIOB.toFixed(1)}u\nProposed Dose: ${proposedDose.toFixed(1)}u\n\nDo you want to proceed anyway?`);
+
+        if (!proceed) return;
+      }
+    }
+    // === END PHASE 0 CHECKS ===
+
 
 
     // E. Granular Duplicate Checks (New Entries Only)
