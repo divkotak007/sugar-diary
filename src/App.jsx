@@ -46,6 +46,7 @@ import ValidationFeedback, { InlineValidation } from './components/ValidationFee
 import DataCleanupTool from './components/DataCleanupTool';
 import { calculateIOB, isSafeToDose, canDoseAgain } from './safety/clinical';
 import { validateSugarLog, validateInsulinLog } from './validation/schemas';
+import IOBDisplay from './components/IOBDisplay';
 
 const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
 const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
@@ -59,7 +60,7 @@ const FEATURE_FLAGS = {
   ENABLE_SAFETY_CHECKS: true,     // Clinical safety module (IOB, safety gates) - NOW ON BY DEFAULT
   ENABLE_VALIDATION: true,        // Input validation with Zod - NOW ON BY DEFAULT
   ENABLE_CLEANUP_TOOL: false,     // Data deduplication tool
-  SHOW_IOB_INDICATOR: false,      // IOB indicator on dashboard
+  SHOW_IOB_INDICATOR: true,       // IOB indicator on dashboard - NOW ON
 };
 
 // --- CONFIGURATION ---
@@ -1400,6 +1401,14 @@ export default function App() {
 
           {view === 'diary' && (
             <div className="px-6 animate-in fade-in space-y-6">
+              {/* Phase 0: IOB Indicator */}
+              {FEATURE_FLAGS.SHOW_IOB_INDICATOR && (
+                <IOBDisplay
+                  fullHistory={fullHistory}
+                  className="mb-4"
+                />
+              )}
+
               {/* HEALTH INTELLIGENCE SUMMARY (SURFACE AI INSIGHTS & QUICK ACTIONS) */}
               <div className="space-y-3">
                 {/* AI REMOVED FROM HERE AS PER PHASE 1 REGULATIONS */}
