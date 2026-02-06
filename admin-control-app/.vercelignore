@@ -1,0 +1,30 @@
+# Admin Control App
+
+Separate admin control panel for Sugar Diary configuration management.
+
+## Deployment
+
+This is a standalone app deployed separately from the main Sugar Diary application.
+
+- **Production URL**: https://workflows-alpha.vercel.app
+- **Repository**: Same as sugar-diary but in separate directory
+
+## Local Development
+
+```bash
+cd admin-control-app
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Deploy to Vercel
+
+```bash
+vercel --prod
+```
