@@ -1410,8 +1410,6 @@ export default function App() {
                 <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setActiveVital('creatinine'); }} />
               )}
 
-              <StatBadge emoji="🩸" label="Avg. Glucose" value={avgGlucose} unit="mg/dL" color="stone" onClick={() => { setActiveVital('glucose'); }} />
-
               {/* Estimated HbA1c - controlled by admin config */}
               {adminConfig?.features?.estimatedHbA1c?.enabled && (
                 <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c || '-'} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />
