@@ -4,7 +4,7 @@
  * Stored in Firestore for persistence and versioning
  */
 
-import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db, ADMIN_CONFIG_COLLECTION } from '../firebase/config';
 
 /**
