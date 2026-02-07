@@ -307,14 +307,14 @@ export const DEFAULT_CONFIG = {
         },
 
         insulinCalculator: {
-            enabled: false,
+            enabled: true,
             calculation: {
                 method: 'carb_ratio',
                 requireMedicalApproval: true,
                 safetyChecks: true
             },
             display: {
-                showInDashboard: false,
+                showInDashboard: true,
                 requireConfirmation: true
             }
         },

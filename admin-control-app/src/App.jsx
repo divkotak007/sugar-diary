@@ -14,10 +14,11 @@ import SoundHapticStudio from './modules/SoundHapticStudio';
 import MedicalRulesEngine from './modules/MedicalRulesEngine';
 import AIControlCenter from './modules/AIControlCenter';
 import MedDatabaseControl from './modules/MedDatabaseControl';
+import MedicineDatabaseManager from './modules/MedicineDatabaseManager';
 import LivePreview from './modules/LivePreview';
 import {
   Settings, LogOut, History, RotateCcw, Save, Shield,
-  Palette, Sliders, Volume2, Database, Brain, Pill, Eye
+  Palette, Sliders, Volume2, Database, Brain, Pill, Eye, Package
 } from 'lucide-react';
 import './App.css';
 import './modules.css';
@@ -141,6 +142,7 @@ function App() {
     { id: 'ux', label: 'UX Engine', icon: Sliders, component: UXEngine },
     { id: 'sound', label: 'Sound & Haptic', icon: Volume2, component: SoundHapticStudio },
     { id: 'meds', label: 'Medications', icon: Pill, component: MedDatabaseControl },
+    { id: 'medicine-db', label: 'Medicine Database', icon: Package, component: MedicineDatabaseManager },
     { id: 'preview', label: 'Live Preview', icon: Eye, component: LivePreview }
   ];
 
