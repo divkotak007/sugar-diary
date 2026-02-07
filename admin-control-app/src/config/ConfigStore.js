@@ -219,14 +219,14 @@ export const getConfig = async () => {
 };
 
 /**
- * Save configuration with versioning
+ * Save configuration
  */
-export const saveConfig = async (newConfig, author, changes) => {
+export const saveConfig = async (newConfig, author, changes = []) => {
     try {
-        const version = `v_${Date.now()}`;
+        const version = Date.now();
 
-        // Save to history subcollection
-        await setDoc(doc(db, ADMIN_CONFIG_COLLECTION, 'versions', 'history', version), {
+        // Save to top-level history collection (proper Firestore path)
+        await addDoc(collection(db, 'config_history'), {
             version,
             config: newConfig,
             author: author.email,
@@ -234,7 +234,7 @@ export const saveConfig = async (newConfig, author, changes) => {
             timestamp: serverTimestamp()
         });
 
-        // Update current
+        // Update current config
         await setDoc(doc(db, ADMIN_CONFIG_COLLECTION, 'current'), {
             version,
             config: newConfig,
@@ -255,7 +255,7 @@ export const saveConfig = async (newConfig, author, changes) => {
 export const getConfigHistory = async (limitCount = 20) => {
     try {
         const historyQuery = query(
-            collection(db, ADMIN_CONFIG_COLLECTION, 'current', 'history'),
+            collection(db, 'config_history'),
             orderBy('timestamp', 'desc'),
             limit(limitCount)
         );
@@ -276,7 +276,7 @@ export const getConfigHistory = async (limitCount = 20) => {
  */
 export const rollbackToVersion = async (versionId, user) => {
     try {
-        const versionRef = doc(db, ADMIN_CONFIG_COLLECTION, 'current', 'history', versionId);
+        const versionRef = doc(db, 'config_history', versionId);
         const versionDoc = await getDoc(versionRef);
 
         if (!versionDoc.exists()) {

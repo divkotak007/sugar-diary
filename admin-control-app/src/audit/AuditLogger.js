@@ -11,7 +11,8 @@ import { db, ADMIN_CONFIG_COLLECTION } from '../firebase/config';
  */
 export const logAction = async (action, details, user) => {
     try {
-        await addDoc(collection(db, ADMIN_CONFIG_COLLECTION, 'audit_log'), {
+        // Use proper Firestore path: collection/document/subcollection (3 segments)
+        await addDoc(collection(db, 'admin_logs'), {
             action,
             details,
             user: user.email,
@@ -28,7 +29,7 @@ export const logAction = async (action, details, user) => {
 export const getAuditLog = async (limitCount = 50) => {
     try {
         const logQuery = query(
-            collection(db, ADMIN_CONFIG_COLLECTION, 'audit_log'),
+            collection(db, 'admin_logs'),
             orderBy('timestamp', 'desc'),
             limit(limitCount)
         );
