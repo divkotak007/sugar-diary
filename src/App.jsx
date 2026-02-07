@@ -1397,13 +1397,53 @@ export default function App() {
 
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setActiveVital('weight'); }} />
-              <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" onClick={() => { setActiveVital('hba1c'); }} />
-              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setActiveVital('creatinine'); }} />
 
-              {/* Estimated HbA1c - controlled by admin config */}
-              {adminConfig?.features?.estimatedHbA1c?.enabled && (
-                <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c || '-'} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />
+              {/* Weight Tracking - independently controlled */}
+              {adminConfig?.features?.weightTracking?.enabled && adminConfig?.features?.weightTracking?.display?.showInDashboard && (
+                <StatBadge
+                  emoji={adminConfig.features.weightTracking.display.badgeEmoji || '⚖️'}
+                  label={adminConfig.features.weightTracking.display.label || T('weight')}
+                  value={latestVitals.weight}
+                  unit="kg"
+                  color={adminConfig.features.weightTracking.display.badgeColor || 'orange'}
+                  onClick={() => { setActiveVital('weight'); }}
+                />
+              )}
+
+              {/* HbA1c Tracking - independently controlled */}
+              {adminConfig?.features?.hba1cTracking?.enabled && adminConfig?.features?.hba1cTracking?.display?.showInDashboard && (
+                <StatBadge
+                  emoji={adminConfig.features.hba1cTracking.display.badgeEmoji || '🩸'}
+                  label={adminConfig.features.hba1cTracking.display.label || T('hba1c')}
+                  value={latestVitals.hba1c}
+                  unit="%"
+                  color={adminConfig.features.hba1cTracking.display.badgeColor || 'emerald'}
+                  onClick={() => { setActiveVital('hba1c'); }}
+                />
+              )}
+
+              {/* Creatinine Tracking - independently controlled */}
+              {adminConfig?.features?.creatinineTracking?.enabled && adminConfig?.features?.creatinineTracking?.display?.showInDashboard && (
+                <StatBadge
+                  emoji={adminConfig.features.creatinineTracking.display.badgeEmoji || '🧪'}
+                  label={adminConfig.features.creatinineTracking.display.label || T('creatinine')}
+                  value={latestVitals.creatinine}
+                  unit="mg/dL"
+                  color={adminConfig.features.creatinineTracking.display.badgeColor || 'purple'}
+                  onClick={() => { setActiveVital('creatinine'); }}
+                />
+              )}
+
+              {/* Estimated HbA1c - independently controlled */}
+              {adminConfig?.features?.estimatedHbA1c?.enabled && adminConfig?.features?.estimatedHbA1c?.display?.showInDashboard && (
+                <StatBadge
+                  emoji={adminConfig.features.estimatedHbA1c.display.badgeEmoji || '🎯'}
+                  label={adminConfig.features.estimatedHbA1c.display.label || 'Est. HbA1c'}
+                  value={estimatedHbA1c || '-'}
+                  unit="%"
+                  color={adminConfig.features.estimatedHbA1c.display.badgeColor || 'stone'}
+                  onClick={() => { setActiveVital('est_hba1c'); }}
+                />
               )}
             </div>
           </div>
