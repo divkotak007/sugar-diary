@@ -12,8 +12,30 @@
  */
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { doc, onSnapshot, getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+
+// Initialize Firebase if not already initialized
+const getDb = () => {
+    const apps = getApps();
+    if (apps.length > 0) {
+        return getFirestore(apps[0]);
+    }
+
+    // Fallback: initialize with config
+    const firebaseConfig = {
+        apiKey: "AIzaSyAAmGSRYXVfTL9iDNPPf7vtvGeIsna4MiI",
+        authDomain: "sugerdiary.firebaseapp.com",
+        projectId: "sugerdiary",
+        storageBucket: "sugerdiary.firebasestorage.app",
+        messagingSenderId: "467564721006",
+        appId: "1:467564721006:web:bf4720ad00e356c841477f",
+    };
+    const app = initializeApp(firebaseConfig);
+    return getFirestore(app);
+};
+
+
 
 export const useConfig = () => {
     const [config, setConfig] = useState(null);
@@ -21,6 +43,7 @@ export const useConfig = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        const db = getDb();
         const configRef = doc(db, 'admin_config', 'current');
 
         // Real-time listener for config changes
