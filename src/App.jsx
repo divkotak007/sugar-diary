@@ -30,6 +30,7 @@ import { performanceSentinel } from './utils/performanceSentinel.js';
 import { lazyWithRetry } from './utils/lazyWithRetry.js';
 import { syncRemindersWithPrescription, checkAndTriggerReminders, requestNotificationPermission as reqNotify } from './services/reminderService.js';
 import { useVitalLogs } from './hooks/useVitalLogs.js';
+import { useConfig } from './hooks/useConfig.js';
 import { runVitalMigration } from './services/migrationService.js';
 
 import MED_LIBRARY from './diabetes_medication_library.json';
@@ -139,6 +140,9 @@ const calculateAge = (dob) => {
 
 // --- MAIN APP ---
 export default function App() {
+  // Load admin configuration
+  const { config: adminConfig } = useConfig();
+
   const [user, setUser] = useState(null);
   const [view, setView] = useState('diary');
   const [loading, setLoading] = useState(true);
@@ -1395,8 +1399,12 @@ export default function App() {
               <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
               <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setActiveVital('weight'); }} />
               <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" onClick={() => { setActiveVital('hba1c'); }} />
-              <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setActiveVital('creatinine'); }} />
-              <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c || '-'} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />
+              <StatBadge emoji="🩸" label="Avg. Glucose" value={avgGlucose} unit="mg/dL" color="stone" onClick={() => { setActiveVital('glucose'); }} />
+
+              {/* Estimated HbA1c - controlled by admin config */}
+              {adminConfig?.features?.estimatedHbA1c?.enabled && (
+                <StatBadge emoji="🎯" label="Est. HbA1c" value={estimatedHbA1c || '-'} unit="%" color="stone" onClick={() => { setActiveVital('est_hba1c'); }} />
+              )}
             </div>
           </div>
 
