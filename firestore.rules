@@ -1,33 +1,31 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // MEDICAL GRADE SECURITY: STRICT ISOLATION
-    // ----------------------------------------
-    
-    // 1. User Data (Logs, Profile, etc.)
-    // STRICT: Only the authenticated user can read/write their OWN data directory.
-    match /artifacts/{appId}/users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // 2. Audit Trails (Internal)
-    // Write-only for client events, Read-only for admins (backend)
-    match /audit_trails/{userId}/events/{eventId} {
-       allow create: if request.auth != null && request.auth.uid == userId;
-       allow read, update, delete: if false; // Logs are immutable and private
-    }
-
-    // 3. Public Maintenance / Reference Data
-    // Read-only for authenticated users
-    match /artifacts/{appId}/public/{document=**} {
+    // Admin-only collections
+    match /config_history/{document=**} {
+      // Only allow writes from admin email
       allow read: if request.auth != null;
-      allow write: if false;
+      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
     }
     
-    // Default Deny
+    match /admin_logs/{document=**} {
+      // Only allow writes from admin email
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
+    }
+    
+    match /admin_config/{document=**} {
+      // Allow reads for all authenticated users (so main app can read)
+      allow read: if request.auth != null;
+      // Only allow writes from admin email
+      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
+    }
+    
+    // All other collections - keep your existing rules
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }

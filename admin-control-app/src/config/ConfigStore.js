@@ -171,57 +171,189 @@ export const DEFAULT_CONFIG = {
         }
     },
 
-    // Module H: Feature Flags
+    // Module H: Feature Flags with Granular Control
     features: {
-        aiInsights: {
-            enabled: true,
-            rollout: 100,
-            description: 'AI-powered glucose insights and pattern detection'
-        },
-        medicationReminders: {
-            enabled: true,
-            rollout: 100,
-            description: 'Smart medication reminder notifications'
-        },
         weightTracking: {
             enabled: true,
-            rollout: 100,
-            description: 'Track and monitor weight changes over time'
+            display: {
+                showInDashboard: true,
+                showInVitalsList: true,
+                badgeColor: 'orange',
+                badgeEmoji: '⚖️',
+                label: 'Weight'
+            },
+            tracking: {
+                allowManualEntry: true,
+                requireTimestamp: false,
+                showTrend: true,
+                trendDays: 30
+            },
+            alerts: {
+                enabled: false,
+                rapidChangeThreshold: 5, // kg in 7 days
+                targetWeight: null
+            }
         },
+
         creatinineTracking: {
             enabled: true,
-            rollout: 100,
-            description: 'Monitor kidney function via creatinine levels'
+            display: {
+                showInDashboard: true,
+                showInVitalsList: true,
+                badgeColor: 'purple',
+                badgeEmoji: '🧪',
+                label: 'Creatinine'
+            },
+            tracking: {
+                allowManualEntry: true,
+                requireLabReport: false,
+                showTrend: true,
+                trendMonths: 6
+            },
+            alerts: {
+                enabled: true,
+                normalRange: { min: 0.6, max: 1.2 }, // mg/dL
+                warnOnAbnormal: true
+            }
         },
+
+        hba1cTracking: {
+            enabled: true,
+            display: {
+                showInDashboard: true,
+                showInVitalsList: true,
+                badgeColor: 'emerald',
+                badgeEmoji: '🩸',
+                label: 'HbA1c'
+            },
+            tracking: {
+                allowManualEntry: true,
+                requireLabReport: false,
+                showTrend: true,
+                trendMonths: 12
+            },
+            alerts: {
+                enabled: true,
+                targetRange: { min: 5.0, max: 7.0 },
+                warnOnHigh: true
+            }
+        },
+
         estimatedHbA1c: {
             enabled: true,
-            rollout: 100,
-            description: 'Calculate estimated HbA1c (GMI) from glucose data'
+            display: {
+                showInDashboard: true,
+                label: 'Est. HbA1c',
+                badgeColor: 'stone',
+                badgeEmoji: '🎯'
+            },
+            calculation: {
+                method: 'GMI', // Glucose Management Indicator
+                minDataPoints: 14,
+                daysToConsider: 90,
+                showConfidence: true
+            },
+            alerts: {
+                enabled: false,
+                compareWithActual: true
+            }
         },
+
+        aiInsights: {
+            enabled: true,
+            insights: {
+                glucoseTrends: { enabled: true, sensitivity: 'medium' },
+                patternDetection: { enabled: true, minOccurrences: 3 },
+                predictions: { enabled: false, daysAhead: 7 }
+            },
+            display: {
+                showInDashboard: true,
+                autoExpand: false,
+                maxInsightsShown: 5
+            }
+        },
+
+        medicationReminders: {
+            enabled: true,
+            notifications: {
+                sound: true,
+                vibrate: true,
+                persistent: false
+            },
+            timing: {
+                reminderMinutesBefore: 15,
+                snoozeMinutes: 10,
+                maxSnoozes: 3
+            },
+            display: {
+                showUpcoming: true,
+                showMissed: true,
+                daysToShow: 7
+            }
+        },
+
         glucosePatterns: {
             enabled: true,
-            rollout: 100,
-            description: 'Detect and highlight glucose patterns'
+            detection: {
+                sensitivity: 'medium',
+                minOccurrences: 3,
+                daysToAnalyze: 30
+            },
+            display: {
+                showInDashboard: true,
+                highlightInGraph: true,
+                showSuggestions: true
+            }
         },
+
         insulinCalculator: {
             enabled: false,
-            rollout: 0,
-            description: 'Smart insulin dose calculator (requires medical approval)'
+            calculation: {
+                method: 'carb_ratio',
+                requireMedicalApproval: true,
+                safetyChecks: true
+            },
+            display: {
+                showInDashboard: false,
+                requireConfirmation: true
+            }
         },
+
         mealTagging: {
             enabled: true,
-            rollout: 100,
-            description: 'Tag meals and track their impact on glucose'
+            tracking: {
+                allowCustomTags: true,
+                suggestTags: true,
+                trackImpact: true
+            },
+            display: {
+                showInDiary: true,
+                showInGraph: true
+            }
         },
+
         exportReports: {
             enabled: true,
-            rollout: 100,
-            description: 'Export data as PDF reports'
+            formats: {
+                pdf: true,
+                csv: true,
+                json: false
+            },
+            content: {
+                includeGraphs: true,
+                includeInsights: true,
+                includeMedications: true
+            }
         },
+
         darkMode: {
             enabled: true,
-            rollout: 100,
-            description: 'Dark mode theme support'
+            settings: {
+                autoSwitch: false,
+                scheduleStart: '20:00',
+                scheduleEnd: '06:00',
+                followSystem: true
+            }
         }
     },
 
