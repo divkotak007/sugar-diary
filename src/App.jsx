@@ -1397,8 +1397,19 @@ export default function App() {
 
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               <StatBadge emoji="🧘‍♂️" label={T('age')} value={profile.age} unit="Yrs" color="blue" onClick={() => { setHighlightField('dob'); setView('profile'); }} />
-              <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setActiveVital('weight'); }} />
+
+              {/* Weight Tracking - controlled by admin config */}
+              {adminConfig?.features?.weightTracking?.enabled && (
+                <StatBadge emoji="⚖️" label={T('weight')} value={latestVitals.weight} unit="kg" color="orange" onClick={() => { setActiveVital('weight'); }} />
+              )}
+
               <StatBadge emoji="🩸" label={T('hba1c')} value={latestVitals.hba1c} unit="%" color="emerald" onClick={() => { setActiveVital('hba1c'); }} />
+
+              {/* Creatinine Tracking - controlled by admin config */}
+              {adminConfig?.features?.creatinineTracking?.enabled && (
+                <StatBadge emoji="🧪" label={T('creatinine')} value={latestVitals.creatinine} unit="mg/dL" color="purple" onClick={() => { setActiveVital('creatinine'); }} />
+              )}
+
               <StatBadge emoji="🩸" label="Avg. Glucose" value={avgGlucose} unit="mg/dL" color="stone" onClick={() => { setActiveVital('glucose'); }} />
 
               {/* Estimated HbA1c - controlled by admin config */}

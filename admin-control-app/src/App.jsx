@@ -233,28 +233,36 @@ function App() {
             <button onClick={() => setShowHistory(false)} className="close-btn">×</button>
           </div>
           <div className="history-list">
-            {configHistory.map(item => (
-              <div key={item.id} className="history-item">
-                <div className="history-info">
-                  <p className="history-date">
-                    {item.timestamp?.toDate?.()?.toLocaleString() || 'Unknown date'}
-                  </p>
-                  <p className="history-author">{item.author}</p>
-                  <ul className="history-changes">
-                    {item.changes?.map((change, i) => (
-                      <li key={i}>{change}</li>
-                    ))}
-                  </ul>
-                </div>
-                <button
-                  onClick={() => handleRollback(item.id)}
-                  className="rollback-btn"
-                >
-                  <RotateCcw size={16} />
-                  Rollback
-                </button>
+            {configHistory.length === 0 ? (
+              <div className="empty-state">
+                <History size={48} style={{ opacity: 0.3 }} />
+                <p>No configuration history yet</p>
+                <small>Changes will appear here after you save configurations</small>
               </div>
-            ))}
+            ) : (
+              configHistory.map(item => (
+                <div key={item.id} className="history-item">
+                  <div className="history-info">
+                    <p className="history-date">
+                      {item.timestamp?.toDate?.()?.toLocaleString() || 'Unknown date'}
+                    </p>
+                    <p className="history-author">{item.author}</p>
+                    <ul className="history-changes">
+                      {item.changes?.map((change, i) => (
+                        <li key={i}>{change}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => handleRollback(item.id)}
+                    className="rollback-btn"
+                  >
+                    <RotateCcw size={16} />
+                    Rollback
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
