@@ -70,7 +70,31 @@ function App() {
     try {
       setIsSaving(true);
       const newConfig = { ...config, ...updates };
-      const changes = Object.keys(updates).map(key => `Updated ${key}`);
+
+      // Generate detailed change descriptions
+      const changes = [];
+      Object.keys(updates).forEach(key => {
+        if (key === 'features') {
+          Object.keys(updates.features || {}).forEach(featureName => {
+            changes.push(`features.${featureName}`);
+          });
+        } else if (key === 'ui') {
+          if (updates.ui.colors) changes.push('ui.colors');
+          if (updates.ui.typography) changes.push('ui.typography');
+          if (updates.ui.shapes) changes.push('ui.shapes');
+          if (updates.ui.animations) changes.push('ui.animations');
+        } else if (key === 'medical') {
+          if (updates.medical.vitalLimits) changes.push('medical.vitalLimits');
+          if (updates.medical.timeRules) changes.push('medical.timeRules');
+          if (updates.medical.clinicalConstants) changes.push('medical.clinicalConstants');
+        } else if (key === 'ai') {
+          if (updates.ai.enabled !== undefined) changes.push('ai.enabled');
+          if (updates.ai.insights) changes.push('ai.insights');
+          if (updates.ai.thresholds) changes.push('ai.thresholds');
+        } else {
+          changes.push(key);
+        }
+      });
 
       await saveConfig(newConfig, user, changes);
       await logAction('config_update', { changes }, user);

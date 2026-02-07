@@ -252,10 +252,10 @@ export const saveConfig = async (newConfig, author, changes) => {
 /**
  * Get configuration history
  */
-export const getConfigHistory = async (limitCount = 10) => {
+export const getConfigHistory = async (limitCount = 20) => {
     try {
         const historyQuery = query(
-            collection(db, ADMIN_CONFIG_COLLECTION, 'versions', 'history'),
+            collection(db, ADMIN_CONFIG_COLLECTION, 'current', 'history'),
             orderBy('timestamp', 'desc'),
             limit(limitCount)
         );
@@ -274,15 +274,18 @@ export const getConfigHistory = async (limitCount = 10) => {
 /**
  * Rollback to a specific version
  */
-export const rollbackToVersion = async (versionId, author) => {
+export const rollbackToVersion = async (versionId, user) => {
     try {
-        const versionDoc = await getDoc(doc(db, ADMIN_CONFIG_COLLECTION, 'versions', 'history', versionId));
+        const versionRef = doc(db, ADMIN_CONFIG_COLLECTION, 'current', 'history', versionId);
+        const versionDoc = await getDoc(versionRef);
+
         if (!versionDoc.exists()) {
             throw new Error('Version not found');
         }
 
         const versionData = versionDoc.data();
-        await saveConfig(versionData.config, author, [`Rollback to version ${versionId}`]);
+        const timestamp = versionData.timestamp?.toDate?.()?.toLocaleString() || 'Unknown';
+        await saveConfig(versionData.config, user, [`Rollback to version from ${timestamp}`]);
 
         return { success: true };
     } catch (error) {

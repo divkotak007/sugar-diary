@@ -47,6 +47,8 @@ import DataCleanupTool from './components/DataCleanupTool';
 import { calculateIOB, isSafeToDose, canDoseAgain } from './safety/clinical';
 import { validateSugarLog, validateInsulinLog } from './validation/schemas';
 import IOBDisplay from './components/IOBDisplay';
+import ConfigTest from './ConfigTest';
+
 
 const SettingsModal = lazyWithRetry(() => import('./components/SettingsModal'));
 const ExpandedGraphModal = lazyWithRetry(() => import('./components/ExpandedGraphModal'));
@@ -1314,6 +1316,9 @@ export default function App() {
     <GlobalRecoveryBoundary>
       <SecurityGuardian>
         <div className={`max-w-md mx-auto min-h-screen ${isHighContrast ? 'bg-black text-yellow-400' : darkMode ? 'dark bg-stone-950 text-stone-300' : 'bg-[#fffbf5] text-stone-800'} pb-32 font-sans relative select-none ${isHighContrast ? 'high-contrast' : ''}`}>
+
+          {/* Admin Config Test - Remove after testing */}
+          <ConfigTest />
 
           <Suspense fallback={null}>
             <SettingsModal
