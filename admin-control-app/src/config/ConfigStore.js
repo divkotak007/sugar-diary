@@ -171,10 +171,65 @@ export const DEFAULT_CONFIG = {
         }
     },
 
-    // Module G: Medications & Reminders
+    // Module H: Feature Flags
+    features: {
+        aiInsights: {
+            enabled: true,
+            rollout: 100,
+            description: 'AI-powered glucose insights and pattern detection'
+        },
+        medicationReminders: {
+            enabled: true,
+            rollout: 100,
+            description: 'Smart medication reminder notifications'
+        },
+        weightTracking: {
+            enabled: true,
+            rollout: 100,
+            description: 'Track and monitor weight changes over time'
+        },
+        creatinineTracking: {
+            enabled: true,
+            rollout: 100,
+            description: 'Monitor kidney function via creatinine levels'
+        },
+        estimatedHbA1c: {
+            enabled: true,
+            rollout: 100,
+            description: 'Calculate estimated HbA1c (GMI) from glucose data'
+        },
+        glucosePatterns: {
+            enabled: true,
+            rollout: 100,
+            description: 'Detect and highlight glucose patterns'
+        },
+        insulinCalculator: {
+            enabled: false,
+            rollout: 0,
+            description: 'Smart insulin dose calculator (requires medical approval)'
+        },
+        mealTagging: {
+            enabled: true,
+            rollout: 100,
+            description: 'Tag meals and track their impact on glucose'
+        },
+        exportReports: {
+            enabled: true,
+            rollout: 100,
+            description: 'Export data as PDF reports'
+        },
+        darkMode: {
+            enabled: true,
+            rollout: 100,
+            description: 'Dark mode theme support'
+        }
+    },
+
+    // Module G: Medication Database Control
     medications: {
         database: {
-            version: '5.1',
+            version: '1.0.0',
+            lastUpdated: null,
             autoSync: true,
             syncInterval: 86400000 // 24 hours in ms
         },
