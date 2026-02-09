@@ -66,6 +66,17 @@ const extractDosage = (name) => {
  */
 export const syncMedicineDatabase = async () => {
     try {
+        // Check if Firebase is initialized and user is authenticated
+        const { getAuth } = await import('firebase/auth');
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+
+        if (!currentUser) {
+            throw new Error('You must be signed in to sync the database. Please sign in to the admin app first.');
+        }
+
+        console.log(`Syncing as user: ${currentUser.email}`);
+
         const { medicines, insulins } = convertToAdminFormat();
 
         // Get current admin config
@@ -73,7 +84,7 @@ export const syncMedicineDatabase = async () => {
         const configSnap = await getDoc(configRef);
 
         if (!configSnap.exists()) {
-            throw new Error('Admin config not found');
+            throw new Error('Admin config not found. Please ensure the admin app is properly initialized.');
         }
 
         const currentConfig = configSnap.data().config;
@@ -85,7 +96,8 @@ export const syncMedicineDatabase = async () => {
                 medicines,
                 insulins,
                 lastUpdated: new Date().toISOString(),
-                source: 'main_app_medication_database'
+                source: 'main_app_medication_database',
+                syncedBy: currentUser.email
             }
         };
 
@@ -93,7 +105,7 @@ export const syncMedicineDatabase = async () => {
         await setDoc(configRef, {
             config: updatedConfig,
             lastModified: new Date().toISOString(),
-            modifiedBy: 'system_sync'
+            modifiedBy: currentUser.email || 'system_sync'
         });
 
         console.log(`✅ Synced ${medicines.length} medicines and ${insulins.length} insulins to admin config`);
@@ -101,6 +113,12 @@ export const syncMedicineDatabase = async () => {
         return { success: true, medicines: medicines.length, insulins: insulins.length };
     } catch (error) {
         console.error('Error syncing medicine database:', error);
+
+        // Provide user-friendly error messages
+        if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+            throw new Error(`Permission denied. Only authorized admin users (divyanshkotak04@gmail.com) can sync the database. Current user: ${error.message}`);
+        }
+
         throw error;
     }
 };
