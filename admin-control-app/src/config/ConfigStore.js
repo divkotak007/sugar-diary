@@ -103,20 +103,6 @@ export const DEFAULT_CONFIG = {
         }
     },
 
-    // Module D: Feature Flags
-    features: {
-        estimatedHbA1c: { enabled: true, rollout: 100 },
-        calendarView: { enabled: true, rollout: 100 },
-        aiInsights: { enabled: true, rollout: 100 },
-        reminders: { enabled: true, rollout: 100 },
-        deepViewVitals: { enabled: true, rollout: 100 },
-        safetyChecks: { enabled: true, rollout: 100 },
-        validation: { enabled: true, rollout: 100 },
-        cleanupTool: { enabled: false, rollout: 0 },
-        iobIndicator: { enabled: true, rollout: 100 },
-        pdfExport: { enabled: true, rollout: 100 }
-    },
-
     // Module E: Medical Rules
     medical: {
         vitalLimits: {
