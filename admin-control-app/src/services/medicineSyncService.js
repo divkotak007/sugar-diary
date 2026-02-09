@@ -9,7 +9,7 @@ import { MEDICATION_DATABASE } from '../../../src/data/medications';
 const db = getFirestore();
 
 /**
- * Convert main app medication database to admin format
+ * Convert main app medication database to clinical admin format
  */
 export const convertToAdminFormat = () => {
     const medicines = [];
@@ -19,33 +19,48 @@ export const convertToAdminFormat = () => {
         const baseItem = {
             id: `med_${index}_${Date.now()}`,
             name: med.name,
-            notes: `Brands: ${(med.brands || []).join(', ')}. Class: ${(med.class || []).join(', ')}`
+            class: (med.class || []).join(', '),
+            brands: (med.brands || []).join(', '),
+            route: med.route,
+            type: med.type
         };
+
+        // Extract safety flags
+        const safetyFlags = {
+            hypoRisk: med.flags?.hypo || 'low',
+            weightEffect: med.flags?.weight || 'neutral'
+        };
+
+        // Extract contraindications
+        const contraindications = {
+            ckd: typeof med.flags?.ckd === 'object' ? med.flags.ckd.eGFR_30 : (med.flags?.ckd || 'allowed'),
+            pregnancy: med.flags?.pregnancy || 'safe',
+            elderly: med.flags?.elderly || 'preferred',
+            heartFailure: med.flags?.hf || 'safe'
+        };
+
+        // Build clinical notes
+        const notes = `Type: ${med.type}. Route: ${med.route}.`;
 
         if (med.route === 'insulin') {
             // It's an insulin
             insulins.push({
                 ...baseItem,
-                type: med.type || 'rapid', // rapid, short, intermediate, basal, premix
-                brand: med.brands?.[0] || '',
-                concentration: 'U-100', // Default, can be updated
-                stock: 0,
-                price: 0,
-                expiryDate: '',
-                notes: baseItem.notes + `. Flags: Hypo risk: ${med.flags?.hypo || 'N/A'}, Weight: ${med.flags?.weight || 'N/A'}`
+                safetyFlags,
+                contraindications: {
+                    ckd: contraindications.ckd,
+                    pregnancy: contraindications.pregnancy,
+                    elderly: contraindications.elderly
+                },
+                notes
             });
         } else {
             // It's an oral medication
             medicines.push({
                 ...baseItem,
-                type: med.route === 'oral' ? 'tablet' : 'other',
-                dosage: extractDosage(med.name),
-                frequency: 'Once Daily', // Default, can be updated
-                stock: 0,
-                price: 0,
-                manufacturer: med.brands?.[0]?.split(' ')[0] || '', // Extract manufacturer from brand
-                expiryDate: '',
-                notes: baseItem.notes + `. Type: ${med.type}. Flags: Hypo risk: ${med.flags?.hypo || 'N/A'}, Weight: ${med.flags?.weight || 'N/A'}`
+                safetyFlags,
+                contraindications,
+                notes
             });
         }
     });
