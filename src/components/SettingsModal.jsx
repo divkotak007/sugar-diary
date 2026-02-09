@@ -1,8 +1,15 @@
-import React from 'react';
-import { Settings, X, Sun, Moon, Zap, Smartphone, Volume2, Lock, Trash2, Clock } from 'lucide-react';
+import { Settings, X, Sun, Moon, Zap, Smartphone, Volume2, Lock, Trash2, Clock, Shield } from 'lucide-react';
 import { feedback } from '../utils/feedback';
+import SafetyStatusCard from './SafetyStatusCard';
+import DataCleanupTool from './DataCleanupTool';
 
-const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDelete, darkMode, setDarkMode, isHighContrast, setIsHighContrast, hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled, remindersEnabled, setRemindersEnabled, reminders, onUpdateReminder }) => {
+const SettingsModal = ({
+    isOpen, onClose, compliance, onShare, profile, onSoftDelete,
+    darkMode, setDarkMode, isHighContrast, setIsHighContrast,
+    hapticsEnabled, setHapticsEnabled, soundEnabled, setSoundEnabled,
+    remindersEnabled, setRemindersEnabled, reminders, onUpdateReminder,
+    featureFlags, currentIOB, lastInsulinDose, fullHistory, db, user
+}) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-in fade-in">
@@ -32,6 +39,16 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                             </div>
                         </div>
                     </div>
+
+                    {/* Phase 0: Safety Status */}
+                    {featureFlags && (
+                        <SafetyStatusCard
+                            featureFlags={featureFlags}
+                            currentIOB={currentIOB}
+                            lastInsulinDose={lastInsulinDose}
+                            className="mb-4"
+                        />
+                    )}
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between p-1">
@@ -119,6 +136,19 @@ const SettingsModal = ({ isOpen, onClose, compliance, onShare, profile, onSoftDe
                             <Trash2 size={16} /> Delete Account
                         </button>
                     </div>
+
+                    {/* Phase 0: Data Cleanup Tool (Advanced) */}
+                    {featureFlags?.ENABLE_CLEANUP_TOOL && (
+                        <div className="pt-6 border-t border-stone-100 dark:border-stone-800">
+                            <DataCleanupTool
+                                logs={fullHistory}
+                                db={db}
+                                userId={user?.uid}
+                                collectionName="logs"
+                                onCleanupComplete={() => window.location.reload()} // Simple refresh to clear cache
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

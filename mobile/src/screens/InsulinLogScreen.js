@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Title, HelperText, Card, Paragraph, Chip } from 'react-native-paper';
 import { db } from '../firebase/config';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { checkDoseSafety, calculateIOB } from '../services/safety';
 
 export default function InsulinLogScreen({ navigation, route }) {
+    const user = route.params?.user;
     const [units, setUnits] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -14,8 +15,10 @@ export default function InsulinLogScreen({ navigation, route }) {
 
     // Fetch recent insulin logs for IOB calculation
     useEffect(() => {
-        fetchRecentInsulinLogs();
-    }, []);
+        if (user?.uid) {
+            fetchRecentInsulinLogs();
+        }
+    }, [user]);
 
     const fetchRecentInsulinLogs = async () => {
         try {
@@ -24,7 +27,7 @@ export default function InsulinLogScreen({ navigation, route }) {
 
             const q = query(
                 collection(db, 'insulinLogs'),
-                where('userId', '==', 'temp-user-id'), // TODO: Replace with actual user ID
+                where('userId', '==', user?.uid),
                 where('timestamp', '>=', sixHoursAgo),
                 orderBy('timestamp', 'desc')
             );
@@ -80,7 +83,7 @@ export default function InsulinLogScreen({ navigation, route }) {
             await addDoc(collection(db, 'insulinLogs'), {
                 units: parseFloat(units),
                 timestamp: serverTimestamp(),
-                userId: 'temp-user-id',
+                userId: user?.uid,
                 source: 'mobile-app',
                 type: 'rapid', // Default type
             });

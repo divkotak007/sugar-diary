@@ -3,14 +3,25 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card, Title, Paragraph, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, route }) {
+    const user = route.params?.user;
     // Placeholder for data
     const glucose = 120;
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
-                <Title style={styles.header}>Sugar Diary</Title>
+                <View style={styles.header}>
+                    <Title style={styles.headerTitle}>Sugar Diary</Title>
+                    <Button
+                        mode="text"
+                        icon="cog"
+                        onPress={() => navigation.navigate('Settings', { user })}
+                        compact
+                    >
+                        Settings
+                    </Button>
+                </View>
                 <Paragraph>Welcome to your AI-powered companion.</Paragraph>
 
                 <Card style={styles.card}>
@@ -33,6 +44,18 @@ export default function HomeScreen({ navigation }) {
                         <Button mode="contained" onPress={() => navigation.navigate('InsulinLog')}>Log Insulin</Button>
                     </Card.Actions>
                 </Card>
+
+                <Card style={styles.card}>
+                    <Card.Content>
+                        <Title>View Patterns</Title>
+                        <Paragraph>See your glucose trends over time</Paragraph>
+                    </Card.Content>
+                    <Card.Actions>
+                        <Button mode="outlined" icon="calendar" onPress={() => navigation.navigate('Calendar', { user })}>
+                            Calendar
+                        </Button>
+                    </Card.Actions>
+                </Card>
             </View>
         </SafeAreaView>
     );
@@ -47,7 +70,12 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     header: {
-        marginBottom: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
     },

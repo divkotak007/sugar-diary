@@ -4,7 +4,8 @@ import { TextInput, Button, Title, HelperText } from 'react-native-paper';
 import { db } from '../firebase/config';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export default function GlucoseLogScreen({ navigation }) {
+export default function GlucoseLogScreen({ navigation, route }) {
+    const user = route.params?.user;
     const [value, setValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -23,11 +24,10 @@ export default function GlucoseLogScreen({ navigation }) {
 
         setLoading(true);
         try {
-            // TODO: Replace 'userId' with actual user ID from Auth
             await addDoc(collection(db, 'sugarLogs'), {
                 value: glucose,
                 timestamp: serverTimestamp(),
-                userId: 'temp-user-id',
+                userId: user?.uid,
                 source: 'mobile-app'
             });
             navigation.goBack();

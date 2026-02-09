@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Search, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Search, Package, RefreshCw } from 'lucide-react';
+import { syncMedicineDatabase } from '../services/medicineSyncService';
 import './MedicineDatabaseManager.css';
 
 const MedicineDatabaseManager = ({ config, onUpdate }) => {
@@ -14,12 +15,31 @@ const MedicineDatabaseManager = ({ config, onUpdate }) => {
     const [editingItem, setEditingItem] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     useEffect(() => {
         // Load existing medicines and insulins from config
-        setMedicines(config?.medicineDatabase?.medicines || []);
-        setInsulins(config?.medicineDatabase?.insulins || []);
+        if (config?.medicineDatabase) {
+            setMedicines(config.medicineDatabase.medicines || []);
+            setInsulins(config.medicineDatabase.insulins || []);
+        }
     }, [config]);
+
+    const handleSyncFromMainApp = async () => {
+        if (!confirm('This will import all medicines and insulins from the main app database. Continue?')) return;
+
+        setIsSyncing(true);
+        try {
+            const result = await syncMedicineDatabase();
+            alert(`✅ Successfully synced ${result.medicines} medicines and ${result.insulins} insulins!`);
+            // Reload config to get updated data
+            window.location.reload();
+        } catch (error) {
+            alert('Error syncing database: ' + error.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const emptyMedicine = {
         id: Date.now(),
@@ -315,10 +335,21 @@ const MedicineDatabaseManager = ({ config, onUpdate }) => {
                     <h2>💊 Medicine & Insulin Database</h2>
                     <p>Manage your medicine inventory and insulin stock</p>
                 </div>
-                <button onClick={() => handleAdd(activeTab === 'medicines' ? 'medicine' : 'insulin')} className="add-btn">
-                    <Plus size={16} />
-                    Add {activeTab === 'medicines' ? 'Medicine' : 'Insulin'}
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={handleSyncFromMainApp}
+                        className="add-btn-secondary"
+                        disabled={isSyncing}
+                        style={{ background: isSyncing ? '#9CA3AF' : 'white' }}
+                    >
+                        <RefreshCw size={16} className={isSyncing ? 'spinning' : ''} />
+                        {isSyncing ? 'Syncing...' : 'Sync from Main App'}
+                    </button>
+                    <button onClick={() => handleAdd(activeTab === 'medicines' ? 'medicine' : 'insulin')} className="add-btn">
+                        <Plus size={16} />
+                        Add {activeTab === 'medicines' ? 'Medicine' : 'Insulin'}
+                    </button>
+                </div>
             </div>
 
             <div className="tabs">

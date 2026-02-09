@@ -82,8 +82,8 @@ const SafetyStatusCard = ({
                         <div
                             key={idx}
                             className={`flex items-start gap-3 p-3 rounded-xl transition-all ${feature.enabled
-                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200/50 dark:border-green-700/50'
-                                    : 'bg-stone-50 dark:bg-stone-800/50 border border-stone-200/50 dark:border-stone-700/50 opacity-60'
+                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200/50 dark:border-green-700/50'
+                                : 'bg-stone-50 dark:bg-stone-800/50 border border-stone-200/50 dark:border-stone-700/50 opacity-60'
                                 }`}
                         >
                             <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${feature.enabled ? 'text-green-600 dark:text-green-400' : 'text-stone-400'
@@ -114,7 +114,7 @@ const SafetyStatusCard = ({
                 <p className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
                     <Shield className="w-3 h-3 flex-shrink-0 mt-0.5" />
                     <span>
-                        <strong>Emergency Protection:</strong> Critical safety checks (>50u dose block) are ALWAYS active, regardless of settings.
+                        <strong>Emergency Protection:</strong> Critical safety checks (&gt;50u dose block) are ALWAYS active, regardless of settings.
                     </span>
                 </p>
             </div>

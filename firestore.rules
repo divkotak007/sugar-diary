@@ -3,29 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Admin-only collections
-    match /config_history/{document=**} {
-      // Only allow writes from admin email
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    match /admin_logs/{document=**} {
-      // Only allow writes from admin email
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
     
-    match /admin_config/{document=**} {
-      // Allow reads for all authenticated users (so main app can read)
-      allow read: if request.auth != null;
-      // Only allow writes from admin email
-      allow write: if request.auth != null && request.auth.token.email == 'divyanshkotak04@gmail.com';
+    // Sugar Logs - Users can only read/write their own logs
+    match /sugarLogs/{logId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
     
-    // All other collections - keep your existing rules
+    // Insulin Logs - Users can only read/write their own logs
+    match /insulinLogs/{logId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Meal Logs - Users can only read/write their own logs
+    match /mealLogs/{logId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Vital Logs - Users can only read/write their own logs
+    match /vitalLogs/{logId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // User Profiles - Users can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Prescriptions - Users can only read/write their own prescriptions
+    match /prescriptions/{prescriptionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Deny all other access by default
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
